@@ -17,6 +17,9 @@ The recommended way to run ThreatAtlas is using Docker Compose. This starts the 
 git clone https://github.com/OWASP/www-project-threatatlas.git
 cd www-project-threatatlas/threatatlas-app
 
+# (Optional) copy and edit the environment file before starting
+cp .env.example .env
+
 # Build and start services
 docker compose up -d
 ```
@@ -24,6 +27,17 @@ docker compose up -d
 ### 3. Access
 - **Frontend**: [http://localhost:3000](http://localhost:3000)
 - **Backend API**: [http://localhost:8000](http://localhost:8000) (Docs at `/docs`)
+
+### 4. First Login
+
+A default admin account is created automatically on first run:
+
+| Field | Value |
+|---|---|
+| Email | `admin@acme.com` |
+| Password | `Admin@1234` |
+
+> ⚠️ **Change these credentials immediately** after your first login, especially in shared or production environments.
 
 ---
 
@@ -37,7 +51,8 @@ cp .env.example .env
 
 ### Important Settings:
 - **`SECRET_KEY`**: Change this to a long random string for security.
-- **`SMTP Settings`**: Required for email invitations.
+- **`POSTGRES_PASSWORD`**: Change the default before any shared or production deployment.
+- **`SMTP Settings`**: Required for email invitation links to work.
 
 ---
 
