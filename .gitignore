@@ -55,3 +55,4 @@ pnpm-debug.log*
 
 # apps
 **/.env*
+!**/.env.example

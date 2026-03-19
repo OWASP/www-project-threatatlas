@@ -26,9 +26,17 @@ Welcome to **ThreatAtlas** — a platform for community-driven threat modeling.
 Navigate to your hosted URL (default: **http://localhost:3000** for local installs).
 
 ### 2. Log In
-After registering, log in with your credentials. You will be taken to the main dashboard.
 
-> **Note**: A default admin account (`admin@acme.com` / `Admin@1234`) is often created during the initial setup. **Change this immediately** in any shared environment.
+Public self-registration is disabled. On a fresh install, log in with the default admin account that is created automatically:
+
+| Field | Value |
+|---|---|
+| Email | `admin@acme.com` |
+| Password | `Admin@1234` |
+
+> ⚠️ **Change these credentials immediately** after your first login. You can do this under your profile settings once logged in.
+
+To add other users, go to **Admin → Invite User** and send an invitation link.
 
 ---
 
