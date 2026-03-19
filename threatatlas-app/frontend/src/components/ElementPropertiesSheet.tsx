@@ -7,7 +7,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
@@ -70,40 +70,44 @@ export default function ElementPropertiesSheet({
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
             {/* Element Name Section */}
-            <div className="space-y-3">
+             <div className="space-y-3">
               <h3 className="text-sm font-semibold">Element Information</h3>
-              <div className="flex items-center gap-3">
-                <div className="flex-1 space-y-2">
-                  <Label className="text-sm font-medium">Name</Label>
+              <div className="grid gap-4">
+                <Field>
+                  <FieldLabel htmlFor="element-name">Element Name</FieldLabel>
                   <Input
+                    id="element-name"
                     value={elementName}
                     onChange={(e) => setElementName(e.target.value)}
                     onBlur={handleRename}
                     placeholder="Enter element name"
+                    className="w-full"
                   />
+                </Field>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {selectedElement?.nodeType && (
+                    <Field>
+                      <FieldLabel>Element Type</FieldLabel>
+                      <div className="flex items-center h-10 bg-muted/30 px-3 rounded-lg border border-border/40">
+                        <Badge variant="secondary" className="capitalize">
+                          {selectedElement.nodeType}
+                        </Badge>
+                      </div>
+                    </Field>
+                  )}
+
+                  {selectedElement?.id && (
+                    <Field>
+                      <FieldLabel>Element ID</FieldLabel>
+                      <div className="flex items-center h-10 bg-muted/30 px-3 rounded-lg border border-border/40">
+                        <code className="text-xs font-mono">
+                          {selectedElement.id}
+                        </code>
+                      </div>
+                    </Field>
+                  )}
                 </div>
-
-                {selectedElement?.nodeType && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Type</Label>
-                    <div className="flex items-center h-10">
-                      <Badge variant="outline" className="capitalize">
-                        {selectedElement.nodeType}
-                      </Badge>
-                    </div>
-                  </div>
-                )}
-
-                {selectedElement?.id && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">ID</Label>
-                    <div className="flex items-center h-10">
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        {selectedElement.id}
-                      </code>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 

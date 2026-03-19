@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Plus, Trash2, Search, X, Shield, ChevronDown, Link2 } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, Search, X, Shield, ChevronDown } from 'lucide-react';
 import { RiskSelector } from '@/components/RiskSelector';
 import { getSeverityVariant } from '@/lib/risk';
 
@@ -65,7 +65,21 @@ interface DiagramThreat {
   impact: number | null;
   risk_score: number | null;
   severity: 'low' | 'medium' | 'high' | 'critical' | null;
+  element_id: string;
   threat: Threat;
+}
+
+interface DiagramThreatUpdate {
+  status?: string;
+  notes?: string;
+  likelihood?: number | null;
+  impact?: number | null;
+}
+
+interface DiagramMitigationUpdate {
+  status?: string;
+  notes?: string | null;
+  threat_id?: number | null;
 }
 
 interface ThreatManagementProps {
@@ -169,7 +183,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
     }
   };
 
-  const handleUpdateThreat = async (diagramThreatId: number, updates: Partial<DiagramThreat>) => {
+  const handleUpdateThreat = async (diagramThreatId: number, updates: DiagramThreatUpdate) => {
     try {
       await diagramThreatsApi.update(diagramThreatId, updates);
       loadData();
@@ -196,7 +210,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
         mitigation_id: mitigation.id,
         element_id: elementId,
         element_type: elementType,
-        threat_id: currentThreat?.id || null,
+        threat_id: currentThreat?.id,
         status: 'proposed',
         notes: '',
       });
@@ -218,7 +232,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
     }
   };
 
-  const handleUpdateMitigation = async (mitigationId: number, updates: any) => {
+  const handleUpdateMitigation = async (mitigationId: number, updates: DiagramMitigationUpdate) => {
     try {
       await diagramMitigationsApi.update(mitigationId, updates);
       loadData();

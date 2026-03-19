@@ -156,7 +156,11 @@ export default function Diagrams() {
       setCurrentVersion(diagram.current_version || 0);
 
       if (diagram.diagram_data) {
-        setNodes(diagram.diagram_data.nodes || []);
+        const loadedNodes = (diagram.diagram_data.nodes || []).map((node: Node) => ({
+          ...node,
+          zIndex: node.data.type === 'boundary' ? -1 : (node.zIndex || 0)
+        }));
+        setNodes(loadedNodes);
         setEdges(diagram.diagram_data.edges || []);
       }
     } catch (error) {
@@ -561,6 +565,7 @@ export default function Diagrams() {
           onConnect={onConnect}
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
+          elevateNodesOnSelect={false}
           fitView
           className="bg-muted/20"
           proOptions={{ hideAttribution: true }}

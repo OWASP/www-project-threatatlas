@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Search, AlertTriangle, Shield, TrendingUp, CheckCircle2, Activity, Link2, Box, Grid3x3, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import ThreatDetailsSheet from '@/components/ThreatDetailsSheet';
 import { getSeverityClasses, getSeverityStripeClass, getStatusClasses } from '@/lib/risk';
@@ -138,16 +138,6 @@ export default function Dashboard() {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, severityFilter]);
 
-  const filteredMitigations = mitigations.filter((item) => {
-    const matchesSearch =
-      item.mitigation.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.mitigation.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.element_id.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
 
   const handleOpenThreat = (threat: DiagramThreat) => {
     const linkedMits = mitigations.filter(m => m.threat_id === threat.id);
@@ -250,17 +240,9 @@ export default function Dashboard() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    return (
-      <Badge variant="outline" className={cn('border capitalize', getStatusClasses(status))}>
-        {status}
-      </Badge>
-    );
-  };
 
   const identifiedCount = threats.filter(t => t.status === 'identified').length;
   const mitigatedCount = threats.filter(t => t.status === 'mitigated').length;
-  const implementedCount = mitigations.filter(m => m.status === 'implemented').length;
 
   // Risk severity counts
   const riskStats = {

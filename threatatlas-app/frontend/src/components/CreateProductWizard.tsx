@@ -11,9 +11,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowRight, ArrowLeft, Loader2, Check } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2, Check, Package, FileText } from 'lucide-react';
+import { Field, FieldLabel, FieldDescription, FieldError } from '@/components/ui/field';
 
 interface Framework {
   id: number;
@@ -200,10 +200,12 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
           {/* Step 1: Product */}
           {step === 1 && (
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="wiz-product-name">
-                  Name <span className="text-destructive">*</span>
-                </Label>
+              <Field>
+                <FieldLabel htmlFor="wiz-product-name">
+                  <Package className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                  Product Name
+                  <span className="text-destructive ml-1">*</span>
+                </FieldLabel>
                 <Input
                   id="wiz-product-name"
                   placeholder="e.g. Payment API, Mobile App"
@@ -215,15 +217,14 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                   onKeyDown={(e) => e.key === 'Enter' && goNext()}
                   autoFocus
                 />
-                {productError && (
-                  <p className="text-xs text-destructive">{productError}</p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="wiz-product-desc">
-                  Description{' '}
-                  <span className="text-muted-foreground font-normal">(optional)</span>
-                </Label>
+                <FieldError>{productError}</FieldError>
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="wiz-product-desc">
+                  Description
+                  <span className="text-muted-foreground font-normal ml-1">(optional)</span>
+                </FieldLabel>
                 <Textarea
                   id="wiz-product-desc"
                   placeholder="What does this product do?"
@@ -231,17 +232,22 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                   onChange={(e) => setProductDescription(e.target.value)}
                   rows={3}
                 />
-              </div>
+                <FieldDescription>
+                  Briefly describe the purpose of this product.
+                </FieldDescription>
+              </Field>
             </div>
           )}
 
           {/* Step 2: Diagram */}
           {step === 2 && (
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="wiz-diagram-name">
-                  Diagram name <span className="text-destructive">*</span>
-                </Label>
+              <Field>
+                <FieldLabel htmlFor="wiz-diagram-name">
+                  <FileText className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                  Diagram Name
+                  <span className="text-destructive ml-1">*</span>
+                </FieldLabel>
                 <Input
                   id="wiz-diagram-name"
                   value={diagramName}
@@ -252,14 +258,11 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                   onKeyDown={(e) => e.key === 'Enter' && goNext()}
                   autoFocus
                 />
-                {diagramError && (
-                  <p className="text-xs text-destructive">{diagramError}</p>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                A data flow diagram lets you visually map your system and attach threats to
-                specific components.
-              </p>
+                <FieldError>{diagramError}</FieldError>
+                <FieldDescription>
+                  A data flow diagram lets you visually map your system and attach threats to specific components.
+                </FieldDescription>
+              </Field>
             </div>
           )}
 
@@ -294,7 +297,7 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                         >
                           {selected && <Check className="h-3 w-3 text-primary-foreground" />}
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold leading-tight">{fw.name}</p>
                           {fw.description && (
                             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">

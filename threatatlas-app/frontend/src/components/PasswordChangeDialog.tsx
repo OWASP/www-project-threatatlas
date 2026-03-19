@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +10,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Key, Loader2 } from 'lucide-react';
+import { Key, Loader2, Lock } from 'lucide-react';
+import { Field, FieldLabel, FieldError } from '@/components/ui/field';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 
 export default function PasswordChangeDialog() {
   const [open, setOpen] = useState(false);
@@ -94,52 +94,68 @@ export default function PasswordChangeDialog() {
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="current-password">Current Password *</Label>
-              <Input
-                id="current-password"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
-                required
-                disabled={loading}
-                className="h-11"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-password">New Password *</Label>
-              <Input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Minimum 8 characters"
-                required
-                disabled={loading}
-                className="h-11"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm New Password *</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
-                required
-                disabled={loading}
-                className="h-11"
-              />
-            </div>
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg border border-destructive/20">
+            <Field>
+              <FieldLabel htmlFor="current-password">Current Password *</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Lock className="h-4 w-4" />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  required
+                  disabled={loading}
+                />
+              </InputGroup>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="new-password">New Password *</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Lock className="h-4 w-4" />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 8 characters"
+                  required
+                  disabled={loading}
+                />
+              </InputGroup>
+              <FieldError>{error.includes('New password') ? error : ''}</FieldError>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="confirm-password">Confirm New Password *</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Lock className="h-4 w-4" />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                  required
+                  disabled={loading}
+                />
+              </InputGroup>
+            </Field>
+
+            {error && !error.includes('New password') && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg border border-destructive/20 animate-in fade-in zoom-in duration-200">
                 {error}
               </div>
             )}
             {success && (
-              <div className="text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
+              <div className="text-sm text-green-600 bg-green-50/50 p-3 rounded-lg border border-green-200/50 animate-in fade-in zoom-in duration-200">
                 Password changed successfully!
               </div>
             )}

@@ -55,6 +55,49 @@ function DiagramNode({ data, selected }: NodeProps) {
         <Handle
           type="target"
           position={Position.Top}
+          id="target-top"
+          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Top}
+          id="source-top"
+          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
+          position={Position.Right}
+          id="target-right"
+          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="source-right"
+          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
+          position={Position.Bottom}
+          id="target-bottom"
+          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="source-bottom"
+          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="target-left"
+          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Left}
+          id="source-left"
           className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
         />
         <div
@@ -71,11 +114,6 @@ function DiagramNode({ data, selected }: NodeProps) {
             {data.label as string}
           </div>
         </div>
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
-        />
       </div>
     );
   }
@@ -86,7 +124,50 @@ function DiagramNode({ data, selected }: NodeProps) {
       <div className="relative">
         <Handle
           type="target"
+          position={Position.Top}
+          id="target-top"
+          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Top}
+          id="source-top"
+          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
+          position={Position.Right}
+          id="target-right"
+          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="source-right"
+          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
+          position={Position.Bottom}
+          id="target-bottom"
+          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="source-bottom"
+          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
           position={Position.Left}
+          id="target-left"
+          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Left}
+          id="source-left"
           className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
         />
         <div className={cn('relative transition-all duration-200', selected && 'scale-105')}>
@@ -110,11 +191,6 @@ function DiagramNode({ data, selected }: NodeProps) {
           {/* Bottom line */}
           <div className={cn('absolute bottom-0 left-0 right-0 h-0.5', style.border.replace('border-', 'bg-'))} />
         </div>
-        <Handle
-          type="source"
-          position={Position.Right}
-          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
-        />
       </div>
     );
   }
@@ -126,6 +202,49 @@ function DiagramNode({ data, selected }: NodeProps) {
         <Handle
           type="target"
           position={Position.Top}
+          id="target-top"
+          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Top}
+          id="source-top"
+          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
+          position={Position.Right}
+          id="target-right"
+          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="source-right"
+          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
+          position={Position.Bottom}
+          id="target-bottom"
+          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="source-bottom"
+          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="target-left"
+          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Left}
+          id="source-left"
           className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
         />
         <div
@@ -143,11 +262,6 @@ function DiagramNode({ data, selected }: NodeProps) {
             </div>
           </div>
         </div>
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
-        />
       </div>
     );
   }
@@ -155,17 +269,53 @@ function DiagramNode({ data, selected }: NodeProps) {
   // Trust Boundary - Dashed rectangle (resizable)
   if (style.shape === 'dashed') {
     return (
-      <div className="relative w-full h-full" style={{ zIndex: -1 }}>
-        <NodeResizer
-          minWidth={200}
-          minHeight={150}
-          isVisible={selected}
-          lineClassName="!border-slate-400"
-          handleClassName="!h-3 !w-3 !bg-slate-400"
-        />
+      <div className="relative w-full h-full">
         <Handle
           type="target"
           position={Position.Top}
+          id="target-top"
+          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Top}
+          id="source-top"
+          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
+          position={Position.Right}
+          id="target-right"
+          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="source-right"
+          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
+          position={Position.Bottom}
+          id="target-bottom"
+          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="source-bottom"
+          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="target-left"
+          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        />
+        <Handle
+          type="source"
+          position={Position.Left}
+          id="source-left"
           className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
         />
         <div
@@ -175,7 +325,7 @@ function DiagramNode({ data, selected }: NodeProps) {
             style.border,
             selected && 'ring-2 ring-slate-400 ring-offset-2'
           )}
-          style={{ minWidth: '200px', minHeight: '150px', zIndex: -1 }}
+          style={{ minWidth: '200px', minHeight: '150px' }}
         >
           <div className="flex items-start gap-2 absolute top-2 left-2">
             <Icon className={cn('h-4 w-4', style.iconColor)} />
@@ -187,10 +337,12 @@ function DiagramNode({ data, selected }: NodeProps) {
             Trust Boundary
           </div>
         </div>
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+        <NodeResizer
+          minWidth={200}
+          minHeight={150}
+          isVisible={selected}
+          lineClassName="!border-slate-400"
+          handleClassName="!h-3 !w-3 !bg-slate-400"
         />
       </div>
     );

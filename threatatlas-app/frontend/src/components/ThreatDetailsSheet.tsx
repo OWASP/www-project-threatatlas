@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Shield, ExternalLink, Plus, Trash2, Search, X, Check, Pencil } from 'lucide-react';
@@ -324,17 +325,17 @@ export default function ThreatDetailsSheet({
 
               {/* Element & Status */}
               <div className="grid gap-4 grid-cols-2">
-                <div className="space-y-1.5">
-                  <p className="text-xs font-bold text-muted-foreground tracking-wider">ELEMENT</p>
+                <Field>
+                  <FieldLabel>Element</FieldLabel>
                   <code className="text-sm bg-muted px-2.5 py-1 rounded-lg border border-border/60 inline-block">
                     {selectedItem.element_id}
                   </code>
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-xs font-bold text-muted-foreground tracking-wider">STATUS</p>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="item-status">Status</FieldLabel>
                   {canWrite ? (
                     <Select value={selectedItem.status} onValueChange={onUpdateStatus}>
-                      <SelectTrigger className="h-9 text-sm rounded-lg border-border/60">
+                      <SelectTrigger id="item-status" className="h-9 text-sm rounded-lg border-border/60">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -358,7 +359,7 @@ export default function ThreatDetailsSheet({
                       {selectedItem.status}
                     </Badge>
                   )}
-                </div>
+                </Field>
               </div>
 
               <div className="h-px bg-border/60" />
@@ -366,23 +367,24 @@ export default function ThreatDetailsSheet({
               {/* Risk Assessment — threats only */}
               {itemType === 'threat' && (
                 <>
-                  <div className="space-y-3">
-                    <p className="text-xs font-bold text-muted-foreground tracking-wider">RISK ASSESSMENT</p>
+                  <Field>
+                    <FieldLabel>Risk Assessment</FieldLabel>
                     <RiskSelector
                       likelihood={selectedItem.likelihood}
                       impact={selectedItem.impact}
                       onLikelihoodChange={handleLikelihoodChange}
                       onImpactChange={handleImpactChange}
                     />
-                  </div>
+                  </Field>
                   <div className="h-px bg-border/60" />
                 </>
               )}
 
               {/* Notes */}
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-muted-foreground tracking-wider">NOTES</p>
+              <Field>
+                <FieldLabel htmlFor="item-notes">Notes</FieldLabel>
                 <Textarea
+                  id="item-notes"
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
                   placeholder="Add notes or additional context..."
@@ -391,11 +393,11 @@ export default function ThreatDetailsSheet({
                   readOnly={!canWrite}
                 />
                 {canWrite && (
-                  <Button onClick={handleUpdateNotes} size="sm" className="rounded-lg shadow-sm">
+                  <Button onClick={handleUpdateNotes} size="sm" className="mt-2 rounded-lg shadow-sm">
                     Save Notes
                   </Button>
                 )}
-              </div>
+              </Field>
 
               {/* Linked Mitigations — threats only */}
               {itemType === 'threat' && (

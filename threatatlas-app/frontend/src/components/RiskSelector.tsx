@@ -1,4 +1,4 @@
-import { Label } from '@/components/ui/label';
+import { FieldTitle } from '@/components/ui/field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { getSeverity, getSeverityVariant } from '@/lib/risk';
@@ -33,8 +33,8 @@ export function RiskSelector({ likelihood, impact, onLikelihoodChange, onImpactC
   return (
     <div className="space-y-2">
       <div className="flex gap-3">
-        <Label className="flex-1">Likelihood</Label>
-        <Label className="flex-1">Impact</Label>
+        <FieldTitle className="flex-1">Likelihood</FieldTitle>
+        <FieldTitle className="flex-1">Impact</FieldTitle>
         {riskScore && severity && <div className="flex-1" />}
       </div>
       <div className="flex gap-3">

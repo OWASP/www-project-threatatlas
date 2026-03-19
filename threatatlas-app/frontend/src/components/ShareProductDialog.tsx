@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { collaboratorsApi, api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Field, FieldLabel } from '@/components/ui/field';
 import {
   Dialog,
   DialogContent,
@@ -27,7 +26,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Share2, UserPlus, Trash2, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -154,31 +152,6 @@ export default function ShareProductDialog({ productId, productName, trigger }: 
     }
   };
 
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return 'default';
-      case 'editor':
-        return 'secondary';
-      case 'viewer':
-        return 'outline';
-      default:
-        return 'outline';
-    }
-  };
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return 'Owner';
-      case 'editor':
-        return 'Editor';
-      case 'viewer':
-        return 'Viewer';
-      default:
-        return role;
-    }
-  };
 
   // Filter out users who are already collaborators
   const availableUsers = allUsers.filter(
@@ -209,8 +182,8 @@ export default function ShareProductDialog({ productId, productName, trigger }: 
             <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
               <h3 className="font-semibold text-sm">Add Collaborator</h3>
               <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="user">User</Label>
+                <Field>
+                  <FieldLabel htmlFor="user">User</FieldLabel>
                   <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                     <SelectTrigger id="user">
                       <SelectValue placeholder="Select a user" />
@@ -227,10 +200,10 @@ export default function ShareProductDialog({ productId, productName, trigger }: 
                       )}
                     </SelectContent>
                   </Select>
-                </div>
+                </Field>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="role">Role</Label>
+                <Field>
+                  <FieldLabel htmlFor="role">Role</FieldLabel>
                   <Select value={selectedRole} onValueChange={(value: any) => setSelectedRole(value)}>
                     <SelectTrigger id="role">
                       <SelectValue />
@@ -241,7 +214,7 @@ export default function ShareProductDialog({ productId, productName, trigger }: 
                       <SelectItem value="viewer">Viewer - Read-only access</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </Field>
 
                 {error && (
                   <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg border border-destructive/20">

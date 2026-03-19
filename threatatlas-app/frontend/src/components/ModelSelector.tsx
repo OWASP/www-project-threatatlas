@@ -18,7 +18,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Field, FieldLabel, FieldTitle } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Layers, Settings, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -68,7 +68,6 @@ interface ModelSelectorProps {
 export default function ModelSelector({ diagramId, selectedModelId, onModelChange }: ModelSelectorProps) {
   const [models, setModels] = useState<Model[]>([]);
   const [frameworks, setFrameworks] = useState<Framework[]>([]);
-  const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Create model form state
@@ -96,7 +95,6 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
 
   const loadData = async () => {
     try {
-      setLoading(true);
       const [modelsRes, frameworksRes] = await Promise.all([
         modelsApi.listByDiagram(diagramId),
         frameworksApi.list()
@@ -110,8 +108,6 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
       }
     } catch (error) {
       console.error('Error loading models:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -239,7 +235,7 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
     <div className="flex items-center gap-3">
       <div className="flex items-center gap-2">
         <Layers className="h-4 w-4 text-muted-foreground" />
-        <Label className="text-sm font-medium">Active Model:</Label>
+        <FieldTitle className="text-sm font-medium">Active Model:</FieldTitle>
       </div>
 
       <Select value={selectedModelId?.toString() || 'all'} onValueChange={handleModelSelect}>
@@ -324,8 +320,8 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="framework">Framework *</Label>
+            <Field>
+              <FieldLabel htmlFor="framework">Framework *</FieldLabel>
               <Select value={frameworkId} onValueChange={setFrameworkId}>
                 <SelectTrigger id="framework">
                   <SelectValue placeholder="Select a framework" />
@@ -338,20 +334,20 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Model Name *</Label>
+            <Field>
+              <FieldLabel htmlFor="name">Model Name *</FieldLabel>
               <Input
                 id="name"
                 value={modelName}
                 onChange={(e) => setModelName(e.target.value)}
                 placeholder="STRIDE Security Analysis"
               />
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
+            <Field>
+              <FieldLabel htmlFor="description">Description (optional)</FieldLabel>
               <Textarea
                 id="description"
                 value={modelDescription}
@@ -359,7 +355,7 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
                 placeholder="Initial security threat identification..."
                 rows={3}
               />
-            </div>
+            </Field>
           </div>
 
           <DialogFooter>
@@ -384,28 +380,28 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-framework">Framework</Label>
+            <Field>
+              <FieldLabel htmlFor="edit-framework">Framework</FieldLabel>
               <Input
                 id="edit-framework"
                 value={editingModel?.framework_name || ''}
                 disabled
-                className="bg-muted"
+                className="bg-muted opacity-80"
               />
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Model Name *</Label>
+            <Field>
+              <FieldLabel htmlFor="edit-name">Model Name *</FieldLabel>
               <Input
                 id="edit-name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder="STRIDE Security Analysis"
               />
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-description">Description</Label>
+            <Field>
+              <FieldLabel htmlFor="edit-description">Description</FieldLabel>
               <Textarea
                 id="edit-description"
                 value={editDescription}
@@ -413,10 +409,10 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
                 placeholder="Initial security threat identification..."
                 rows={3}
               />
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-status">Status</Label>
+            <Field>
+              <FieldLabel htmlFor="edit-status">Status</FieldLabel>
               <Select value={editStatus} onValueChange={(value: any) => setEditStatus(value)}>
                 <SelectTrigger id="edit-status">
                   <SelectValue />
@@ -427,7 +423,7 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
 
           <DialogFooter>

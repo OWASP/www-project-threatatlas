@@ -111,8 +111,8 @@ export const modelsApi = {
 export const diagramThreatsApi = {
   list: (params?: { diagram_id?: number; model_id?: number; element_id?: string }) => api.get('/diagram-threats', { params }),
   get: (id: number) => api.get(`/diagram-threats/${id}`),
-  create: (data: { diagram_id: number; model_id: number; threat_id: number; element_id: string; element_type: string; status?: string; notes?: string; likelihood?: number; impact?: number }) => api.post('/diagram-threats', data),
-  update: (id: number, data: { status?: string; notes?: string; likelihood?: number; impact?: number }) => api.put(`/diagram-threats/${id}`, data),
+  create: (data: { diagram_id: number; model_id: number; threat_id: number; element_id: string; element_type: string; status?: string; notes?: string; likelihood?: number | null; impact?: number | null }) => api.post('/diagram-threats', data),
+  update: (id: number, data: { status?: string; notes?: string; likelihood?: number | null; impact?: number | null }) => api.put(`/diagram-threats/${id}`, data),
   delete: (id: number) => api.delete(`/diagram-threats/${id}`),
 };
 
@@ -120,8 +120,8 @@ export const diagramThreatsApi = {
 export const diagramMitigationsApi = {
   list: (params?: { diagram_id?: number; model_id?: number; element_id?: string }) => api.get('/diagram-mitigations', { params }),
   get: (id: number) => api.get(`/diagram-mitigations/${id}`),
-  create: (data: { diagram_id: number; model_id: number; mitigation_id: number; element_id: string; element_type: string; threat_id?: number; status?: string; notes?: string }) => api.post('/diagram-mitigations', data),
-  update: (id: number, data: { status?: string; notes?: string }) => api.put(`/diagram-mitigations/${id}`, data),
+  create: (data: { diagram_id: number; model_id: number; mitigation_id: number; element_id: string; element_type: string; threat_id?: number | null; status?: string; notes?: string | null }) => api.post('/diagram-mitigations', data),
+  update: (id: number, data: { status?: string; notes?: string | null }) => api.put(`/diagram-mitigations/${id}`, data),
   delete: (id: number) => api.delete(`/diagram-mitigations/${id}`),
 };
 

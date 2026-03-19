@@ -33,8 +33,8 @@ ENV/
 
 # Environment
 .env
-.env.*
-!.env.example
+**/.env*
+!**/.env.example
 
 # Logs
 logs
@@ -51,8 +51,3 @@ pnpm-debug.log*
 .vscode/
 *.swp
 *.bak
-
-
-# apps
-**/.env*
-!**/.env.example
