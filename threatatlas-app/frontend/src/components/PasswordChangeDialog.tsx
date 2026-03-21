@@ -14,7 +14,11 @@ import { Key, Loader2, Lock } from 'lucide-react';
 import { Field, FieldLabel, FieldError } from '@/components/ui/field';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 
-export default function PasswordChangeDialog() {
+interface PasswordChangeDialogProps {
+  collapsed?: boolean;
+}
+
+export default function PasswordChangeDialog({ collapsed = false }: PasswordChangeDialogProps) {
   const [open, setOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -80,9 +84,9 @@ export default function PasswordChangeDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="w-full justify-start">
-          <Key className="h-4 w-4 mr-2" />
-          Change Password
+        <Button variant="ghost" size="sm" className={collapsed ? "h-8 w-8 p-0" : "w-full justify-start"}>
+          <Key className={`h-4 w-4 ${collapsed ? "" : "mr-2"}`} />
+          {!collapsed && "Change Password"}
         </Button>
       </DialogTrigger>
       <DialogContent>

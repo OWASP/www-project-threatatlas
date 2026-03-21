@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Plus, Trash2, Search, X, Shield, ChevronDown } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, Search, X, Shield, ChevronDown, Layers } from 'lucide-react';
 import { RiskSelector } from '@/components/RiskSelector';
 import { getSeverityVariant } from '@/lib/risk';
 
@@ -67,6 +67,7 @@ interface DiagramThreat {
   severity: 'low' | 'medium' | 'high' | 'critical' | null;
   element_id: string;
   threat: Threat;
+  model?: any;
 }
 
 interface DiagramThreatUpdate {
@@ -83,9 +84,9 @@ interface DiagramMitigationUpdate {
 }
 
 interface ThreatManagementProps {
-  diagramId: number;
-  activeModelId: number;
-  modelFrameworkId: number;
+  diagramId: number | null;
+  activeModelId: number | null;
+  modelFrameworkId: number | null;
   elementId: string;
   elementType: string;
 }
@@ -132,14 +133,22 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
   }, [diagramId, elementId, activeModelId]);
 
   const loadData = async () => {
+    if (!diagramId || !elementId) return;
     try {
       setLoading(true);
+      
+      const threatParams: any = { diagram_id: diagramId };
+      if (activeModelId) threatParams.model_id = activeModelId;
+      
+      const mitigationParams: any = { diagram_id: diagramId };
+      if (activeModelId) mitigationParams.model_id = activeModelId;
+
       const [threatsRes, availableRes, frameworksRes, mitigationsRes, availableMitigationsRes] = await Promise.all([
-        diagramThreatsApi.list({ diagram_id: diagramId, model_id: activeModelId }),
-        threatsApi.list({ framework_id: modelFrameworkId }),
+        diagramThreatsApi.list(threatParams),
+        modelFrameworkId ? threatsApi.list({ framework_id: modelFrameworkId }) : Promise.resolve({ data: [] }),
         frameworksApi.list(),
-        diagramMitigationsApi.list({ diagram_id: diagramId, model_id: activeModelId }),
-        mitigationsApi.list({ framework_id: modelFrameworkId }),
+        diagramMitigationsApi.list(mitigationParams),
+        modelFrameworkId ? mitigationsApi.list({ framework_id: modelFrameworkId }) : Promise.resolve({ data: [] }),
       ]);
 
       // Filter threats for this element
@@ -165,6 +174,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
   };
 
   const handleAttachThreat = async (threat: Threat) => {
+    if (!activeModelId || !diagramId) return;
     try {
       await diagramThreatsApi.create({
         diagram_id: diagramId,
@@ -203,6 +213,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
   };
 
   const handleAttachMitigation = async (mitigation: any) => {
+    if (!activeModelId || !diagramId) return;
     try {
       await diagramMitigationsApi.create({
         diagram_id: diagramId,
@@ -243,7 +254,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
   };
 
   const handleCreateCustomThreat = async () => {
-    if (!threatForm.name || !threatForm.category) return;
+    if (!threatForm.name || !threatForm.category || !modelFrameworkId) return;
     try {
       const response = await threatsApi.create({
         ...threatForm,
@@ -260,7 +271,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
   };
 
   const handleCreateCustomMitigation = async () => {
-    if (!mitigationForm.name || !mitigationForm.category) return;
+    if (!mitigationForm.name || !mitigationForm.category || !modelFrameworkId) return;
     try {
       const response = await mitigationsApi.create({
         ...mitigationForm,
@@ -316,6 +327,8 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
           <Button
             size="sm"
             onClick={() => setAddDialogOpen(true)}
+            disabled={!activeModelId}
+            title={!activeModelId ? "Select a model to add threats" : ""}
           >
             <Plus className="h-4 w-4 mr-1" />
             Add
@@ -332,15 +345,25 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
         <Card className="border-dashed">
           <CardContent className="p-6 text-center">
             <AlertTriangle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground mb-3">No threats attached</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setAddDialogOpen(true)}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Threat
-            </Button>
+            <p className="text-sm text-muted-foreground mb-3 font-medium">No threats attached</p>
+            {activeModelId ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setAddDialogOpen(true)}
+                className="rounded-lg"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Threat
+              </Button>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground bg-muted/60 p-4 rounded-lg border border-dashed leading-relaxed max-w-[280px] mx-auto">
+                   There are no threats attached to this element across all models. 
+                   <span className="block mt-2 font-medium opacity-80">Select a specific model to add new threats.</span>
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -370,6 +393,12 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
                             {dt.risk_score !== null && (
                               <Badge variant="outline" className="text-xs">
                                 Risk: {dt.risk_score}
+                              </Badge>
+                            )}
+                            {dt.model && !activeModelId && (
+                              <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                                <Layers className="h-3 w-3" />
+                                {dt.model.name}
                               </Badge>
                             )}
                             <ChevronDown 
@@ -493,6 +522,8 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
+                          disabled={!activeModelId}
+                          title={!activeModelId ? "Select a model to add mitigations" : ""}
                           onClick={() => {
                             setCurrentThreat(dt);
                             setAddMitigationDialogOpen(true);

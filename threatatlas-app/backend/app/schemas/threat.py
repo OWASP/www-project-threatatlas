@@ -7,6 +7,7 @@ class ThreatBase(BaseModel):
     name: str
     description: str | None = None
     category: str | None = None
+    user_id: int | None = None
 
 
 class ThreatCreate(ThreatBase):
@@ -85,8 +86,11 @@ class DiagramThreat(DiagramThreatBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+from .model import Model
+
 class DiagramThreatWithDetails(DiagramThreat):
     """Schema for DiagramThreat with threat details."""
     threat: Threat
+    model: Model | None = None
 
     model_config = ConfigDict(from_attributes=True)

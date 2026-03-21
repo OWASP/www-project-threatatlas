@@ -16,10 +16,12 @@ class Threat(Base):
     description = Column(Text, nullable=True)
     category = Column(String(100), nullable=True)  # e.g., for STRIDE: Spoofing, Tampering, etc.
     is_custom = Column(Boolean, default=False, nullable=False)  # User-created vs pre-defined
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
+    user = relationship("User")
     framework = relationship("Framework", back_populates="threats")
     diagram_threats = relationship("DiagramThreat", back_populates="threat", cascade="all, delete-orphan")
 

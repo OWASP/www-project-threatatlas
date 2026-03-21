@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ReactFlow,
@@ -13,6 +13,8 @@ import {
   type Node,
   BackgroundVariant,
   Panel,
+  ReactFlowProvider,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { productsApi, diagramsApi } from '@/lib/api';
@@ -38,7 +40,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import {
   Plus,
   Save,
@@ -49,9 +50,20 @@ import {
   Trash2,
   Grid3x3,
   History,
-  FileText,
   Package,
+  ChevronRight,
+  Share2,
+  MessageSquare,
+  Pencil,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import DiagramNode from '@/components/DiagramNode';
 import ElementPropertiesSheet from '@/components/ElementPropertiesSheet';
 import DiagramVersionHistory from '@/components/DiagramVersionHistory';
@@ -74,7 +86,7 @@ const nodeTypes = {
   custom: DiagramNode,
 };
 
-export default function Diagrams() {
+export function DiagramsContent() {
   const { canWrite } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -90,15 +102,62 @@ export default function Diagrams() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const { fitView } = useReactFlow();
+
+  const handleExportJson = () => {
+    const data = {
+      name: diagramName,
+      nodes,
+      edges,
+      productId: selectedProduct,
+      exportedAt: new Date().toISOString(),
+      version: '1.0'
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${diagramName.replace(/\s+/g, '_') || 'diagram'}_export.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedElement, setSelectedElement] = useState<{ id: string; type: 'node' | 'edge'; label: string; nodeType?: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [diagramToDelete, setDiagramToDelete] = useState<Diagram | null>(null);
 
+  const [isCreatingModel, setIsCreatingModel] = useState(false);
+  const [isEditingModel, setIsEditingModel] = useState(false);
+  const [isDeletingModel, setIsDeletingModel] = useState(false);
+
   // Model state
   const [activeModelId, setActiveModelId] = useState<number | null>(null);
   const [activeModel, setActiveModel] = useState<any>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   // Version controls
   const [versionComment, setVersionComment] = useState('');
@@ -159,7 +218,7 @@ export default function Diagrams() {
         const loadedNodes = (diagram.diagram_data.nodes || []).map((node: Node) => ({
           ...node,
           zIndex: node.data.type === 'boundary' ? -1 : (node.zIndex || 0)
-        }));
+        })).sort((a: Node, b: Node) => (a.zIndex || 0) - (b.zIndex || 0));
         setNodes(loadedNodes);
         setEdges(diagram.diagram_data.edges || []);
       }
@@ -221,9 +280,12 @@ export default function Diagrams() {
       position: { x: Math.random() * 300 + 100, y: Math.random() * 300 + 100 },
       data: { label: `New ${type}`, type },
       // Set z-index lower for boundaries so they appear behind other elements
-      zIndex: type === 'boundary' ? -1 : 0,
+      zIndex: type === 'boundary' ? -1 : 10,
     };
-    setNodes((nds) => [...nds, newNode]);
+    setNodes((nds) => {
+      const nextNodes = [...nds, newNode];
+      return nextNodes.sort((a: Node, b: Node) => (a.zIndex || 0) - (b.zIndex || 0));
+    });
   };
 
   const handleNodeClick = (_event: React.MouseEvent, node: Node) => {
@@ -330,8 +392,8 @@ export default function Diagrams() {
 
   if (!selectedDiagram) {
     return (
-      <div className="flex-1 p-4 md:p-6 lg:p-8">
-        <div className="flex-1 space-y-6 mx-auto p-4">
+      <div className="flex-1 p-4 md:p-4 lg:p-4">
+        <div className="flex-1 space-y-6 mx-auto">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Data Flow Diagrams</h1>
@@ -387,7 +449,7 @@ export default function Diagrams() {
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
-                      <div 
+                      <div
                         className="flex items-center gap-3 flex-1"
                         onClick={() => navigate(`/diagrams?product=${selectedProduct}&diagram=${diagram.id}`)}
                       >
@@ -413,147 +475,242 @@ export default function Diagrams() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-muted/30">
-      {/* Toolbar */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
-        <div className="flex flex-col gap-3 px-4 py-3">
-          {/* Row 1: Product & Diagram Selection */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Select value={selectedProduct.toString()} onValueChange={(val) => navigate(`/diagrams?product=${val}`)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id.toString()}>
-                      {product.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Separator orientation="vertical" className="h-8" />
-              <Input
-                value={diagramName}
-                onChange={(e) => setDiagramName(e.target.value)}
-                className="w-64 font-medium"
-                placeholder="Diagram name"
-              />
-            </div>
+    <div ref={containerRef} className={`h-full flex flex-col ${isFullscreen ? 'bg-background' : 'bg-muted/30'}`}>
+      {/* Redesigned Single-Row Header */}
+      <div className="h-14 border-b bg-background flex items-center justify-start px-3 z-20 shadow-sm relative sticky top-0 gap-2">
+        {/* Left Section: Navigation & breadcrumbs */}
+        <div className="flex items-center gap-1">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/products')}
+                  className="h-10 w-10 hover:bg-muted"
+                >
+                  <Package className="h-4 w-4 text-primary" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Back to Products</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setVersionHistoryOpen(true)}
-              >
-                <History className="mr-2 h-4 w-4" />
-                History
-              </Button>
-              {canWrite && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowVersionComment(!showVersionComment)}
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Add Note
-                  </Button>
-                  <Button onClick={handleSaveDiagram} disabled={saving}>
-                    <Save className="mr-2 h-4 w-4" />
-                    {saving ? 'Saving...' : 'Save'}
-                  </Button>
-                  <Separator orientation="vertical" className="h-8" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const diagram = diagrams.find(d => d.id === selectedDiagram);
-                      if (diagram) {
-                        setDiagramToDelete(diagram);
-                      }
-                    }}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
 
-          {/* Row 2: Model Selector & Node Tools */}
-          <div className="flex items-center justify-between">
-            <ModelSelector
-              diagramId={selectedDiagram!}
-              selectedModelId={activeModelId}
-              onModelChange={(modelId, model) => {
-                setActiveModelId(modelId);
-                setActiveModel(model);
-              }}
-            />
+          <Select
+            value={selectedProduct?.toString() || ""}
+            onValueChange={(val) => navigate(`/diagrams?product=${val}`)}
+          >
+            <SelectTrigger className="h-10 px-2 border-none bg-muted/70 hover:bg-muted transition-all duration-300 w-[80px] hover:w-[180px] font-medium focus:ring-0 overflow-hidden">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {products.map((product) => (
+                <SelectItem key={product.id} value={product.id.toString()}>
+                  {product.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <div className="flex flex-wrap items-center gap-2">
-            {canWrite && (
-              <div className="flex flex-wrap items-center gap-1 bg-muted/50 rounded-lg p-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => addNode('process')}
-                  className="gap-2"
-                >
-                  <Cpu className="h-4 w-4 text-blue-600" />
-                  Process
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => addNode('datastore')}
-                  className="gap-2"
-                >
-                  <Database className="h-4 w-4 text-amber-600" />
-                  Data Store
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => addNode('external')}
-                  className="gap-2"
-                >
-                  <Users className="h-4 w-4 text-pink-600" />
-                  External
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => addNode('boundary')}
-                  className="gap-2"
-                >
-                  <BoxIcon className="h-4 w-4 text-slate-600" />
-                  Boundary
-                </Button>
-              </div>
-            )}
-            </div>
-          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+
+          <Input
+            value={diagramName}
+            onChange={(e) => setDiagramName(e.target.value)}
+            className="h-10 border-none bg-muted/70 hover:bg-muted focus-visible:bg-muted transition-all duration-300 w-[80px] hover:w-[220px] focus:w-[220px] font-bold text-sm focus-visible:ring-0 px-2"
+            placeholder="Diagram name"
+          />
         </div>
 
-        {/* Version Comment Textarea */}
-        {showVersionComment && (
-          <div className="px-4 pb-3">
-            <Textarea
-              value={versionComment}
-              onChange={(e) => setVersionComment(e.target.value)}
-              placeholder="Add a comment about this version (optional)..."
-              className="text-sm"
-              rows={2}
-            />
+        {/* Right Section: Analysis, Tools & Actions */}
+        <div className="flex items-center gap-1">
+          {selectedDiagram && (
+            <div className="shrink-0">
+              <ModelSelector
+                diagramId={selectedDiagram}
+                selectedModelId={activeModelId}
+                onModelChange={(modelId, model) => {
+                  setActiveModelId(modelId);
+                  setActiveModel(model);
+                }}
+                externalCreateOpen={isCreatingModel}
+                onExternalCreateClose={() => setIsCreatingModel(false)}
+                externalEditOpen={isEditingModel}
+                onExternalEditClose={() => setIsEditingModel(false)}
+                externalDeleteOpen={isDeletingModel}
+                onExternalDeleteClose={() => setIsDeletingModel(false)}
+              />
+            </div>
+          )}
+
+          <div className="h-8 w-px bg-border/40 mx-0.5 shrink-0" />
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {canWrite && (
+              <TooltipProvider>
+                <div className="flex items-center bg-muted/30 border-none rounded-lg p-0.5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-primary hover:bg-primary/10"
+                        onClick={() => setIsCreatingModel(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>New Analysis Model</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => setIsEditingModel(true)}
+                        disabled={!activeModelId}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit Model</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive/60 hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setIsDeletingModel(true)}
+                        disabled={!activeModelId}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete Model</TooltipContent>
+                  </Tooltip>
+
+                  <div className="mx-0.5 h-4 w-px bg-border/60" />
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={showVersionComment ? "secondary" : "ghost"}
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setShowVersionComment(!showVersionComment)}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Revision Note</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={handleExportJson}
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Export</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setVersionHistoryOpen(true)}
+                      >
+                        <History className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>History</TooltipContent>
+                  </Tooltip>
+
+                  <div className="mx-0.5 h-4 w-px bg-border/60" />
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => fitView({ duration: 800 })}
+                      >
+                        <Grid3x3 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Fit View</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={toggleFullscreen}
+                      >
+                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{isFullscreen ? 'Exit Full Screen' : 'Full Screen'}</TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
+            )}
+
+            <div className="h-8 w-px bg-border/40 mx-1 shrink-0" />
+
+            {canWrite && (
+              <Button
+                onClick={handleSaveDiagram}
+                disabled={saving}
+                size="sm"
+                className="h-9 px-3 shadow-sm font-bold bg-primary hover:bg-primary/90 transition-all active:scale-95"
+              >
+                <Save className="mr-1.5 h-4 w-4" />
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
+      {/* Floating Note Component */}
+      {showVersionComment && (
+        <div className="absolute top-16 right-4 z-50 w-80 shadow-2xl animate-in slide-in-from-top-4 duration-200">
+          <Card className="border-primary/20 bg-background/95 backdrop-blur">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Version Note</span>
+                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setShowVersionComment(false)}>
+                  <Plus className="h-3 w-3 rotate-45" />
+                </Button>
+              </div>
+              <Textarea
+                value={versionComment}
+                onChange={(e) => setVersionComment(e.target.value)}
+                placeholder="What changed in this version?"
+                className="text-sm min-h-[100px] resize-none focus-visible:ring-1"
+                autoFocus
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
       {/* Canvas */}
       <div className="flex-1 relative" style={{ minHeight: '400px' }}>
         <ReactFlow
@@ -570,9 +727,55 @@ export default function Diagrams() {
           className="bg-muted/20"
           proOptions={{ hideAttribution: true }}
         >
-          <Controls className="bg-background border shadow-lg" />
+          {/* Floating Action Menu for Node Creation */}
+          <Panel position="top-left" className="m-4">
+            <Card className="shadow-2xl border bg-background/95 backdrop-blur-md w-48">
+              <div className="p-2 space-y-1">
+                <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Diagram Tools
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => addNode('process')}
+                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-blue-500/10 hover:text-blue-600 transition-all rounded-lg group"
+                >
+                  <Cpu className="h-5 w-5 text-blue-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">Process</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  onClick={() => addNode('datastore')}
+                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-amber-500/10 hover:text-amber-600 transition-all rounded-lg group"
+                >
+                  <Database className="h-5 w-5 text-amber-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">Data Store</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  onClick={() => addNode('external')}
+                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-pink-500/10 hover:text-pink-600 transition-all rounded-lg group"
+                >
+                  <Users className="h-5 w-5 text-pink-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">External Entity</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  onClick={() => addNode('boundary')}
+                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-slate-500/10 hover:text-slate-600 transition-all rounded-lg group"
+                >
+                  <BoxIcon className="h-5 w-5 text-slate-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">Trust Boundary</span>
+                </Button>
+              </div>
+            </Card>
+          </Panel>
+
+          <Controls className="bg-background border shadow-xl rounded-lg overflow-hidden" />
           <MiniMap
-            className="bg-background border shadow-lg rounded-lg"
+            className="bg-background border shadow-xl rounded-xl"
             nodeColor={(node) => {
               const type = node.data.type as string;
               if (type === 'process') return '#3b82f6';
@@ -583,27 +786,7 @@ export default function Diagrams() {
             maskColor="rgba(0, 0, 0, 0.05)"
           />
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} className="bg-muted/10" />
-          <Panel position="top-left" className="bg-background/95 backdrop-blur-sm border rounded-xl shadow-xl p-3">
-            <div className="text-xs space-y-2">
-              <div className="font-semibold text-sm mb-2 text-foreground">DFD Elements</div>
-              <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-                <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-blue-600" />
-                <span>Process</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-                <div className="w-4 h-1 bg-amber-500 border-t-2 border-b-2 border-amber-600" />
-                <span>Data Store</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-                <div className="w-4 h-3 bg-pink-500 border-2 border-pink-600" />
-                <span>External Entity</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-                <div className="w-4 h-3 border-2 border-dashed border-slate-400 rounded" />
-                <span>Trust Boundary</span>
-              </div>
-            </div>
-          </Panel>
+
         </ReactFlow>
       </div>
 
@@ -637,6 +820,7 @@ export default function Diagrams() {
           setSelectedElement({ ...selectedElement, label: name });
         }}
         onDelete={() => setShowDeleteConfirm(true)}
+        portalContainer={containerRef.current}
       />
 
       {/* Delete Element Confirmation Dialog */}
@@ -705,5 +889,14 @@ export default function Diagrams() {
         />
       )}
     </div>
+  );
+}
+
+// Wrapper to provide ReactFlow context
+export default function Diagrams() {
+  return (
+    <ReactFlowProvider>
+      <DiagramsContent />
+    </ReactFlowProvider>
   );
 }

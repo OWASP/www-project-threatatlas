@@ -14,21 +14,19 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Field, FieldLabel, FieldTitle } from '@/components/ui/field';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Layers, Settings, Trash2 } from 'lucide-react';
+import { Layers, BarChart3, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,12 +61,69 @@ interface ModelSelectorProps {
   diagramId: number;
   selectedModelId: number | null;
   onModelChange: (modelId: number | null, model: Model | null) => void;
+  externalCreateOpen?: boolean;
+  onExternalCreateClose?: () => void;
+  externalEditOpen?: boolean;
+  onExternalEditClose?: () => void;
+  externalDeleteOpen?: boolean;
+  onExternalDeleteClose?: () => void;
 }
 
-export default function ModelSelector({ diagramId, selectedModelId, onModelChange }: ModelSelectorProps) {
+export default function ModelSelector({
+  diagramId,
+  selectedModelId,
+  onModelChange,
+  externalCreateOpen,
+  onExternalCreateClose,
+  externalEditOpen,
+  onExternalEditClose,
+  externalDeleteOpen,
+  onExternalDeleteClose
+}: ModelSelectorProps) {
   const [models, setModels] = useState<Model[]>([]);
   const [frameworks, setFrameworks] = useState<Framework[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Sync with external triggers
+  useEffect(() => {
+    if (externalCreateOpen) {
+      setCreateDialogOpen(true);
+    }
+  }, [externalCreateOpen]);
+
+  useEffect(() => {
+    if (externalEditOpen && selectedModel) {
+      handleEditModel(selectedModel);
+    }
+  }, [externalEditOpen]);
+
+  useEffect(() => {
+    if (externalDeleteOpen && selectedModel) {
+      setModelToDelete(selectedModel);
+      setDeleteDialogOpen(true);
+    }
+  }, [externalDeleteOpen]);
+
+  // Sync back to parent
+  useEffect(() => {
+    if (!createDialogOpen && onExternalCreateClose) {
+      onExternalCreateClose();
+    }
+  }, [createDialogOpen, onExternalCreateClose]);
+
+  useEffect(() => {
+    if (!editDialogOpen && onExternalEditClose) {
+      onExternalEditClose();
+    }
+  }, [editDialogOpen, onExternalEditClose]);
+
+  useEffect(() => {
+    if (!deleteDialogOpen && onExternalDeleteClose) {
+      onExternalDeleteClose();
+    }
+  }, [deleteDialogOpen, onExternalDeleteClose]);
 
   // Create model form state
   const [frameworkId, setFrameworkId] = useState<string>('');
@@ -77,7 +132,6 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
   const [creating, setCreating] = useState(false);
 
   // Edit model state
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<Model | null>(null);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -85,7 +139,6 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
   const [updating, setUpdating] = useState(false);
 
   // Delete model state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [modelToDelete, setModelToDelete] = useState<Model | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -232,29 +285,27 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
   const selectedModel = models.find(m => m.id === selectedModelId);
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2">
-        <Layers className="h-4 w-4 text-muted-foreground" />
-        <FieldTitle className="text-sm font-medium">Active Model:</FieldTitle>
-      </div>
-
+    <div className="flex items-center gap-1.5 w-full justify-start align-center">
       <Select value={selectedModelId?.toString() || 'all'} onValueChange={handleModelSelect}>
-        <SelectTrigger className="w-[280px]">
-          <SelectValue placeholder="Select a model" />
+        <SelectTrigger className="w-fit py-5 flex items-center gap-1.5 h-10 bg-background border-muted shadow-sm px-2 rounded-lg overflow-hidden shrink-0">
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-primary" />
+            <SelectValue placeholder="Select a model" />
+          </div>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">
+          <SelectItem value="all" className="font-semibold h-10 px-2 py-2 border-b rounded-none">
             <div className="flex items-center gap-2">
-              <span>All Models</span>
-              <Badge variant="secondary" className="text-xs">{models.length}</Badge>
+              <span className="text-primary font-bold">ALL ANALYSES</span>
+              <Badge variant="secondary" className="text-[10px] ml-auto">{models.length}</Badge>
             </div>
           </SelectItem>
           {models.map((model) => (
-            <SelectItem key={model.id} value={model.id.toString()}>
+            <SelectItem key={model.id} value={model.id.toString()} className="h-10 px-2 py-2 rounded-none">
               <div className="flex items-center gap-2">
                 <span>{model.name}</span>
-                <Badge variant="outline" className="text-xs">
-                  {model.threat_count} threats
+                <Badge variant="outline" className="text-[10px] opacity-70">
+                  {model.threat_count}
                 </Badge>
               </div>
             </SelectItem>
@@ -262,55 +313,58 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
         </SelectContent>
       </Select>
 
-      {selectedModel && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="secondary">{selectedModel.framework_name}</Badge>
-          <Badge
-            variant={
-              selectedModel.status === 'completed' ? 'default' :
-              selectedModel.status === 'archived' ? 'secondary' :
-              'outline'
-            }
-            className="capitalize"
-          >
-            {selectedModel.status.replace('_', ' ')}
-          </Badge>
-          <span>•</span>
-          <span>{selectedModel.threat_count} threats, {selectedModel.mitigation_count} mitigations</span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                <Settings className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleEditModel(selectedModel)}>
-                <Settings className="h-4 w-4 mr-2" />
-                Edit Model
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => {
-                  setModelToDelete(selectedModel);
-                  setDeleteDialogOpen(true);
-                }}
+      {
+        selectedModel && (
+          <div className="flex w-fit items-center gap-1.5 h-10 bg-background border shadow-sm px-2 rounded-lg overflow-hidden shrink-0">
+            <div className="flex items-center gap-1.5 group cursor-help pr-2 border-r h-full overflow-hidden">
+              <Badge variant="secondary" className="h-6 px-1.5 text-[10px] font-black uppercase tracking-tighter shrink-0 bg-primary/10 text-primary border-primary/20">
+                {selectedModel.framework_name}
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-1.5 px-2 border-r h-full shrink-0">
+              <Badge
+                variant={
+                  selectedModel.status === 'completed' ? 'default' :
+                    selectedModel.status === 'archived' ? 'secondary' :
+                      'outline'
+                }
+                className="capitalize h-6 px-1.5 text-[10px] font-bold shrink-0 shadow-sm"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Model
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
+                {selectedModel.status.replace('_', ' ')}
+              </Badge>
+            </div>
+
+            <TooltipProvider>
+              <div className="flex items-center gap-3 px-2 h-full font-mono">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 hover:bg-muted/50 px-1.5 py-1 rounded transition-colors cursor-default">
+                      <BarChart3 className="h-4 w-4 text-blue-500" />
+                      <span className="text-[14px] font-black tabular-nums">{selectedModel.threat_count}</span>
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Threats</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Detected security threats for this model</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 hover:bg-muted/50 px-1.5 py-1 rounded transition-colors cursor-default">
+                      <ShieldCheck className="h-4 w-4 text-green-500" />
+                      <span className="text-[14px] font-black tabular-nums">{selectedModel.mitigation_count}</span>
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Mitigations</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Mitigations</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+          </div>
+        )
+      }
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Model
-          </Button>
-        </DialogTrigger>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Analysis Model</DialogTitle>
@@ -458,6 +512,6 @@ export default function ModelSelector({ diagramId, selectedModelId, onModelChang
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </div >
   );
 }

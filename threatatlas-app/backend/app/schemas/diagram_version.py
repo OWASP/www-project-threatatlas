@@ -15,6 +15,8 @@ class DiagramThreatVersionSnapshot(BaseModel):
     impact: int | None = None
     risk_score: int | None = None
     severity: str | None = None
+    threat_name: str | None = None
+    node_label: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

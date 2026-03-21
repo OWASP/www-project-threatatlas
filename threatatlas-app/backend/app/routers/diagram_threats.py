@@ -43,6 +43,7 @@ def list_diagram_threats(
     """List all diagram threats, optionally filtered by diagram, model, or element."""
     query = db.query(DiagramThreatModel).options(
         joinedload(DiagramThreatModel.threat),
+        joinedload(DiagramThreatModel.model),
         joinedload(DiagramThreatModel.diagram).joinedload(DiagramModel.product)
     )
 

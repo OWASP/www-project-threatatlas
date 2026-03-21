@@ -4,18 +4,20 @@ from pydantic import BaseModel, ConfigDict
 
 class FrameworkBase(BaseModel):
     """Base schema for Framework."""
-    name: str
+    name: str | None = None
     description: str | None = None
+    is_custom: bool = False
+    user_id: int | None = None
 
 
 class FrameworkCreate(FrameworkBase):
     """Schema for creating a Framework."""
-    pass
+    name: str
 
 
 class FrameworkUpdate(FrameworkBase):
     """Schema for updating a Framework."""
-    name: str | None = None
+    pass
 
 
 class Framework(FrameworkBase):

@@ -22,6 +22,7 @@ interface ElementPropertiesSheetProps {
   activeModelFrameworkId: number | null;
   onRename: (name: string) => void;
   onDelete: () => void;
+  portalContainer?: HTMLElement | null;
 }
 
 export default function ElementPropertiesSheet({
@@ -33,6 +34,7 @@ export default function ElementPropertiesSheet({
   activeModelFrameworkId,
   onRename,
   onDelete,
+  portalContainer,
 }: ElementPropertiesSheetProps) {
   const [elementName, setElementName] = useState('');
 
@@ -48,7 +50,7 @@ export default function ElementPropertiesSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="!w-full sm:!max-w-[700px] p-0 flex flex-col">
+      <SheetContent className="!w-full sm:!max-w-[700px] p-0 flex flex-col" portalContainer={portalContainer}>
         <div className="px-4 pt-4 pb-4 border-b">
           <SheetHeader className="space-y-3">
             <SheetTitle className="text-2xl font-bold">
@@ -117,19 +119,13 @@ export default function ElementPropertiesSheet({
             {diagramId && selectedElement && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold">Threats & Mitigations</h3>
-                {activeModelId && activeModelFrameworkId ? (
-                  <ThreatManagement
-                    diagramId={diagramId}
-                    activeModelId={activeModelId}
-                    modelFrameworkId={activeModelFrameworkId}
-                    elementId={selectedElement.id}
-                    elementType={selectedElement.type}
-                  />
-                ) : (
-                  <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-lg border border-dashed">
-                    Please select a model from the toolbar to manage threats and mitigations.
-                  </div>
-                )}
+                <ThreatManagement
+                  diagramId={diagramId}
+                  activeModelId={activeModelId}
+                  modelFrameworkId={activeModelFrameworkId}
+                  elementId={selectedElement.id}
+                  elementType={selectedElement.type}
+                />
               </div>
             )}
 

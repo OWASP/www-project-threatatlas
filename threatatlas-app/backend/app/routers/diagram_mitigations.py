@@ -24,6 +24,7 @@ def list_diagram_mitigations(
     """List all diagram mitigations, optionally filtered by diagram, model, or element."""
     query = db.query(DiagramMitigationModel).options(
         joinedload(DiagramMitigationModel.mitigation),
+        joinedload(DiagramMitigationModel.model),
         joinedload(DiagramMitigationModel.diagram).joinedload(DiagramModel.product)
     )
 

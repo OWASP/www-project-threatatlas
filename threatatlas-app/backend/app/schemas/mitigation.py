@@ -7,6 +7,7 @@ class MitigationBase(BaseModel):
     name: str
     description: str | None = None
     category: str | None = None
+    user_id: int | None = None
 
 
 class MitigationCreate(MitigationBase):
@@ -67,8 +68,11 @@ class DiagramMitigation(DiagramMitigationBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+from .model import Model
+
 class DiagramMitigationWithDetails(DiagramMitigation):
     """Schema for DiagramMitigation with mitigation details."""
     mitigation: Mitigation
+    model: Model | None = None
 
     model_config = ConfigDict(from_attributes=True)
