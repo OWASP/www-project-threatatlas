@@ -151,87 +151,107 @@ export default function DiagramVersionHistory({
               </div>
             )}
 
-            <div className="space-y-4">
-            {loading ? (
-              <div className="flex items-center justify-center p-8">
-                <p className="text-sm text-muted-foreground">Loading versions...</p>
-              </div>
-            ) : versions.length === 0 ? (
-              <div className="flex items-center justify-center p-8">
-                <p className="text-sm text-muted-foreground">No versions yet</p>
-              </div>
-            ) : (
-              versions.map((version, index) => {
-                const previousVersion = versions[index + 1];
-                const isSelected = selectedForCompare.includes(version.version_number);
+            <div className="relative pl-8 space-y-6">
+              {/* Vertical Timeline Line */}
+              <div className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-border/60" />
 
-                return (
-                  <div key={version.id}>
-                    <div
-                      className={`border rounded-lg p-4 hover:bg-muted/30 transition-colors ${
-                        isSelected ? 'border-primary bg-accent' : ''
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold">Version {version.version_number}</h3>
-                          {version.version_number === currentVersion && (
-                            <Badge variant="default">Current</Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {getRiskTrend(version, previousVersion)}
-                        </div>
-                      </div>
+              {loading ? (
+                <div className="flex items-center justify-center p-8">
+                  <p className="text-sm text-muted-foreground">Loading history...</p>
+                </div>
+              ) : versions.length === 0 ? (
+                <div className="flex items-center justify-center p-8">
+                  <p className="text-sm text-muted-foreground">No history available</p>
+                </div>
+              ) : (
+                versions.map((version, index) => {
+                  const previousVersion = versions[index + 1];
+                  const isSelected = selectedForCompare.includes(version.version_number);
+                  const isCurrent = version.version_number === currentVersion;
 
-                      <div className="space-y-3">
-                        <div className="flex items-center text-muted-foreground text-sm">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {formatDistanceToNow(new Date(version.created_at), { addSuffix: true })}
+                  return (
+                    <div key={version.id} className="relative">
+                      {/* Timeline Marker */}
+                      <div className={`absolute -left-[25px] top-1.5 h-4 w-4 rounded-full border-2 bg-background z-10 transition-colors ${
+                        isCurrent ? 'border-primary ring-4 ring-primary/10' : 'border-muted-foreground/30'
+                      }`} />
+
+                      <div
+                        className={`group border rounded-xl p-3 hover:shadow-md transition-all ${
+                          isSelected ? 'border-primary bg-primary/[0.02]' : 'hover:border-primary/20'
+                        } ${isCurrent ? 'bg-muted/30 border-primary/20 shadow-sm' : ''}`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold tracking-tight">V.{version.version_number}</span>
+                            {isCurrent && (
+                              <Badge variant="default" className="h-5 px-1.5 text-[9px] font-black uppercase tracking-tighter bg-primary text-primary-foreground">
+                                Active
+                              </Badge>
+                            )}
+                            <div className="flex items-center text-[11px] text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-full">
+                              <Clock className="h-3 w-3 mr-1 opacity-70" />
+                              {formatDistanceToNow(new Date(version.created_at), { addSuffix: true })}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {getRiskTrend(version, previousVersion)}
+                            <div className="h-4 w-px bg-border/60 mx-1" />
+                            <div className="flex gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={() => handleCompareToggle(version.version_number)}
+                                title="Compare"
+                              >
+                                <GitCompare className={`h-3.5 w-3.5 ${isSelected ? 'text-primary' : ''}`} />
+                              </Button>
+                              {!isCurrent && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => handleRestoreClick(version.version_number)}
+                                  title="Restore"
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
 
                         {version.comment && (
-                          <p className="text-sm italic border-l-2 border-primary pl-2 text-muted-foreground">
-                            {version.comment}
-                          </p>
+                          <div className="mb-3 px-3 py-2 bg-muted/20 border-l-2 border-primary/30 rounded-r-lg">
+                            <p className="text-[13px] leading-relaxed text-muted-foreground italic font-medium">
+                              "{version.comment}"
+                            </p>
+                          </div>
                         )}
 
-                        <div className="h-px bg-border" />
-
-                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                          <div>Nodes: {version.node_count}</div>
-                          <div>Edges: {version.edge_count}</div>
-                          <div>Threats: {version.threat_count}</div>
-                          <div>Risk Score: {version.total_risk_score}</div>
+                        <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground/80 uppercase tracking-widest pl-1">
+                          <span className="flex items-center gap-1">
+                            <span className="text-foreground">{version.node_count}</span> Nodes
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="text-foreground">{version.edge_count}</span> Edges
+                          </span>
+                          <div className="h-3 w-px bg-border/40" />
+                          <span className="flex items-center gap-1">
+                            <span className={version.threat_count > 0 ? 'text-red-500' : 'text-foreground'}>
+                              {version.threat_count}
+                            </span> Threats
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="text-foreground">{version.total_risk_score}</span> Risk
+                          </span>
                         </div>
                       </div>
-
-                      <div className="flex gap-2 mt-4">
-                        {version.version_number !== currentVersion && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRestoreClick(version.version_number)}
-                          >
-                            <RotateCcw className="h-3 w-3 mr-1" />
-                            Restore
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant={isSelected ? "default" : "ghost"}
-                          onClick={() => handleCompareToggle(version.version_number)}
-                        >
-                          <GitCompare className="h-3 w-3 mr-1" />
-                          {isSelected ? 'Selected' : 'Compare'}
-                        </Button>
-                      </div>
                     </div>
-                    {index < versions.length - 1 && <div className="h-px bg-border my-4" />}
-                  </div>
-                );
-              })
-            )}
+                  );
+                })
+              )}
             </div>
           </div>
         </SheetContent>

@@ -127,11 +127,32 @@ export default function DiagramVersionComparison({
     return <span className="text-sm text-muted-foreground">No change</span>;
   };
 
+  const getElementDisplayName = (item: any, id: string) => {
+    if (!item) return id;
+    // For nodes: data.label, data.name, or name
+    const name = item.data?.label || item.data?.name || item.data?.display_name || item.label || item.name || item.display_name;
+    return name || id;
+  };
+
+  const getThreatDisplayName = (change: ThreatChange) => {
+    const item = change.after || change.before;
+    if (!item) return `Threat #${change.threat_id}`;
+    
+    return item.threat_name || item.name || item.display_name || item.threat?.name || `Threat #${change.threat_id}`;
+  };
+
+  const getThreatElementLabel = (change: ThreatChange) => {
+    const item = change.after || change.before;
+    if (!item) return change.element_id;
+    
+    return item.node_label || item.element_label || item.element_name || change.element_id;
+  };
+
   if (!comparison && !loading) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh]">
+      <DialogContent className="!max-w-3xl !max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>
             Compare Versions {fromVersion} → {toVersion}
@@ -248,7 +269,7 @@ export default function DiagramVersionComparison({
                         <div key={`added-${idx}`} className="border rounded-lg p-3 border-green-200 bg-green-50">
                           <div className="flex items-center gap-2 mb-1">
                             {renderChangeIcon(change.change_type)}
-                            <span className="font-medium text-sm">{change.element_id}</span>
+                            <span className="font-medium text-sm">{getElementDisplayName(change.after, change.element_id)}</span>
                             {renderChangeBadge(change.change_type)}
                           </div>
                           <p className="text-xs text-muted-foreground">
@@ -261,7 +282,7 @@ export default function DiagramVersionComparison({
                         <div key={`removed-${idx}`} className="border rounded-lg p-3 border-red-200 bg-red-50">
                           <div className="flex items-center gap-2 mb-1">
                             {renderChangeIcon(change.change_type)}
-                            <span className="font-medium text-sm">{change.element_id}</span>
+                            <span className="font-medium text-sm">{getElementDisplayName(change.before, change.element_id)}</span>
                             {renderChangeBadge(change.change_type)}
                           </div>
                           <p className="text-xs text-muted-foreground">
@@ -274,7 +295,7 @@ export default function DiagramVersionComparison({
                         <div key={`modified-${idx}`} className="border rounded-lg p-3 border-blue-200 bg-blue-50">
                           <div className="flex items-center gap-2 mb-1">
                             {renderChangeIcon(change.change_type)}
-                            <span className="font-medium text-sm">{change.element_id}</span>
+                            <span className="font-medium text-sm">{getElementDisplayName(change.after || change.before, change.element_id)}</span>
                             {renderChangeBadge(change.change_type)}
                           </div>
                           <p className="text-xs text-muted-foreground">Modified properties</p>
@@ -282,12 +303,12 @@ export default function DiagramVersionComparison({
                       ))}
 
                       {comparison.nodes_added.length === 0 &&
-                       comparison.nodes_removed.length === 0 &&
-                       comparison.nodes_modified.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-4">
-                          No node changes
-                        </p>
-                      )}
+                        comparison.nodes_removed.length === 0 &&
+                        comparison.nodes_modified.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            No node changes
+                          </p>
+                        )}
                     </div>
                   </div>
 
@@ -299,7 +320,7 @@ export default function DiagramVersionComparison({
                         <div key={`added-${idx}`} className="border rounded-lg p-3 border-green-200 bg-green-50">
                           <div className="flex items-center gap-2 mb-1">
                             {renderChangeIcon(change.change_type)}
-                            <span className="font-medium text-sm">{change.element_id}</span>
+                            <span className="font-medium text-sm">{getElementDisplayName(change.after, change.element_id)}</span>
                             {renderChangeBadge(change.change_type)}
                           </div>
                         </div>
@@ -309,7 +330,7 @@ export default function DiagramVersionComparison({
                         <div key={`removed-${idx}`} className="border rounded-lg p-3 border-red-200 bg-red-50">
                           <div className="flex items-center gap-2 mb-1">
                             {renderChangeIcon(change.change_type)}
-                            <span className="font-medium text-sm">{change.element_id}</span>
+                            <span className="font-medium text-sm">{getElementDisplayName(change.before, change.element_id)}</span>
                             {renderChangeBadge(change.change_type)}
                           </div>
                         </div>
@@ -319,19 +340,19 @@ export default function DiagramVersionComparison({
                         <div key={`modified-${idx}`} className="border rounded-lg p-3 border-blue-200 bg-blue-50">
                           <div className="flex items-center gap-2 mb-1">
                             {renderChangeIcon(change.change_type)}
-                            <span className="font-medium text-sm">{change.element_id}</span>
+                            <span className="font-medium text-sm">{getElementDisplayName(change.after || change.before, change.element_id)}</span>
                             {renderChangeBadge(change.change_type)}
                           </div>
                         </div>
                       ))}
 
                       {comparison.edges_added.length === 0 &&
-                       comparison.edges_removed.length === 0 &&
-                       comparison.edges_modified.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-4">
-                          No edge changes
-                        </p>
-                      )}
+                        comparison.edges_removed.length === 0 &&
+                        comparison.edges_modified.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            No edge changes
+                          </p>
+                        )}
                     </div>
                   </div>
                 </div>
@@ -346,12 +367,12 @@ export default function DiagramVersionComparison({
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           {renderChangeIcon(change.change_type)}
-                          <span className="font-medium text-sm">Threat #{change.threat_id}</span>
+                          <span className="font-medium text-sm">{getThreatDisplayName(change)}</span>
                           {renderChangeBadge(change.change_type)}
                         </div>
                         {change.risk_score_delta !== undefined && renderRiskTrend(change.risk_score_delta)}
                       </div>
-                      <p className="text-xs text-muted-foreground">Element: {change.element_id}</p>
+                      <p className="text-xs text-muted-foreground">Element: {getThreatElementLabel(change)}</p>
                       {change.after && (
                         <div className="mt-2 text-xs">
                           <div>Risk Score: {change.after.risk_score || 'N/A'}</div>
@@ -366,12 +387,12 @@ export default function DiagramVersionComparison({
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           {renderChangeIcon(change.change_type)}
-                          <span className="font-medium text-sm">Threat #{change.threat_id}</span>
+                          <span className="font-medium text-sm">{getThreatDisplayName(change)}</span>
                           {renderChangeBadge(change.change_type)}
                         </div>
                         {change.risk_score_delta !== undefined && renderRiskTrend(change.risk_score_delta)}
                       </div>
-                      <p className="text-xs text-muted-foreground">Element: {change.element_id}</p>
+                      <p className="text-xs text-muted-foreground">Element: {getThreatElementLabel(change)}</p>
                       {change.before && (
                         <div className="mt-2 text-xs">
                           <div>Risk Score: {change.before.risk_score || 'N/A'}</div>
@@ -386,12 +407,12 @@ export default function DiagramVersionComparison({
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           {renderChangeIcon(change.change_type)}
-                          <span className="font-medium text-sm">Threat #{change.threat_id}</span>
+                          <span className="font-medium text-sm">{getThreatDisplayName(change)}</span>
                           {renderChangeBadge(change.change_type)}
                         </div>
                         {change.risk_score_delta !== undefined && renderRiskTrend(change.risk_score_delta)}
                       </div>
-                      <p className="text-xs text-muted-foreground mb-2">Element: {change.element_id}</p>
+                      <p className="text-xs text-muted-foreground mb-2">Element: {getThreatElementLabel(change)}</p>
                       <div className="grid grid-cols-2 gap-4 text-xs">
                         <div>
                           <div className="font-medium mb-1">Before:</div>
@@ -416,12 +437,12 @@ export default function DiagramVersionComparison({
                   ))}
 
                   {comparison.threats_added.length === 0 &&
-                   comparison.threats_removed.length === 0 &&
-                   comparison.threats_modified.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No threat changes
-                    </p>
-                  )}
+                    comparison.threats_removed.length === 0 &&
+                    comparison.threats_modified.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No threat changes
+                      </p>
+                    )}
                 </div>
               </ScrollArea>
             </TabsContent>

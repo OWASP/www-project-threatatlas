@@ -195,6 +195,26 @@ class VersionService:
         from_edges = {e['id']: e for e in from_data.get('edges', [])}
         to_edges = {e['id']: e for e in to_data.get('edges', [])}
 
+        # Helper maps for element labels
+        def get_item_label(item, default_id):
+            if not item: return default_id
+            # Try data.label, data.name, then top-level name/label
+            data = item.get('data', {})
+            if isinstance(data, dict):
+                label = data.get('label') or data.get('name') or data.get('display_name')
+                if label: return label
+            return item.get('label') or item.get('name') or item.get('display_name') or default_id
+
+        from_label_map = {n['id']: get_item_label(n, n['id']) for n in from_data.get('nodes', []) if 'id' in n}
+        for e in from_data.get('edges', []):
+            if 'id' in e:
+                from_label_map[e['id']] = get_item_label(e, e['id'])
+            
+        to_label_map = {n['id']: get_item_label(n, n['id']) for n in to_data.get('nodes', []) if 'id' in n}
+        for e in to_data.get('edges', []):
+            if 'id' in e:
+                to_label_map[e['id']] = get_item_label(e, e['id'])
+
         # Find node changes
         for node_id, node in to_nodes.items():
             if node_id not in from_nodes:
@@ -272,9 +292,11 @@ class VersionService:
 
         # Find threat changes
         for key, threat_to in to_threats.items():
-            threat_to_snapshot = DiagramThreatVersionSnapshot.model_validate(threat_to)
-
             if key not in from_threats:
+                threat_to_snapshot = DiagramThreatVersionSnapshot.model_validate(threat_to)
+                threat_to_snapshot.threat_name = threat_to.threat.name
+                threat_to_snapshot.node_label = to_label_map.get(threat_to.element_id, threat_to.element_id)
+                
                 comparison.threats_added.append(ThreatChange(
                     element_id=threat_to.element_id,
                     threat_id=threat_to.threat_id,
@@ -294,6 +316,14 @@ class VersionService:
                     threat_from.severity != threat_to.severity or
                     threat_from.notes != threat_to.notes):
 
+                    threat_to_snapshot = DiagramThreatVersionSnapshot.model_validate(threat_to)
+                    threat_to_snapshot.threat_name = threat_to.threat.name
+                    threat_to_snapshot.node_label = to_label_map.get(threat_to.element_id, threat_to.element_id)
+                    
+                    threat_from_snapshot = DiagramThreatVersionSnapshot.model_validate(threat_from)
+                    threat_from_snapshot.threat_name = threat_from.threat.name
+                    threat_from_snapshot.node_label = from_label_map.get(threat_from.element_id, threat_from.element_id)
+
                     risk_delta = (threat_to.risk_score or 0) - (threat_from.risk_score or 0)
                     comparison.threats_modified.append(ThreatChange(
                         element_id=threat_to.element_id,
@@ -307,6 +337,9 @@ class VersionService:
         for key, threat_from in from_threats.items():
             if key not in to_threats:
                 threat_from_snapshot = DiagramThreatVersionSnapshot.model_validate(threat_from)
+                threat_from_snapshot.threat_name = threat_from.threat.name
+                threat_from_snapshot.node_label = from_label_map.get(threat_from.element_id, threat_from.element_id)
+
                 comparison.threats_removed.append(ThreatChange(
                     element_id=threat_from.element_id,
                     threat_id=threat_from.threat_id,

@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Shield } from 'lucide-react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 function HeaderBreadcrumb() {
   const location = useLocation();
@@ -85,7 +86,9 @@ export function App() {
             element={
               <ProtectedRoute>
                 <SidebarProvider>
-                  <AppContent />
+                  <TooltipProvider>
+                    <AppContent />
+                  </TooltipProvider>
                 </SidebarProvider>
               </ProtectedRoute>
             }
