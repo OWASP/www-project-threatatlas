@@ -28,6 +28,7 @@ import {
   Plus,
   Check,
   Loader2,
+  MessageSquare,
 } from 'lucide-react';
 import { getSeverityClasses, getStatusClasses } from '@/lib/risk';
 import { cn } from '@/lib/utils';
@@ -56,7 +57,7 @@ interface DiagramThreat {
   element_id: string;
   element_type: string;
   status: string;
-  notes: string;
+  comments: string;
   severity: 'low' | 'medium' | 'high' | 'critical' | null;
   risk_score: number | null;
   threat: {
@@ -77,7 +78,7 @@ interface DiagramMitigation {
   element_type: string;
   threat_id: number | null;
   status: string;
-  notes: string;
+  comments: string;
   mitigation: {
     id: number;
     name: string;
@@ -190,16 +191,12 @@ export default function ProductDetails() {
     setSheetOpen(true);
   };
 
-  const handleUpdateItem = async (notes: string) => {
+  const handleUpdateItem = async (comments: string) => {
     if (!selectedItem) return;
     try {
-      await diagramThreatsApi.update(selectedItem.id, { notes });
+      setSelectedItem((prev: any) => prev ? { ...prev, comments } : null);
+      await diagramThreatsApi.update(selectedItem.id, { comments });
       await loadProductData();
-      const updatedThreat = threats.find(t => t.id === selectedItem.id);
-      if (updatedThreat) {
-        const linkedMits = mitigations.filter(m => m.threat_id === updatedThreat.id);
-        setSelectedItem({ ...updatedThreat, linkedMitigations: linkedMits });
-      }
     } catch (error) {
       console.error('Error updating:', error);
     }
@@ -208,13 +205,9 @@ export default function ProductDetails() {
   const handleUpdateStatus = async (status: string) => {
     if (!selectedItem) return;
     try {
+      setSelectedItem((prev: any) => prev ? { ...prev, status } : null);
       await diagramThreatsApi.update(selectedItem.id, { status });
       await loadProductData();
-      const updatedThreat = threats.find(t => t.id === selectedItem.id);
-      if (updatedThreat) {
-        const linkedMits = mitigations.filter(m => m.threat_id === updatedThreat.id);
-        setSelectedItem({ ...updatedThreat, linkedMitigations: linkedMits });
-      }
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -222,15 +215,9 @@ export default function ProductDetails() {
 
   const handleUpdateRisk = async (threatId: number, data: { likelihood?: number; impact?: number }) => {
     try {
+      setSelectedItem((prev: any) => prev && prev.id === threatId ? { ...prev, ...data } : prev);
       await diagramThreatsApi.update(threatId, data);
       await loadProductData();
-
-      // Update selected item with new risk data
-      const updatedThreat = threats.find(t => t.id === threatId);
-      if (updatedThreat) {
-        const linkedMits = mitigations.filter(m => m.threat_id === updatedThreat.id);
-        setSelectedItem({ ...updatedThreat, linkedMitigations: linkedMits });
-      }
     } catch (error) {
       console.error('Error updating risk:', error);
     }
@@ -377,7 +364,7 @@ export default function ProductDetails() {
               </div>
             </CardContent>
             <CardFooter className="flex-col items-start gap-4 bottom-0 sticky">
-                            <div className="flex items-center gap-6 text-sm text-muted-foreground">
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   <span className="font-medium">
@@ -657,9 +644,12 @@ export default function ProductDetails() {
                             <p className="text-xs text-muted-foreground leading-relaxed">
                               {threat.threat.description}
                             </p>
-                            {threat.notes && (
-                              <div className="text-xs text-muted-foreground bg-gradient-to-br from-muted/60 to-muted/40 p-2 rounded-lg border border-border/40">
-                                <span className="font-semibold">Notes:</span> {threat.notes}
+                            {threat.comments && threat.comments !== '[]' && (
+                              <div className="pt-3 pb-1 flex justify-end">
+                                <div className="flex items-center gap-1.5 px-2 py-1 bg-muted/40 hover:bg-muted/60 transition-colors border shadow-sm rounded-md" title="Has comments">
+                                  <MessageSquare className="h-3.5 w-3.5 text-blue-500/80" />
+                                  <span className="text-[10px] font-medium text-muted-foreground">Comments</span>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -695,26 +685,29 @@ export default function ProductDetails() {
                                   onClick={() => handleOpenThreat(threat)}
                                 >
 
-                                <Shield className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                                <div className="flex-1 min-w-0 space-y-1.5">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <p className="text-xs font-semibold truncate">{mitigation.mitigation.name}</p>
-                                    <Badge variant="outline" className={cn('text-xs shrink-0 shadow-sm border capitalize', getStatusClasses(mitigation.status))}>
-                                      {mitigation.status}
-                                    </Badge>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                                    {mitigation.mitigation.description}
-                                  </p>
-                                  {mitigation.notes && (
-                                    <div className="text-xs text-muted-foreground bg-muted/50 p-1.5 rounded-lg mt-1.5 border border-border/40">
-                                      <span className="font-semibold">Notes:</span> {mitigation.notes}
+                                  <Shield className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                                  <div className="flex-1 min-w-0 space-y-1.5">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="text-xs font-semibold truncate">{mitigation.mitigation.name}</p>
+                                      <Badge variant="outline" className={cn('text-xs shrink-0 shadow-sm border capitalize', getStatusClasses(mitigation.status))}>
+                                        {mitigation.status}
+                                      </Badge>
                                     </div>
-                                  )}
+                                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                                      {mitigation.mitigation.description}
+                                    </p>
+                                    {mitigation.comments && mitigation.comments !== '[]' && (
+                                      <div className="pt-3 pb-1 flex justify-end">
+                                        <div className="flex items-center gap-1.5 px-2 py-1 bg-muted/40 hover:bg-muted/60 transition-colors border shadow-sm rounded-md" title="Has comments">
+                                          <MessageSquare className="h-3.5 w-3.5 text-blue-500/80" />
+                                          <span className="text-[10px] font-medium text-muted-foreground">Comments</span>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -751,11 +744,10 @@ export default function ProductDetails() {
               const current = newDiagramStep === num;
               return (
                 <div key={label} className="flex items-center gap-1">
-                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold transition-colors ${
-                    done ? 'bg-primary text-primary-foreground'
-                    : current ? 'border border-primary bg-primary/10 text-primary'
-                    : 'bg-muted text-muted-foreground'
-                  }`}>
+                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold transition-colors ${done ? 'bg-primary text-primary-foreground'
+                      : current ? 'border border-primary bg-primary/10 text-primary'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
                     {done ? <Check className="h-3 w-3" /> : num}
                   </div>
                   <span className={`text-xs font-medium ${current ? 'text-foreground' : 'text-muted-foreground'}`}>
@@ -806,15 +798,13 @@ export default function ProductDetails() {
                       <div
                         key={fw.id}
                         onClick={() => toggleNewDiagramFramework(fw.id)}
-                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors select-none ${
-                          selected
+                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors select-none ${selected
                             ? 'border-primary/50 bg-primary/5'
                             : 'border-border hover:border-border/80 hover:bg-muted/40'
-                        }`}
+                          }`}
                       >
-                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                          selected ? 'bg-primary border-primary' : 'border-muted-foreground/40 bg-background'
-                        }`}>
+                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${selected ? 'bg-primary border-primary' : 'border-muted-foreground/40 bg-background'
+                          }`}>
                           {selected && <Check className="h-3 w-3 text-primary-foreground" />}
                         </div>
                         <div className="min-w-0">

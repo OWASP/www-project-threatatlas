@@ -38,7 +38,7 @@ class DiagramMitigationBase(BaseModel):
     element_id: str
     element_type: str
     status: str = "proposed"
-    notes: str | None = None
+    comments: str | None = None
 
 
 class DiagramMitigationCreate(DiagramMitigationBase):
@@ -52,7 +52,7 @@ class DiagramMitigationCreate(DiagramMitigationBase):
 class DiagramMitigationUpdate(BaseModel):
     """Schema for updating a DiagramMitigation."""
     status: str | None = None
-    notes: str | None = None
+    comments: str | None = None
 
 
 class DiagramMitigation(DiagramMitigationBase):

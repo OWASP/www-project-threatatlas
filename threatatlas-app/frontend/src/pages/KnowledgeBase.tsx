@@ -381,13 +381,7 @@ export default function KnowledgeBase() {
 
   return (
     <div className="flex-1 space-y-6 mx-auto p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Knowledge Base</h1>
-          <p className="text-muted-foreground">
-            Explore and manage threat modeling frameworks, threats, and mitigations.
-          </p>
-        </div>
+      <div className="flex justify-end">
         {canWrite && (
           <Button onClick={() => openFrameworkDialog()} className="gap-2">
             <Plus className="h-4 w-4" />

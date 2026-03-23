@@ -185,52 +185,23 @@ export default function Products() {
     setDeleteOpen(true);
   };
 
-  const totalDiagrams = Object.values(diagrams).flat().length;
-
   return (
-    <div className="flex-1 space-y-6 mx-auto p-4">
+    <div className="flex-1 space-y-4 mx-auto p-4">
       {/* Page Header */}
-      <div className="border-b border-border/60 bg-gradient-to-b from-background to-muted/20">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 py-6">
-                  {/* Stats */}
-          {!loading && products.length > 0 && (
-            <div className="flex gap-4">
-              <div className="flex items-center gap-3 px-5 py-3 rounded-xl border border-border/60 bg-gradient-to-br from-card to-muted/20 shadow-sm hover:shadow-md transition-all duration-200">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm">
-                  <Box className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground tracking-wide">PRODUCTS</p>
-                  <p className="text-xl font-bold">{products.length}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 px-5 py-3 rounded-xl border border-border/60 bg-gradient-to-br from-card to-muted/20 shadow-sm hover:shadow-md transition-all duration-200">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm">
-                  <Grid3x3 className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground tracking-wide">DIAGRAMS</p>
-                  <p className="text-xl font-bold">{totalDiagrams}</p>
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="flex items-start justify-between mb-6">
-            {canWrite && (
-              <Button
-                className="shadow-sm hover:shadow-md transition-all duration-200"
-                onClick={() => setWizardOpen(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                New Product
-              </Button>
-            )}
-          </div>
-          </div>
+      <div className="flex justify-end">
+        {canWrite && (
+          <Button
+            className="shadow-sm hover:shadow-md transition-all duration-200"
+            onClick={() => setWizardOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New Product
+          </Button>
+        )}
       </div>
 
       {/* Content */}
-      <div className="mx-auto p-2">
+      <div className="mx-auto">
         {loading ? (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
@@ -355,7 +326,7 @@ export default function Products() {
                       </span>
                     </div>
 
-                    <div className="rounded-xl border border-border/60 bg-gradient-to-br from-muted/30 to-muted/20 p-3 shadow-sm">
+                    <div className="rounded-xl border border-border/60 bg-gradient-to-br from-muted/30 to-muted/20 p-4 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" />

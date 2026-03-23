@@ -144,7 +144,7 @@ def update_diagram_mitigation(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update a diagram mitigation (e.g., change status or notes)."""
+    """Update a diagram mitigation (e.g., change status or comments)."""
     # Require write access
     require_standard_or_admin(current_user)
 

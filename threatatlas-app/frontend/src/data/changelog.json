@@ -1,0 +1,143 @@
+[
+  {
+    "version": "0.3.0",
+    "date": "2026-03-23",
+    "tag": "release",
+    "entries": [
+      {
+        "type": "added",
+        "text": "Changelog page with interactive timeline view in the sidebar navigation."
+      },
+      {
+        "type": "added",
+        "text": "Analytics page with global threat statistics and charts."
+      },
+      {
+        "type": "added",
+        "text": "Comments on threats and mitigations."
+      }
+    ]
+  },
+  {
+    "version": "0.2.0",
+    "date": "2026-03-21",
+    "tag": "feature",
+    "entries": [
+      {
+        "type": "added",
+        "text": "User-specific ownership and access control: custom frameworks, threats, and mitigations are now scoped to their creator."
+      },
+      {
+        "type": "added",
+        "text": "Full screen mode to the diagram editor."
+      },
+      {
+        "type": "added",
+        "text": "Export diagram to JSON format."
+      },
+      {
+        "type": "improved",
+        "text": "All threats from different frameworks are now shown in ALL ANALYSES mode."
+      },
+      {
+        "type": "improved",
+        "text": "History and version comparison feature improved in the diagram editor."
+      },
+      {
+        "type": "improved",
+        "text": "Diagram node rendering refined: proper `zIndex` layering and improved element selection behavior."
+      },
+      {
+        "type": "improved",
+        "text": "Access control layer enforced at both API and UI level for all user-owned resources."
+      },
+      {
+        "type": "fixed",
+        "text": "Trust boundary layer overlapping while editing the boundaries."
+      },
+      {
+        "type": "improved",
+        "text": "Diagram elements have four connection points instead of 2."
+      }
+    ]
+  },
+  {
+    "version": "0.1.0",
+    "date": "2026-03-18",
+    "tag": "initial",
+    "entries": [
+      {
+        "type": "added",
+        "text": "Custom frameworks support: users can now create, edit, and manage their own threat/mitigation frameworks."
+      },
+      {
+        "type": "added",
+        "text": "Risk assessment fields on diagram threats: likelihood, impact, and computed risk score."
+      },
+      {
+        "type": "added",
+        "text": "Product collaborators: share products with other users and control their access level."
+      },
+      {
+        "type": "added",
+        "text": "Diagram versioning: snapshot and restore previous versions of a diagram's threat model."
+      },
+      {
+        "type": "added",
+        "text": "Threat-to-mitigation linking: mitigations can now be explicitly linked to specific threats in a diagram."
+      },
+      {
+        "type": "added",
+        "text": "RBAC (Role-Based Access Control) and invitation system for team collaboration."
+      },
+      {
+        "type": "added",
+        "text": "User authentication with JWT, password hashing, and admin/member roles."
+      },
+      {
+        "type": "added",
+        "text": "Threat modeling models (STRIDE, PASTA, LINDDUN, etc.) with framework associations."
+      },
+      {
+        "type": "added",
+        "text": "Initial project setup for ThreatAtlas OWASP project."
+      },
+      {
+        "type": "added",
+        "text": "Root project structure, GitHub issue and pull request templates."
+      },
+      {
+        "type": "added",
+        "text": "Backend FastAPI architecture with PostgreSQL integration and Alembic migrations."
+      },
+      {
+        "type": "added",
+        "text": "Frontend React + TypeScript application with ReactFlow for interactive diagram editing."
+      },
+      {
+        "type": "added",
+        "text": "Docker and Docker Compose support for easy local and production deployment."
+      },
+      {
+        "type": "added",
+        "text": "Core threat modeling features: Products, Data Flow Diagrams (DFDs)."
+      },
+      {
+        "type": "added",
+        "text": "STRIDE and PASTA framework support out of the box."
+      },
+      {
+        "type": "added",
+        "text": "Knowledge Base page for browsing threats and mitigations by framework."
+      },
+      {
+        "type": "added",
+        "text": "Analytics dashboard with global threat statistics and charts."
+      },
+      {
+        "type": "added",
+        "text": "License updated to Apache 2.0."
+      }
+    ]
+  }
+]

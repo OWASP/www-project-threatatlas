@@ -12,7 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, AlertTriangle, Shield, TrendingUp, CheckCircle2, Activity, Link2, Box, Grid3x3, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, AlertTriangle, Shield, TrendingUp, CheckCircle2, Activity, Link2, Box, Grid3x3, ExternalLink, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import ThreatDetailsSheet from '@/components/ThreatDetailsSheet';
 import { getSeverityClasses, getSeverityStripeClass, getStatusClasses } from '@/lib/risk';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,7 @@ interface DiagramThreat {
   element_id: string;
   element_type: string;
   status: string;
-  notes: string;
+  comments: string;
   likelihood: number | null;
   impact: number | null;
   risk_score: number | null;
@@ -48,7 +48,7 @@ interface DiagramMitigation {
   element_type: string;
   threat_id: number | null;
   status: string;
-  notes: string;
+  comments: string;
   mitigation: {
     id: number;
     name: string;
@@ -192,16 +192,12 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpdateItem = async (notes: string) => {
+  const handleUpdateItem = async (comments: string) => {
     if (!selectedItem) return;
     try {
-      await diagramThreatsApi.update(selectedItem.id, { notes });
+      setSelectedItem((prev: any) => prev ? { ...prev, comments } : null);
+      await diagramThreatsApi.update(selectedItem.id, { comments });
       await loadData();
-      const updatedThreat = threats.find(t => t.id === selectedItem.id);
-      if (updatedThreat) {
-        const linkedMits = mitigations.filter(m => m.threat_id === updatedThreat.id);
-        setSelectedItem({ ...updatedThreat, linkedMitigations: linkedMits });
-      }
     } catch (error) {
       console.error('Error updating:', error);
     }
@@ -210,13 +206,9 @@ export default function Dashboard() {
   const handleUpdateStatus = async (status: string) => {
     if (!selectedItem) return;
     try {
+      setSelectedItem((prev: any) => prev ? { ...prev, status } : null);
       await diagramThreatsApi.update(selectedItem.id, { status });
       await loadData();
-      const updatedThreat = threats.find(t => t.id === selectedItem.id);
-      if (updatedThreat) {
-        const linkedMits = mitigations.filter(m => m.threat_id === updatedThreat.id);
-        setSelectedItem({ ...updatedThreat, linkedMitigations: linkedMits });
-      }
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -224,17 +216,9 @@ export default function Dashboard() {
 
   const handleUpdateRisk = async (threatId: number, data: { likelihood?: number; impact?: number }) => {
     try {
+      setSelectedItem((prev: any) => prev && prev.id === threatId ? { ...prev, ...data } : prev);
       await diagramThreatsApi.update(threatId, data);
       await loadData();
-
-      // Update selected item with new risk data
-      const updatedThreat = threats.find(t => t.id === threatId);
-      if (updatedThreat) {
-        const linkedMits = mitigations.filter(
-          m => m.threat_id === updatedThreat.id
-        );
-        setSelectedItem({ ...updatedThreat, linkedMitigations: linkedMits });
-      }
     } catch (error) {
       console.error('Error updating risk:', error);
     }
@@ -576,9 +560,12 @@ export default function Dashboard() {
                                   <p className="text-xs text-muted-foreground leading-relaxed">
                                     {threat.threat.description}
                                   </p>
-                                  {threat.notes && (
-                                    <div className="text-xs text-muted-foreground bg-gradient-to-br from-muted/60 to-muted/40 p-2 rounded-lg border border-border/40">
-                                      <span className="font-semibold">Notes:</span> {threat.notes}
+                                  {threat.comments && threat.comments !== '[]' && (
+                                    <div className="pt-3 pb-1 flex justify-end">
+                                      <div className="flex items-center gap-1.5 px-2 py-1 bg-muted/40 hover:bg-muted/60 transition-colors border shadow-sm rounded-md" title="Has comments">
+                                        <MessageSquare className="h-3.5 w-3.5 text-blue-500/80" />
+                                        <span className="text-[10px] font-medium text-muted-foreground">Comments</span>
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -625,9 +612,12 @@ export default function Dashboard() {
                                         <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                                           {mitigation.mitigation.description}
                                         </p>
-                                        {mitigation.notes && (
-                                          <div className="text-xs text-muted-foreground bg-muted/50 p-1.5 rounded-lg mt-1.5 border border-border/40">
-                                            <span className="font-semibold">Notes:</span> {mitigation.notes}
+                                        {mitigation.comments && mitigation.comments !== '[]' && (
+                                          <div className="pt-3 pb-1 flex justify-end">
+                                            <div className="flex items-center gap-1.5 px-2 py-1 bg-muted/40 hover:bg-muted/60 transition-colors border shadow-sm rounded-md" title="Has comments">
+                                              <MessageSquare className="h-3.5 w-3.5 text-blue-500/80" />
+                                              <span className="text-[10px] font-medium text-muted-foreground">Comments</span>
+                                            </div>
                                           </div>
                                         )}
                                       </div>

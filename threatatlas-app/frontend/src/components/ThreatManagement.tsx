@@ -41,6 +41,8 @@ import {
 import { AlertTriangle, Plus, Trash2, Search, X, Shield, ChevronDown, Layers } from 'lucide-react';
 import { RiskSelector } from '@/components/RiskSelector';
 import { getSeverityVariant } from '@/lib/risk';
+import { CommentSection } from '@/components/CommentSection';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Threat {
   id: number;
@@ -60,7 +62,7 @@ interface DiagramThreat {
   id: number;
   threat_id: number;
   status: string;
-  notes: string;
+  comments: string;
   likelihood: number | null;
   impact: number | null;
   risk_score: number | null;
@@ -72,14 +74,14 @@ interface DiagramThreat {
 
 interface DiagramThreatUpdate {
   status?: string;
-  notes?: string;
+  comments?: string;
   likelihood?: number | null;
   impact?: number | null;
 }
 
 interface DiagramMitigationUpdate {
   status?: string;
-  notes?: string | null;
+  comments?: string | null;
   threat_id?: number | null;
 }
 
@@ -92,13 +94,14 @@ interface ThreatManagementProps {
 }
 
 export default function ThreatManagement({ diagramId, activeModelId, modelFrameworkId, elementId, elementType }: ThreatManagementProps) {
+  const { user, canWrite } = useAuth();
+  const authorName = user?.full_name || user?.email || 'Unknown User';
   const [attachedThreats, setAttachedThreats] = useState<DiagramThreat[]>([]);
   const [availableThreats, setAvailableThreats] = useState<Threat[]>([]);
   const [frameworks, setFrameworks] = useState<Framework[]>([]);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingThreat, setEditingThreat] = useState<DiagramThreat | null>(null);
   const [elementMitigations, setElementMitigations] = useState<any[]>([]);
 
   // Mitigation dialog states
@@ -106,7 +109,6 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
   const [currentThreat, setCurrentThreat] = useState<DiagramThreat | null>(null);
   const [availableMitigations, setAvailableMitigations] = useState<any[]>([]);
   const [mitigationSearchQuery, setMitigationSearchQuery] = useState('');
-  const [editingMitigation, setEditingMitigation] = useState<any>(null);
 
   // Delete confirmation states
   const [threatToDelete, setThreatToDelete] = useState<DiagramThreat | null>(null);
@@ -183,7 +185,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
         element_id: elementId,
         element_type: elementType,
         status: 'identified',
-        notes: '',
+        comments: '',
       });
       setAddDialogOpen(false);
       setSearchQuery('');
@@ -197,7 +199,6 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
     try {
       await diagramThreatsApi.update(diagramThreatId, updates);
       loadData();
-      setEditingThreat(null);
     } catch (error) {
       console.error('Error updating threat:', error);
     }
@@ -223,7 +224,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
         element_type: elementType,
         threat_id: currentThreat?.id,
         status: 'proposed',
-        notes: '',
+        comments: '',
       });
       setAddMitigationDialogOpen(false);
       setMitigationSearchQuery('');
@@ -247,7 +248,6 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
     try {
       await diagramMitigationsApi.update(mitigationId, updates);
       loadData();
-      setEditingMitigation(null);
     } catch (error) {
       console.error('Error updating mitigation:', error);
     }
@@ -460,54 +460,14 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
                       />
                     </div>
 
-                    {editingThreat?.id === dt.id ? (
-                      <div className="space-y-2">
-                        <Textarea
-                          value={editingThreat.notes}
-                          onChange={(e) =>
-                            setEditingThreat({ ...editingThreat, notes: e.target.value })
-                          }
-                          placeholder="Add notes..."
-                          rows={2}
-                          className="text-xs"
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleUpdateThreat(dt.id, { notes: editingThreat.notes })}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingThreat(null)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        {dt.notes ? (
-                          <div
-                            className="text-xs text-muted-foreground bg-muted p-2 rounded cursor-pointer"
-                            onClick={() => setEditingThreat(dt)}
-                          >
-                            {dt.notes}
-                          </div>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 text-xs"
-                            onClick={() => setEditingThreat({ ...dt, notes: '' })}
-                          >
-                            Add notes
-                          </Button>
-                        )}
-                      </div>
-                    )}
+                    <div className="pt-2">
+                      <CommentSection
+                        comments={dt.comments}
+                        canWrite={canWrite}
+                        authorName={authorName}
+                        onSave={(newComments) => handleUpdateThreat(dt.id, { comments: newComments })}
+                      />
+                    </div>
 
                     <Separator />
 
@@ -577,56 +537,14 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
                                 </Badge>
                               </div>
 
-                              {editingMitigation?.id === dm.id ? (
-                                <div className="space-y-2 pl-5">
-                                  <Textarea
-                                    value={editingMitigation.notes}
-                                    onChange={(e) =>
-                                      setEditingMitigation({ ...editingMitigation, notes: e.target.value })
-                                    }
-                                    placeholder="Add notes..."
-                                    rows={2}
-                                    className="text-xs"
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      className="h-6 text-xs"
-                                      onClick={() => handleUpdateMitigation(dm.id, { notes: editingMitigation.notes })}
-                                    >
-                                      Save
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-6 text-xs"
-                                      onClick={() => setEditingMitigation(null)}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="pl-5">
-                                  {dm.notes ? (
-                                    <div
-                                      className="text-xs text-muted-foreground bg-muted/50 p-2 rounded cursor-pointer"
-                                      onClick={() => setEditingMitigation(dm)}
-                                    >
-                                      {dm.notes}
-                                    </div>
-                                  ) : (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 text-xs"
-                                      onClick={() => setEditingMitigation({ ...dm, notes: '' })}
-                                    >
-                                      Add notes
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
+                              <div className="pl-5 pt-1">
+                                <CommentSection
+                                  comments={dm.comments}
+                                  canWrite={canWrite}
+                                  authorName={authorName}
+                                  onSave={(newComments) => handleUpdateMitigation(dm.id, { comments: newComments })}
+                                />
+                              </div>
                             </div>
                           ))}
                         </div>

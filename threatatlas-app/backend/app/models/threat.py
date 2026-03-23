@@ -38,7 +38,7 @@ class DiagramThreat(Base):
     element_id = Column(String(100), nullable=False)  # ReactFlow node/edge ID
     element_type = Column(String(50), nullable=False)  # 'node' or 'edge'
     status = Column(String(50), default="identified", nullable=False)  # identified, mitigated, accepted, etc.
-    notes = Column(Text, nullable=True)
+    comments = Column(Text, nullable=True)
     likelihood = Column(Integer, nullable=True)  # 1-5
     impact = Column(Integer, nullable=True)  # 1-5
     risk_score = Column(Integer, nullable=True)  # Auto-calculated: likelihood × impact

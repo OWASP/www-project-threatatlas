@@ -43,7 +43,7 @@ class DiagramThreatVersion(Base):
     element_type = Column(String(50), nullable=False)  # 'node' or 'edge'
     threat_id = Column(Integer, ForeignKey("threats.id"), nullable=False, index=True)
     status = Column(String(50), nullable=False)
-    notes = Column(Text, nullable=True)
+    comments = Column(Text, nullable=True)
     likelihood = Column(Integer, nullable=True)  # 1-5
     impact = Column(Integer, nullable=True)  # 1-5
     risk_score = Column(Integer, nullable=True)  # likelihood × impact
@@ -69,7 +69,7 @@ class DiagramMitigationVersion(Base):
     mitigation_id = Column(Integer, ForeignKey("mitigations.id"), nullable=False, index=True)
     threat_id = Column(Integer, nullable=True)  # Reference to diagram_threat_id (not FK due to cascade complexity)
     status = Column(String(50), nullable=False)
-    notes = Column(Text, nullable=True)
+    comments = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships

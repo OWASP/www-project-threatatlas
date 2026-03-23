@@ -63,8 +63,8 @@ export function RiskSelector({ likelihood, impact, onLikelihoodChange, onImpactC
           </SelectContent>
         </Select>
         {riskScore && severity && (
-          <div className="flex items-center gap-3 p-1 bg-muted rounded-md flex-1">
-            <span className="text-sm font-normal whitespace-nowrap">Risk Score: {riskScore}</span>
+          <div className="flex items-center justify-center gap-3 p-1 bg-muted rounded-md flex-1">
+            <span className="text-sm font-medium whitespace-nowrap">Risk Score: {riskScore}</span>
             <Badge variant={getSeverityVariant(severity)} className="capitalize">
               {severity}
             </Badge>

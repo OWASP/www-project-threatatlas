@@ -171,7 +171,7 @@ def update_diagram_threat(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update a diagram threat (e.g., change status or notes)."""
+    """Update a diagram threat (e.g., change status or comments)."""
     # Require write access
     require_standard_or_admin(current_user)
 

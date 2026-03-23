@@ -38,7 +38,7 @@ class DiagramThreatBase(BaseModel):
     element_id: str
     element_type: str
     status: str = "identified"
-    notes: str | None = None
+    comments: str | None = None
     likelihood: int | None = None
     impact: int | None = None
 
@@ -60,7 +60,7 @@ class DiagramThreatCreate(DiagramThreatBase):
 class DiagramThreatUpdate(BaseModel):
     """Schema for updating a DiagramThreat."""
     status: str | None = None
-    notes: str | None = None
+    comments: str | None = None
     likelihood: int | None = None
     impact: int | None = None
 

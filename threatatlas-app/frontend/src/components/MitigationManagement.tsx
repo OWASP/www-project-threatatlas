@@ -3,7 +3,6 @@ import { diagramMitigationsApi, mitigationsApi, frameworksApi } from '@/lib/api'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -23,6 +22,8 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Shield, Plus, Trash2, Search, X } from 'lucide-react';
+import { CommentSection } from '@/components/CommentSection';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Mitigation {
   id: number;
@@ -41,18 +42,22 @@ interface Framework {
 interface DiagramMitigation {
   id: number;
   mitigation_id: number;
+  element_id: string;
   status: string;
-  notes: string;
+  comments: string;
   mitigation: Mitigation;
 }
 
 interface MitigationManagementProps {
   diagramId: number;
+  activeModelId?: number | null;
   elementId: string;
   elementType: string;
 }
 
-export default function MitigationManagement({ diagramId, elementId, elementType }: MitigationManagementProps) {
+export default function MitigationManagement({ diagramId, activeModelId, elementId, elementType }: MitigationManagementProps) {
+  const { user, canWrite } = useAuth();
+  const authorName = user?.full_name || user?.email || 'Unknown User';
   const [attachedMitigations, setAttachedMitigations] = useState<DiagramMitigation[]>([]);
   const [availableMitigations, setAvailableMitigations] = useState<Mitigation[]>([]);
   const [frameworks, setFrameworks] = useState<Framework[]>([]);
@@ -60,7 +65,6 @@ export default function MitigationManagement({ diagramId, elementId, elementType
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedFramework, setSelectedFramework] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingMitigation, setEditingMitigation] = useState<DiagramMitigation | null>(null);
 
   useEffect(() => {
     loadData();
@@ -93,11 +97,12 @@ export default function MitigationManagement({ diagramId, elementId, elementType
     try {
       await diagramMitigationsApi.create({
         diagram_id: diagramId,
+        model_id: activeModelId ?? 1,
         mitigation_id: mitigation.id,
         element_id: elementId,
         element_type: elementType,
         status: 'proposed',
-        notes: '',
+        comments: '',
       });
       setAddDialogOpen(false);
       setSearchQuery('');
@@ -111,7 +116,6 @@ export default function MitigationManagement({ diagramId, elementId, elementType
     try {
       await diagramMitigationsApi.update(diagramMitigationId, updates);
       loadData();
-      setEditingMitigation(null);
     } catch (error) {
       console.error('Error updating mitigation:', error);
     }
@@ -240,54 +244,14 @@ export default function MitigationManagement({ diagramId, elementId, elementType
                       </Badge>
                     </div>
 
-                    {editingMitigation?.id === dm.id ? (
-                      <div className="space-y-2">
-                        <Textarea
-                          value={editingMitigation.notes}
-                          onChange={(e) =>
-                            setEditingMitigation({ ...editingMitigation, notes: e.target.value })
-                          }
-                          placeholder="Add notes..."
-                          rows={2}
-                          className="text-xs"
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleUpdateMitigation(dm.id, { notes: editingMitigation.notes })}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingMitigation(null)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        {dm.notes ? (
-                          <div
-                            className="text-xs text-muted-foreground bg-muted p-2 rounded cursor-pointer"
-                            onClick={() => setEditingMitigation(dm)}
-                          >
-                            {dm.notes}
-                          </div>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 text-xs"
-                            onClick={() => setEditingMitigation({ ...dm, notes: '' })}
-                          >
-                            Add notes
-                          </Button>
-                        )}
-                      </div>
-                    )}
+                    <div className="pt-2">
+                      <CommentSection
+                        comments={dm.comments}
+                        canWrite={canWrite}
+                        authorName={authorName}
+                        onSave={(newComments) => handleUpdateMitigation(dm.id, { comments: newComments })}
+                      />
+                    </div>
                   </div>
                 </div>
               </CardContent>

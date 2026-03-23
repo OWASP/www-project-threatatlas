@@ -5,7 +5,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -37,12 +36,13 @@ import { Input } from '@/components/ui/input';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Shield, ExternalLink, Plus, Trash2, Search, X, Check, Pencil } from 'lucide-react';
+import { Shield, ExternalLink, Plus, Trash2, Search, X } from 'lucide-react';
 import { RiskSelector } from '@/components/RiskSelector';
 import { diagramMitigationsApi, mitigationsApi, frameworksApi } from '@/lib/api';
 import { getSeverityClasses, getStatusClasses } from '@/lib/risk';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { CommentSection } from '@/components/CommentSection';
 
 interface DiagramMitigation {
   id: number;
@@ -53,7 +53,7 @@ interface DiagramMitigation {
   element_type: string;
   threat_id: number | null;
   status: string;
-  notes: string;
+  comments: string;
   mitigation: {
     id: number;
     name: string;
@@ -83,7 +83,7 @@ interface ThreatDetailsSheetProps {
   selectedItem: any;
   itemType: 'threat' | 'mitigation' | null;
   onUpdateStatus: (status: string) => void;
-  onUpdateNotes: (notes: string) => void;
+  onUpdateNotes: (comments: string) => void;
   onNavigateToDiagram: (item: any) => void;
   onUpdateRisk?: (threatId: number, data: { likelihood?: number; impact?: number }) => void;
   onMitigationsChange?: () => void;
@@ -100,10 +100,8 @@ export default function ThreatDetailsSheet({
   onUpdateRisk,
   onMitigationsChange,
 }: ThreatDetailsSheetProps) {
-  const { canWrite } = useAuth();
-
-  // Threat notes state
-  const [editNotes, setEditNotes] = useState('');
+  const { user, canWrite } = useAuth();
+  const authorName = user?.full_name || user?.email || 'Unknown User';
 
   // Local mitigations state (source of truth while sheet is open)
   const [localMitigations, setLocalMitigations] = useState<DiagramMitigation[]>([]);
@@ -117,16 +115,11 @@ export default function ThreatDetailsSheet({
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loadingKb, setLoadingKb] = useState(false);
 
-  // Inline edit state per mitigation
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editingNotes, setEditingNotes] = useState('');
-
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<DiagramMitigation | null>(null);
 
   useEffect(() => {
     if (selectedItem) {
-      setEditNotes(selectedItem.notes || '');
       setLocalMitigations(selectedItem.linkedMitigations || []);
     }
   }, [selectedItem]);
@@ -134,7 +127,6 @@ export default function ThreatDetailsSheet({
   // Reset editing state when sheet closes
   useEffect(() => {
     if (!open) {
-      setEditingId(null);
       setAddDialogOpen(false);
       setSearchQuery('');
       setSelectedFramework('all');
@@ -142,9 +134,7 @@ export default function ThreatDetailsSheet({
     }
   }, [open]);
 
-  const handleUpdateNotes = () => {
-    onUpdateNotes(editNotes);
-  };
+  // Removed handleUpdateNotes as it's passed directly to onSave
 
   const handleLikelihoodChange = (value: number) => {
     if (onUpdateRisk && selectedItem?.id) {
@@ -188,7 +178,7 @@ export default function ThreatDetailsSheet({
         element_type: selectedItem.element_type,
         threat_id: selectedItem.id,
         status: 'proposed',
-        notes: '',
+        comments: '',
       });
       // Build the full local object with nested mitigation data
       const newDm: DiagramMitigation = {
@@ -212,30 +202,29 @@ export default function ThreatDetailsSheet({
 
   const handleUpdateMitigationStatus = async (dm: DiagramMitigation, status: string) => {
     try {
-      await diagramMitigationsApi.update(dm.id, { status });
       setLocalMitigations(prev => prev.map(m => m.id === dm.id ? { ...m, status } : m));
+      await diagramMitigationsApi.update(dm.id, { status });
       onMitigationsChange?.();
     } catch (err) {
       console.error('Error updating mitigation status:', err);
     }
   };
 
-  const handleSaveMitigationNotes = async (dm: DiagramMitigation) => {
+  const handleSaveMitigationNotes = async (dm: DiagramMitigation, newComments: string) => {
     try {
-      await diagramMitigationsApi.update(dm.id, { notes: editingNotes });
-      setLocalMitigations(prev => prev.map(m => m.id === dm.id ? { ...m, notes: editingNotes } : m));
-      setEditingId(null);
+      setLocalMitigations(prev => prev.map(m => m.id === dm.id ? { ...m, comments: newComments } : m));
+      await diagramMitigationsApi.update(dm.id, { comments: newComments });
       onMitigationsChange?.();
     } catch (err) {
-      console.error('Error updating mitigation notes:', err);
+      console.error('Error updating mitigation comments:', err);
     }
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await diagramMitigationsApi.delete(deleteTarget.id);
       setLocalMitigations(prev => prev.filter(m => m.id !== deleteTarget.id));
+      await diagramMitigationsApi.delete(deleteTarget.id);
       setDeleteTarget(null);
       onMitigationsChange?.();
     } catch (err) {
@@ -380,23 +369,17 @@ export default function ThreatDetailsSheet({
                 </>
               )}
 
-              {/* Notes */}
+              {/* Comments */}
               <Field>
-                <FieldLabel htmlFor="item-notes">Notes</FieldLabel>
-                <Textarea
-                  id="item-notes"
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
-                  placeholder="Add notes or additional context..."
-                  rows={4}
-                  className="resize-none rounded-lg border-border/60"
-                  readOnly={!canWrite}
-                />
-                {canWrite && (
-                  <Button onClick={handleUpdateNotes} size="sm" className="mt-2 rounded-lg shadow-sm">
-                    Save Notes
-                  </Button>
-                )}
+                <FieldLabel htmlFor="item-comments">Comments</FieldLabel>
+                <div className="mt-1">
+                  <CommentSection
+                    comments={selectedItem.comments || ''}
+                    canWrite={canWrite}
+                    authorName={authorName}
+                    onSave={onUpdateNotes}
+                  />
+                </div>
               </Field>
 
               {/* Linked Mitigations — threats only */}
@@ -505,69 +488,15 @@ export default function ThreatDetailsSheet({
                                   )}
                                 </div>
 
-                                {/* Notes */}
-                                {editingId === dm.id ? (
-                                  <div className="space-y-2">
-                                    <Textarea
-                                      value={editingNotes}
-                                      onChange={(e) => setEditingNotes(e.target.value)}
-                                      placeholder="Add notes..."
-                                      rows={2}
-                                      className="text-xs resize-none rounded-lg border-border/60"
-                                      autoFocus
-                                    />
-                                    <div className="flex gap-2">
-                                      <Button
-                                        size="sm"
-                                        className="h-7 px-3 text-xs rounded-lg gap-1.5"
-                                        onClick={() => handleSaveMitigationNotes(dm)}
-                                      >
-                                        <Check className="h-3 w-3" />
-                                        Save
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 px-3 text-xs rounded-lg"
-                                        onClick={() => setEditingId(null)}
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div>
-                                    {dm.notes ? (
-                                      <div
-                                        className={cn(
-                                          'text-xs text-muted-foreground bg-muted/60 px-3 py-2 rounded-lg border border-border/40 leading-relaxed',
-                                          canWrite && 'cursor-pointer hover:bg-muted/80 transition-colors'
-                                        )}
-                                        onClick={() => {
-                                          if (!canWrite) return;
-                                          setEditingId(dm.id);
-                                          setEditingNotes(dm.notes);
-                                        }}
-                                      >
-                                        <span className="font-semibold">Notes:</span> {dm.notes}
-                                        {canWrite && <Pencil className="inline h-3 w-3 ml-1.5 opacity-50" />}
-                                      </div>
-                                    ) : canWrite ? (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground gap-1.5 rounded-lg"
-                                        onClick={() => {
-                                          setEditingId(dm.id);
-                                          setEditingNotes('');
-                                        }}
-                                      >
-                                        <Pencil className="h-3 w-3" />
-                                        Add notes
-                                      </Button>
-                                    ) : null}
-                                  </div>
-                                )}
+                                {/* Comments */}
+                                <div className="pt-2">
+                                  <CommentSection
+                                    comments={dm.comments}
+                                    canWrite={canWrite}
+                                    authorName={authorName}
+                                    onSave={(newComments) => handleSaveMitigationNotes(dm, newComments)}
+                                  />
+                                </div>
                               </div>
                             </CardContent>
                           </Card>

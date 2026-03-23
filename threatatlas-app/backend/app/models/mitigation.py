@@ -39,7 +39,7 @@ class DiagramMitigation(Base):
     element_type = Column(String(50), nullable=False)  # 'node' or 'edge'
     threat_id = Column(Integer, ForeignKey("diagram_threats.id", ondelete="CASCADE"), nullable=True, index=True)  # Optional link to specific threat
     status = Column(String(50), default="proposed", nullable=False)  # proposed, implemented, verified, etc.
-    notes = Column(Text, nullable=True)
+    comments = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

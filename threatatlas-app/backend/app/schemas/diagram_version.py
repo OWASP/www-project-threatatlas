@@ -10,7 +10,7 @@ class DiagramThreatVersionSnapshot(BaseModel):
     element_type: str
     threat_id: int
     status: str
-    notes: str | None = None
+    comments: str | None = None
     likelihood: int | None = None
     impact: int | None = None
     risk_score: int | None = None
@@ -29,7 +29,7 @@ class DiagramMitigationVersionSnapshot(BaseModel):
     mitigation_id: int
     threat_id: int | None = None
     status: str
-    notes: str | None = None
+    comments: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

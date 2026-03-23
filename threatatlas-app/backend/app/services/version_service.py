@@ -63,7 +63,7 @@ class VersionService:
                 element_type=threat.element_type,
                 threat_id=threat.threat_id,
                 status=threat.status,
-                notes=threat.notes,
+                comments=threat.comments,
                 likelihood=threat.likelihood,
                 impact=threat.impact,
                 risk_score=threat.risk_score,
@@ -81,7 +81,7 @@ class VersionService:
                 mitigation_id=mitigation.mitigation_id,
                 threat_id=mitigation.threat_id,
                 status=mitigation.status,
-                notes=mitigation.notes
+                comments=mitigation.comments
             )
             db.add(mitigation_version)
 
@@ -314,7 +314,7 @@ class VersionService:
                     threat_from.impact != threat_to.impact or
                     threat_from.risk_score != threat_to.risk_score or
                     threat_from.severity != threat_to.severity or
-                    threat_from.notes != threat_to.notes):
+                    threat_from.comments != threat_to.comments):
 
                     threat_to_snapshot = DiagramThreatVersionSnapshot.model_validate(threat_to)
                     threat_to_snapshot.threat_name = threat_to.threat.name

@@ -6,7 +6,9 @@ import Products from '@/pages/Products';
 import ProductDetails from '@/pages/ProductDetails';
 import Diagrams from '@/pages/Diagrams';
 import KnowledgeBase from '@/pages/KnowledgeBase';
+import Analytics from '@/pages/Analytics';
 import Login from '@/pages/Login';
+import Changelog from '@/pages/Changelog';
 import AcceptInvitation from '@/pages/AcceptInvitation';
 import UserManagement from '@/pages/UserManagement';
 import { Separator } from '@/components/ui/separator';
@@ -26,6 +28,7 @@ function HeaderBreadcrumb() {
       case '/': return { title: 'Dashboard', subtitle: 'Threat monitoring overview' };
       case '/products': return { title: 'Products', subtitle: 'Manage security products' };
       case '/diagrams': return { title: 'Diagrams', subtitle: 'Threat modeling canvas' };
+      case '/analytics': return { title: 'Analytics', subtitle: 'Global statistics and overview' };
       case '/knowledge': return { title: 'Knowledge Base', subtitle: 'Threats & mitigations' };
       case '/users': return { title: 'User Management', subtitle: 'Manage users and invitations' };
       default: return { title: 'ThreatAtlas', subtitle: 'Security platform' };
@@ -65,8 +68,10 @@ function AppContent() {
             <Route path="/products" element={<Products />} />
             <Route path="/products/:productId" element={<ProductDetails />} />
             <Route path="/diagrams" element={<Diagrams />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/knowledge" element={<KnowledgeBase />} />
             <Route path="/users" element={<UserManagement />} />
+            <Route path="/changelog" element={<Changelog />} />
           </Routes>
         </main>
       </SidebarInset>
@@ -100,3 +105,4 @@ export function App() {
 }
 
 export default App;
+
