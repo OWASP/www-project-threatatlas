@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   ReactFlow,
   MiniMap,
@@ -143,6 +144,7 @@ export function DiagramsContent() {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen().catch((err) => {
         console.error(`Error attempting to enable fullscreen: ${err.message}`);
+        toast.error('Failed to enable fullscreen mode.');
       });
       setIsFullscreen(true);
     } else {
@@ -195,6 +197,7 @@ export function DiagramsContent() {
       setProducts(response.data);
     } catch (error) {
       console.error('Error loading products:', error);
+      toast.error('Failed to load products.');
     }
   };
 
@@ -204,6 +207,7 @@ export function DiagramsContent() {
       setDiagrams(response.data);
     } catch (error) {
       console.error('Error loading diagrams:', error);
+      toast.error('Failed to load diagrams.');
     }
   };
 
@@ -224,6 +228,7 @@ export function DiagramsContent() {
       }
     } catch (error) {
       console.error('Error loading diagram:', error);
+      toast.error('Failed to load diagram.');
     }
   };
 
@@ -239,8 +244,10 @@ export function DiagramsContent() {
 
       navigate(`/diagrams?product=${selectedProduct}&diagram=${response.data.id}`);
       loadDiagrams(selectedProduct);
+      toast.success('Diagram created successfully.');
     } catch (error) {
       console.error('Error creating diagram:', error);
+      toast.error('Failed to create diagram.');
     }
   };
 
@@ -261,8 +268,10 @@ export function DiagramsContent() {
 
       // Reload diagram to get updated version number
       await loadDiagram(selectedDiagram);
+      toast.success('Diagram saved successfully.');
     } catch (error) {
       console.error('Error saving diagram:', error);
+      toast.error('Failed to save diagram.');
     } finally {
       setSaving(false);
     }
@@ -336,8 +345,10 @@ export function DiagramsContent() {
       }
 
       loadDiagrams(selectedProduct);
+      toast.success('Diagram deleted successfully.');
     } catch (error) {
       console.error('Error deleting diagram:', error);
+      toast.error('Failed to delete diagram.');
     }
   };
 
@@ -372,7 +383,7 @@ export function DiagramsContent() {
                 Choose a product to view and create diagrams
               </p>
               <Select value={selectedProduct?.toString()} onValueChange={(val) => navigate(`/diagrams?product=${val}`)}>
-                <SelectTrigger className="w-64">
+                <SelectTrigger className="w-full max-w-64">
                   <SelectValue placeholder="Select a product" />
                 </SelectTrigger>
                 <SelectContent>
@@ -392,7 +403,7 @@ export function DiagramsContent() {
 
   if (!selectedDiagram) {
     return (
-      <div className="flex-1 p-4 md:p-4 lg:p-4">
+      <div className="flex-1 p-4 md:p-6">
         <div className="flex-1 space-y-6 mx-auto">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -404,7 +415,7 @@ export function DiagramsContent() {
             </div>
             <div className="flex items-center gap-3">
               <Select value={selectedProduct.toString()} onValueChange={(val) => navigate(`/diagrams?product=${val}`)}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -557,6 +568,7 @@ export function DiagramsContent() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-primary hover:bg-primary/10"
+                        aria-label="New analysis model"
                         onClick={() => setIsCreatingModel(true)}
                       >
                         <Plus className="h-4 w-4" />
@@ -571,6 +583,7 @@ export function DiagramsContent() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        aria-label="Edit model"
                         onClick={() => setIsEditingModel(true)}
                         disabled={!activeModelId}
                       >
@@ -586,6 +599,7 @@ export function DiagramsContent() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive/60 hover:text-destructive hover:bg-destructive/10"
+                        aria-label="Delete model"
                         onClick={() => setIsDeletingModel(true)}
                         disabled={!activeModelId}
                       >
@@ -603,6 +617,7 @@ export function DiagramsContent() {
                         variant={showVersionComment ? "secondary" : "ghost"}
                         size="icon"
                         className="h-8 w-8"
+                        aria-label="Revision note"
                         onClick={() => setShowVersionComment(!showVersionComment)}
                       >
                         <MessageSquare className="h-4 w-4" />
@@ -617,6 +632,7 @@ export function DiagramsContent() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        aria-label="Export diagram"
                         onClick={handleExportJson}
                       >
                         <Share2 className="h-4 w-4" />
@@ -631,6 +647,7 @@ export function DiagramsContent() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        aria-label="Version history"
                         onClick={() => setVersionHistoryOpen(true)}
                       >
                         <History className="h-4 w-4" />
@@ -647,6 +664,7 @@ export function DiagramsContent() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        aria-label="Fit view"
                         onClick={() => fitView({ duration: 800 })}
                       >
                         <Grid3x3 className="h-4 w-4" />
@@ -661,6 +679,7 @@ export function DiagramsContent() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
                         onClick={toggleFullscreen}
                       >
                         {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
@@ -696,7 +715,7 @@ export function DiagramsContent() {
             <CardContent className="p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Version Note</span>
-                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setShowVersionComment(false)}>
+                <Button variant="ghost" size="icon" className="h-5 w-5" aria-label="Close version note" onClick={() => setShowVersionComment(false)}>
                   <Plus className="h-3 w-3 rotate-45" />
                 </Button>
               </div>

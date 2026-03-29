@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -126,6 +128,7 @@ export default function UserManagement() {
       setInvitations(invitationsRes.data);
     } catch (err) {
       console.error('Failed to load data:', err);
+      toast.error('Failed to load user data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -175,11 +178,13 @@ export default function UserManagement() {
       setInviteEmail('');
       setInviteRole('standard');
       setInviteDialogOpen(false);
+      toast.success('Invitation sent successfully.');
 
       // Reload data
       await loadData();
     } catch (err: any) {
       setInviteError(formatError(err));
+      toast.error('Failed to send invitation.');
     } finally {
       setInviteLoading(false);
     }
@@ -188,9 +193,9 @@ export default function UserManagement() {
   const handleResendInvitation = async (id: number) => {
     try {
       await api.post(`/invitations/${id}/resend`);
-      alert('Invitation email resent successfully!');
+      toast.success('Invitation email resent successfully.');
     } catch (err: any) {
-      alert(formatError(err));
+      toast.error('Failed to resend invitation.');
     }
   };
 
@@ -214,11 +219,13 @@ export default function UserManagement() {
       setCreatePassword('');
       setCreateRole('standard');
       setCreateDialogOpen(false);
+      toast.success('User created successfully.');
 
       // Reload data
       await loadData();
     } catch (err: any) {
       setCreateError(formatError(err));
+      toast.error('Failed to create user.');
     } finally {
       setCreateLoading(false);
     }
@@ -259,9 +266,11 @@ export default function UserManagement() {
 
       setEditDialogOpen(false);
       setEditingUser(null);
+      toast.success('User updated successfully.');
       await loadData();
     } catch (err: any) {
       setEditError(formatError(err));
+      toast.error('Failed to update user.');
     } finally {
       setEditLoading(false);
     }
@@ -274,9 +283,10 @@ export default function UserManagement() {
       await api.delete(`/users/${userToDelete.id}`);
       setDeleteDialogOpen(false);
       setUserToDelete(null);
+      toast.success('User deleted successfully.');
       await loadData();
     } catch (err: any) {
-      alert(formatError(err));
+      toast.error('Failed to delete user.');
     }
   };
 
@@ -287,9 +297,10 @@ export default function UserManagement() {
 
     try {
       await api.delete(`/invitations/${id}`);
+      toast.success('Invitation revoked successfully.');
       await loadData();
     } catch (err: any) {
-      alert(formatError(err));
+      toast.error('Failed to revoke invitation.');
     }
   };
 
@@ -534,8 +545,28 @@ export default function UserManagement() {
           <CardDescription>Users with active accounts in the system</CardDescription>
         </CardHeader>
         <CardContent>
-          {users.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No users found</p>
+          {loading ? (
+            <div className="space-y-3 py-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 px-2">
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-16 ml-auto rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : users.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/60 mb-3">
+                <UserPlus className="h-7 w-7 text-muted-foreground" />
+              </div>
+              <h3 className="text-base font-semibold mb-1">No users found</h3>
+              <p className="text-sm text-muted-foreground">Invite users to get started</p>
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -614,10 +645,26 @@ export default function UserManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {invitations.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No pending invitations
-            </p>
+          {loading ? (
+            <div className="space-y-3 py-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-4 px-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-24 ml-auto rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : invitations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/60 mb-3">
+                <Mail className="h-7 w-7 text-muted-foreground" />
+              </div>
+              <h3 className="text-base font-semibold mb-1">No pending invitations</h3>
+              <p className="text-sm text-muted-foreground">Send invitations to add new team members</p>
+            </div>
           ) : (
             <Table>
               <TableHeader>

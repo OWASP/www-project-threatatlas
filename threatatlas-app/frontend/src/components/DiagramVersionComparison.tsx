@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowUp, ArrowDown, Plus, Minus, Edit, AlertTriangle } from 'lucide-react';
 import { diagramVersionsApi } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface ElementChange {
   element_id: string;
@@ -76,6 +77,7 @@ export default function DiagramVersionComparison({
       setComparison(response.data);
     } catch (error) {
       console.error('Failed to load comparison:', error);
+      toast.error('Failed to load version comparison');
     } finally {
       setLoading(false);
     }

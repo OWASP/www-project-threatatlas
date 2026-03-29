@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Diagram as DiagramModel, Product as ProductModel, User as UserModel
+from app.models import Diagram as DiagramModel, Product as ProductModel, User as UserModel, ProductCollaborator
 from app.models.enums import UserRole
 from app.schemas import Diagram, DiagramCreate, DiagramUpdate
 from app.services import VersionService
 from app.auth.dependencies import get_current_user
-from app.auth.permissions import require_standard_or_admin, require_resource_access
+from app.auth.permissions import require_standard_or_admin, can_access_product, can_edit_product, PermissionDenied
 
 router = APIRouter(prefix="/diagrams", tags=["diagrams"])
 
@@ -26,11 +26,22 @@ def list_diagrams(
     Admin users see all diagrams.
     Other users see only diagrams from their own products.
     """
+    from sqlalchemy import or_
+
     query = db.query(DiagramModel).join(ProductModel)
 
-    # Admins see all diagrams, others see only their own
+    # Admins see all diagrams; others see diagrams from products they own, collaborate on, or that are public
     if current_user.role != UserRole.ADMIN.value:
-        query = query.filter(ProductModel.user_id == current_user.id)
+        collab_product_ids = db.query(ProductCollaborator.product_id).filter(
+            ProductCollaborator.user_id == current_user.id
+        ).scalar_subquery()
+        query = query.filter(
+            or_(
+                ProductModel.user_id == current_user.id,
+                ProductModel.id.in_(collab_product_ids),
+                ProductModel.is_public == True
+            )
+        )
 
     if product_id:
         # Verify product access
@@ -40,11 +51,8 @@ def list_diagrams(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Product not found"
             )
-        if current_user.role != UserRole.ADMIN.value and product.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to access this product"
-            )
+        if not can_access_product(current_user, product):
+            raise PermissionDenied("Not authorized to access this product")
         query = query.filter(DiagramModel.product_id == product_id)
 
     diagrams = query.offset(skip).limit(limit).all()
@@ -70,12 +78,9 @@ def get_diagram(
             detail=f"Diagram with id {diagram_id} not found"
         )
 
-    # Check ownership through product (admins can access any diagram)
-    if current_user.role != UserRole.ADMIN.value and diagram.product.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this diagram"
-        )
+    # Check access through product (owner, collaborator, public, or admin)
+    if not can_access_product(current_user, diagram.product):
+        raise PermissionDenied("Not authorized to access this diagram")
 
     return diagram
 
@@ -103,11 +108,8 @@ def create_diagram(
             detail=f"Product with id {diagram.product_id} not found"
         )
 
-    if current_user.role != UserRole.ADMIN.value and product.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to create diagrams for this product"
-        )
+    if not can_edit_product(current_user, product):
+        raise PermissionDenied("Not authorized to create diagrams for this product")
 
     db_diagram = DiagramModel(
         **diagram.model_dump(),
@@ -134,8 +136,8 @@ def update_diagram(
             detail=f"Diagram with id {diagram_id} not found"
         )
 
-    # Check resource access permissions
-    require_resource_access(current_user, db_diagram.product.user_id)
+    if not can_edit_product(current_user, db_diagram.product):
+        raise PermissionDenied("Not authorized to modify this diagram")
 
     update_data = diagram.model_dump(exclude_unset=True)
 
@@ -155,11 +157,8 @@ def update_diagram(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Product with id {update_data['product_id']} not found"
             )
-        if current_user.role != UserRole.ADMIN.value and product.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to move diagram to this product"
-            )
+        if not can_edit_product(current_user, product):
+                raise PermissionDenied("Not authorized to move diagram to this product")
 
     # Create version snapshot if auto_version is enabled or comment provided
     should_version = db_diagram.auto_version or version_comment is not None
@@ -198,8 +197,8 @@ def delete_diagram(
             detail=f"Diagram with id {diagram_id} not found"
         )
 
-    # Check resource access permissions
-    require_resource_access(current_user, db_diagram.product.user_id)
+    if not can_edit_product(current_user, db_diagram.product):
+        raise PermissionDenied("Not authorized to delete this diagram")
 
     db.delete(db_diagram)
     db.commit()

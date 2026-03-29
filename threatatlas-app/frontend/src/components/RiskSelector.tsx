@@ -1,5 +1,5 @@
-import { FieldTitle } from '@/components/ui/field';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState, useEffect } from 'react';
+import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { getSeverity, getSeverityVariant } from '@/lib/risk';
 
@@ -10,67 +10,142 @@ interface RiskSelectorProps {
   onImpactChange: (value: number) => void;
 }
 
-const likelihoodOptions = [
-  { value: 1, label: 'Rare' },
-  { value: 2, label: 'Unlikely' },
-  { value: 3, label: 'Possible' },
-  { value: 4, label: 'Likely' },
-  { value: 5, label: 'Almost Certain' },
-];
+const likelihoodLabels: Record<number, string> = {
+  1: 'Rare',
+  2: 'Unlikely',
+  3: 'Possible',
+  4: 'Likely',
+  5: 'Certain',
+};
 
-const impactOptions = [
-  { value: 1, label: 'Negligible' },
-  { value: 2, label: 'Minor' },
-  { value: 3, label: 'Moderate' },
-  { value: 4, label: 'Major' },
-  { value: 5, label: 'Severe' },
-];
+const impactLabels: Record<number, string> = {
+  1: 'Negligible',
+  2: 'Minor',
+  3: 'Moderate',
+  4: 'Major',
+  5: 'Severe',
+};
 
-export function RiskSelector({ likelihood, impact, onLikelihoodChange, onImpactChange }: RiskSelectorProps) {
-  const riskScore = likelihood && impact ? likelihood * impact : null;
-  const severity = riskScore ? getSeverity(riskScore) : null;
+interface SliderRowProps {
+  label: string;
+  value: number | null;
+  stepLabels: Record<number, string>;
+  onChange: (v: number) => void;
+  onCommit: (v: number) => void;
+}
+
+function SliderRow({ label, value, stepLabels, onChange, onCommit }: SliderRowProps) {
+  // Local state so dragging doesn't bubble up API calls on every tick
+  const [local, setLocal] = useState<number>(value ?? 1);
+
+  // Sync when parent changes (e.g. different item selected)
+  useEffect(() => {
+    setLocal(value ?? 1);
+  }, [value]);
+
+  const isSet = value !== null;
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-3">
-        <FieldTitle className="flex-1">Likelihood</FieldTitle>
-        <FieldTitle className="flex-1">Impact</FieldTitle>
-        {riskScore && severity && <div className="flex-1" />}
-      </div>
-      <div className="flex gap-3">
-        <Select value={likelihood?.toString() || ''} onValueChange={(v) => onLikelihoodChange(Number(v))}>
-          <SelectTrigger className="flex-1">
-            <SelectValue placeholder="Select likelihood" />
-          </SelectTrigger>
-          <SelectContent>
-            {likelihoodOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value.toString()}>
-                {option.value} - {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={impact?.toString() || ''} onValueChange={(v) => onImpactChange(Number(v))}>
-          <SelectTrigger className="flex-1">
-            <SelectValue placeholder="Select impact" />
-          </SelectTrigger>
-          <SelectContent>
-            {impactOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value.toString()}>
-                {option.value} - {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {riskScore && severity && (
-          <div className="flex items-center justify-center gap-3 p-1 bg-muted rounded-md flex-1">
-            <span className="text-sm font-medium whitespace-nowrap">Risk Score: {riskScore}</span>
-            <Badge variant={getSeverityVariant(severity)} className="capitalize">
-              {severity}
-            </Badge>
-          </div>
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">{label}</span>
+        {isSet ? (
+          <span className="text-xs font-semibold tabular-nums">
+            {local} — {stepLabels[local]}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground italic">Not set</span>
         )}
       </div>
+
+      {/* Slider */}
+      <Slider
+        min={1}
+        max={5}
+        step={1}
+        value={[local]}
+        onValueChange={([v]) => {
+          setLocal(v);
+          onChange(v);
+        }}
+        onValueCommit={([v]) => onCommit(v)}
+        className={!isSet ? 'opacity-50' : ''}
+      />
+
+      {/* Tick labels for all 5 positions */}
+      <div className="grid grid-cols-5 text-[10px] text-muted-foreground select-none px-[5px]">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <span
+            key={n}
+            className={
+              n === 1 ? 'text-left' :
+              n === 5 ? 'text-right' :
+              'text-center'
+            }
+          >
+            {stepLabels[n]}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function RiskSelector({ likelihood, impact, onLikelihoodChange, onImpactChange }: RiskSelectorProps) {
+  const [localLikelihood, setLocalLikelihood] = useState<number>(likelihood ?? 1);
+  const [localImpact, setLocalImpact] = useState<number>(impact ?? 1);
+
+  // Keep locals in sync when the parent item changes (e.g. another threat selected)
+  useEffect(() => {
+    setLocalLikelihood(likelihood ?? 1);
+    setLocalImpact(impact ?? 1);
+  }, [likelihood, impact]);
+
+  // Show live score when parent has any committed value, both committed, or the user has moved
+  // a slider away from the default (fixes preview while dragging before commit when both were null).
+  const bothCommitted = likelihood !== null && impact !== null;
+  const oneCommitted = likelihood !== null || impact !== null;
+  const localNonDefault = localLikelihood !== 1 || localImpact !== 1;
+  const showLiveScore = bothCommitted || oneCommitted || localNonDefault;
+
+  const liveScore = showLiveScore ? localLikelihood * localImpact : null;
+  const severity = liveScore != null ? getSeverity(liveScore) : null;
+
+  return (
+    <div className="space-y-5">
+      <SliderRow
+        label="Likelihood"
+        value={likelihood}
+        stepLabels={likelihoodLabels}
+        onChange={setLocalLikelihood}
+        onCommit={onLikelihoodChange}
+      />
+      <SliderRow
+        label="Impact"
+        value={impact}
+        stepLabels={impactLabels}
+        onChange={setLocalImpact}
+        onCommit={onImpactChange}
+      />
+
+      {/* Risk score summary */}
+      {liveScore != null && severity != null ? (
+        <div className="flex items-center justify-between px-3 py-2 bg-muted rounded-lg">
+          <span className="text-xs font-medium">
+            Risk Score: <span className="font-bold tabular-nums">{liveScore}</span>
+          </span>
+          <Badge variant={getSeverityVariant(severity)} className="capitalize text-xs">
+            {severity}
+          </Badge>
+        </div>
+      ) : (
+        <div className="px-3 py-2 bg-muted/50 rounded-lg border border-dashed">
+          <p className="text-xs text-muted-foreground text-center">
+            Set both sliders to calculate risk score
+          </p>
+        </div>
+      )}
     </div>
   );
 }

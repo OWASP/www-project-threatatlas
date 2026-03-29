@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Clock, ArrowUp, ArrowDown, Minus, RotateCcw, GitCompare } from 'lucide-react';
 import { diagramVersionsApi } from '@/lib/api';
+import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
 interface DiagramVersionSummary {
@@ -70,6 +71,7 @@ export default function DiagramVersionHistory({
       setVersions(response.data);
     } catch (error) {
       console.error('Failed to load versions:', error);
+      toast.error('Failed to load version history');
     } finally {
       setLoading(false);
     }
@@ -89,8 +91,10 @@ export default function DiagramVersionHistory({
       setSelectedVersion(null);
       onRestore();
       loadVersions();
+      toast.success('Version restored successfully');
     } catch (error) {
       console.error('Failed to restore version:', error);
+      toast.error('Failed to restore version');
     }
   };
 

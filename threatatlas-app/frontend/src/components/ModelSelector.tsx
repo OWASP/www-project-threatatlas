@@ -21,6 +21,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Layers, BarChart3, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 import {
   Tooltip,
   TooltipContent,
@@ -161,6 +162,7 @@ export default function ModelSelector({
       }
     } catch (error) {
       console.error('Error loading models:', error);
+      toast.error('Failed to load models');
     }
   };
 
@@ -186,8 +188,10 @@ export default function ModelSelector({
       setModelName('');
       setModelDescription('');
       setCreateDialogOpen(false);
+      toast.success('Model created successfully');
     } catch (error) {
       console.error('Error creating model:', error);
+      toast.error('Failed to create model');
     } finally {
       setCreating(false);
     }
@@ -236,8 +240,10 @@ export default function ModelSelector({
 
       setEditDialogOpen(false);
       setEditingModel(null);
+      toast.success('Model updated successfully');
     } catch (error) {
       console.error('Error updating model:', error);
+      toast.error('Failed to update model');
     } finally {
       setUpdating(false);
     }
@@ -265,8 +271,10 @@ export default function ModelSelector({
 
       setDeleteDialogOpen(false);
       setModelToDelete(null);
+      toast.success('Model deleted successfully');
     } catch (error) {
       console.error('Error deleting model:', error);
+      toast.error('Failed to delete model');
     } finally {
       setDeleting(false);
     }
@@ -297,7 +305,7 @@ export default function ModelSelector({
           <SelectItem value="all" className="font-semibold h-10 px-2 py-2 border-b rounded-none">
             <div className="flex items-center gap-2">
               <span className="text-primary font-bold">ALL ANALYSES</span>
-              <Badge variant="secondary" className="text-[10px] ml-auto">{models.length}</Badge>
+              <Badge variant="secondary" className="text-[10px] ml-auto">{models.reduce((sum, m) => sum + m.threat_count, 0)}</Badge>
             </div>
           </SelectItem>
           {models.map((model) => (

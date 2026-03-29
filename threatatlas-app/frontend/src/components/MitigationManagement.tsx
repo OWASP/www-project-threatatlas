@@ -24,6 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Shield, Plus, Trash2, Search, X } from 'lucide-react';
 import { CommentSection } from '@/components/CommentSection';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface Mitigation {
   id: number;
@@ -88,6 +89,7 @@ export default function MitigationManagement({ diagramId, activeModelId, element
       setFrameworks(frameworksRes.data);
     } catch (error) {
       console.error('Error loading mitigations:', error);
+      toast.error('Failed to load mitigations');
     } finally {
       setLoading(false);
     }
@@ -107,8 +109,10 @@ export default function MitigationManagement({ diagramId, activeModelId, element
       setAddDialogOpen(false);
       setSearchQuery('');
       loadData();
+      toast.success('Mitigation attached successfully');
     } catch (error) {
       console.error('Error attaching mitigation:', error);
+      toast.error('Failed to attach mitigation');
     }
   };
 
@@ -116,8 +120,10 @@ export default function MitigationManagement({ diagramId, activeModelId, element
     try {
       await diagramMitigationsApi.update(diagramMitigationId, updates);
       loadData();
+      toast.success('Mitigation updated');
     } catch (error) {
       console.error('Error updating mitigation:', error);
+      toast.error('Failed to update mitigation');
     }
   };
 
@@ -125,8 +131,10 @@ export default function MitigationManagement({ diagramId, activeModelId, element
     try {
       await diagramMitigationsApi.delete(diagramMitigationId);
       loadData();
+      toast.success('Mitigation removed');
     } catch (error) {
       console.error('Error removing mitigation:', error);
+      toast.error('Failed to remove mitigation');
     }
   };
 

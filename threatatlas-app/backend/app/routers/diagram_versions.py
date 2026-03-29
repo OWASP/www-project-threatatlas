@@ -11,11 +11,13 @@ from app.schemas.diagram_version import (
 )
 from app.services import VersionService
 from app.auth.dependencies import get_current_user
+from app.auth.permissions import can_access_product, can_edit_product, PermissionDenied
+from app.models.enums import UserRole
 
 router = APIRouter(prefix="/diagram-versions", tags=["diagram-versions"])
 
 
-def check_diagram_access(diagram_id: int, user_id: int, db: Session) -> DiagramModel:
+def check_diagram_access(diagram_id: int, user: UserModel, db: Session) -> DiagramModel:
     """Helper to check if user can access diagram."""
     diagram = db.query(DiagramModel).filter(DiagramModel.id == diagram_id).first()
     if not diagram:
@@ -23,11 +25,8 @@ def check_diagram_access(diagram_id: int, user_id: int, db: Session) -> DiagramM
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Diagram with id {diagram_id} not found"
         )
-    if diagram.product.user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this diagram"
-        )
+    if not can_access_product(user, diagram.product):
+        raise PermissionDenied("Not authorized to access this diagram")
     return diagram
 
 
@@ -39,7 +38,7 @@ def list_versions(
 ):
     """List all versions for a diagram."""
     # Verify diagram exists and user has access
-    diagram = check_diagram_access(diagram_id, current_user.id, db)
+    diagram = check_diagram_access(diagram_id, current_user, db)
 
     # Get all versions, ordered by version number descending (newest first)
     versions = db.query(DiagramVersionModel).filter(
@@ -64,7 +63,7 @@ def create_version(
 ):
     """Manually create a version snapshot."""
     # Get diagram and check access
-    diagram = check_diagram_access(diagram_id, current_user.id, db)
+    diagram = check_diagram_access(diagram_id, current_user, db)
 
     # Create version
     version = VersionService.create_version(
@@ -86,7 +85,7 @@ def compare_versions(
 ):
     """Compare two versions and return differences."""
     # Verify diagram exists and user has access
-    diagram = check_diagram_access(diagram_id, current_user.id, db)
+    diagram = check_diagram_access(diagram_id, current_user, db)
 
     try:
         comparison = VersionService.compare_versions(
@@ -112,7 +111,7 @@ def restore_version(
 ):
     """Restore diagram to a previous version (creates new version)."""
     # Get diagram and check access
-    diagram = check_diagram_access(diagram_id, current_user.id, db)
+    diagram = check_diagram_access(diagram_id, current_user, db)
 
     try:
         new_version = VersionService.restore_version(
@@ -137,7 +136,7 @@ def get_version(
 ):
     """Get a specific version."""
     # Check diagram access first
-    check_diagram_access(diagram_id, current_user.id, db)
+    check_diagram_access(diagram_id, current_user, db)
 
     version = db.query(DiagramVersionModel).filter(
         DiagramVersionModel.diagram_id == diagram_id,
@@ -162,7 +161,7 @@ def delete_version(
 ):
     """Delete a specific version."""
     # Check diagram access first
-    check_diagram_access(diagram_id, current_user.id, db)
+    check_diagram_access(diagram_id, current_user, db)
 
     version = db.query(DiagramVersionModel).filter(
         DiagramVersionModel.diagram_id == diagram_id,

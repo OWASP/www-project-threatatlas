@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { collaboratorsApi, api } from '@/lib/api';
+import { collaboratorsApi, productsApi, api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import {
@@ -26,7 +26,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Share2, UserPlus, Trash2, Loader2 } from 'lucide-react';
+import { Share2, UserPlus, Trash2, Loader2, Globe, Lock } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,16 +63,20 @@ interface User {
 interface ShareProductDialogProps {
   productId: number;
   productName: string;
+  isPublic?: boolean;
+  onProductUpdate?: () => void;
   trigger?: React.ReactNode;
 }
 
-export default function ShareProductDialog({ productId, productName, trigger }: ShareProductDialogProps) {
+export default function ShareProductDialog({ productId, productName, isPublic: initialIsPublic = false, onProductUpdate, trigger }: ShareProductDialogProps) {
   const { user: currentUser } = useAuth();
   const [open, setOpen] = useState(false);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
+  const [visibilityLoading, setVisibilityLoading] = useState(false);
+  const [isPublic, setIsPublic] = useState(initialIsPublic);
 
   // Add collaborator form
   const [selectedUserId, setSelectedUserId] = useState<string>('');
@@ -82,10 +87,28 @@ export default function ShareProductDialog({ productId, productName, trigger }: 
   const [removeCollaborator, setRemoveCollaborator] = useState<Collaborator | null>(null);
 
   useEffect(() => {
+    setIsPublic(initialIsPublic);
+  }, [initialIsPublic]);
+
+  useEffect(() => {
     if (open) {
       loadData();
     }
   }, [open, productId]);
+
+  const handleToggleVisibility = async (newIsPublic: boolean) => {
+    setVisibilityLoading(true);
+    try {
+      await productsApi.update(productId, { is_public: newIsPublic });
+      setIsPublic(newIsPublic);
+      onProductUpdate?.();
+      toast.success(newIsPublic ? 'Product is now public' : 'Product is now private');
+    } catch {
+      toast.error('Failed to update visibility');
+    } finally {
+      setVisibilityLoading(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -98,6 +121,7 @@ export default function ShareProductDialog({ productId, productName, trigger }: 
       setAllUsers(usersRes.data);
     } catch (err) {
       console.error('Failed to load data:', err);
+      toast.error('Failed to load collaborators');
     } finally {
       setLoading(false);
     }
@@ -124,8 +148,10 @@ export default function ShareProductDialog({ productId, productName, trigger }: 
 
       // Reload collaborators
       await loadData();
+      toast.success('Collaborator added successfully');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to add collaborator');
+      toast.error('Failed to add collaborator');
     } finally {
       setAddLoading(false);
     }
@@ -135,8 +161,9 @@ export default function ShareProductDialog({ productId, productName, trigger }: 
     try {
       await collaboratorsApi.update(productId, userId, { role: newRole });
       await loadData();
+      toast.success('Role updated successfully');
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to update role');
+      toast.error(err.response?.data?.detail || 'Failed to update role');
     }
   };
 
@@ -147,8 +174,9 @@ export default function ShareProductDialog({ productId, productName, trigger }: 
       await collaboratorsApi.remove(productId, removeCollaborator.user_id);
       setRemoveCollaborator(null);
       await loadData();
+      toast.success('Collaborator removed');
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to remove collaborator');
+      toast.error(err.response?.data?.detail || 'Failed to remove collaborator');
     }
   };
 
@@ -178,6 +206,45 @@ export default function ShareProductDialog({ productId, productName, trigger }: 
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {/* Visibility */}
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">Visibility</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={visibilityLoading}
+                  onClick={() => !isPublic || handleToggleVisibility(false)}
+                  className={`flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors disabled:opacity-50 ${
+                    !isPublic
+                      ? 'border-primary bg-primary/5 text-foreground'
+                      : 'border-border text-muted-foreground hover:border-muted-foreground/50 cursor-pointer'
+                  }`}
+                >
+                  <Lock className="h-4 w-4 shrink-0" />
+                  <div className="text-left">
+                    <div className="font-medium">Private</div>
+                    <div className="text-xs text-muted-foreground">Only shared users</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  disabled={visibilityLoading}
+                  onClick={() => isPublic || handleToggleVisibility(true)}
+                  className={`flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors disabled:opacity-50 ${
+                    isPublic
+                      ? 'border-primary bg-primary/5 text-foreground'
+                      : 'border-border text-muted-foreground hover:border-muted-foreground/50 cursor-pointer'
+                  }`}
+                >
+                  <Globe className="h-4 w-4 shrink-0" />
+                  <div className="text-left">
+                    <div className="font-medium">Public</div>
+                    <div className="text-xs text-muted-foreground">All users can view</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
             {/* Add Collaborator Form */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
               <h3 className="font-semibold text-sm">Add Collaborator</h3>

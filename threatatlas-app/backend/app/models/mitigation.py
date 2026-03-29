@@ -16,6 +16,10 @@ class Mitigation(Base):
     description = Column(Text, nullable=True)
     category = Column(String(100), nullable=True)
     is_custom = Column(Boolean, default=False, nullable=False)  # User-created vs pre-defined
+    is_modified = Column(Boolean, default=False, nullable=False)  # Predefined entry edited by a user
+    original_name = Column(String(200), nullable=True)        # Snapshot taken on first edit
+    original_description = Column(Text, nullable=True)
+    original_category = Column(String(100), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

@@ -30,6 +30,14 @@
   --chart-3: hsl(46.1538 28.2609% 81.9608%);
   --chart-4: hsl(256.5517 49.1525% 88.4314%);
   --chart-5: hsl(17.7778 60% 44.1176%);
+  --risk-low: hsl(142 60% 40%);
+  --risk-low-muted: hsl(142 60% 40% / 0.12);
+  --risk-medium: hsl(45 92% 44%);
+  --risk-medium-muted: hsl(45 92% 44% / 0.12);
+  --risk-high: hsl(25 90% 50%);
+  --risk-high-muted: hsl(25 90% 50% / 0.12);
+  --risk-critical: hsl(0 84% 56%);
+  --risk-critical-muted: hsl(0 84% 56% / 0.12);
   --sidebar: hsl(51.4286 25.9259% 94.7059%);
   --sidebar-foreground: hsl(60 2.5210% 23.3333%);
   --sidebar-primary: hsl(15.1111 55.5556% 52.3529%);
@@ -85,6 +93,14 @@
   --chart-3: hsl(48 10.6383% 9.2157%);
   --chart-4: hsl(248.2759 25.2174% 22.5490%);
   --chart-5: hsl(17.7778 60% 44.1176%);
+  --risk-low: hsl(142 55% 48%);
+  --risk-low-muted: hsl(142 55% 48% / 0.15);
+  --risk-medium: hsl(45 88% 52%);
+  --risk-medium-muted: hsl(45 88% 52% / 0.15);
+  --risk-high: hsl(25 85% 55%);
+  --risk-high-muted: hsl(25 85% 55% / 0.15);
+  --risk-critical: hsl(0 80% 60%);
+  --risk-critical-muted: hsl(0 80% 60% / 0.15);
   --sidebar: hsl(30 3.3333% 11.7647%);
   --sidebar-foreground: hsl(46.1538 9.7744% 73.9216%);
   --sidebar-primary: hsl(0 0% 20.3922%);
@@ -226,6 +242,10 @@
     animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  .animate-fadeInUp {
+    animation: fadeInUp 0.5s ease-out both;
+  }
+
   /* Glass effect */
   .glass {
     background: rgba(255, 255, 255, 0.7);
@@ -266,5 +286,16 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

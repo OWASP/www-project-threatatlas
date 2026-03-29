@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
-import { Pencil, Trash2, Check, X } from 'lucide-react';
+import { Pencil, Trash2, Check, X, MessageSquarePlus } from 'lucide-react';
 
 interface Comment {
   id?: string;
@@ -31,6 +31,7 @@ export function CommentSection({ comments, onSave, canWrite, authorName }: Comme
   const [newComment, setNewComment] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
+  const [showInput, setShowInput] = useState(false);
 
   // Parse existing comments
   let parsedComments: Comment[] = [];
@@ -66,6 +67,7 @@ export function CommentSection({ comments, onSave, canWrite, authorName }: Comme
     const updatedComments = [...parsedComments, commentObj];
     onSave(JSON.stringify(updatedComments));
     setNewComment('');
+    setShowInput(false);
   };
 
   const handleSaveEdit = (commentId: string) => {
@@ -116,6 +118,7 @@ export function CommentSection({ comments, onSave, canWrite, authorName }: Comme
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                      aria-label="Edit comment"
                       onClick={() => {
                         setEditingId(comment.id || null);
                         setEditCommentText(comment.text);
@@ -127,6 +130,7 @@ export function CommentSection({ comments, onSave, canWrite, authorName }: Comme
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                      aria-label="Delete comment"
                       onClick={() => handleDelete(comment.id as string)}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -165,19 +169,45 @@ export function CommentSection({ comments, onSave, canWrite, authorName }: Comme
       )}
       
       {canWrite && !editingId && (
-        <div className="space-y-2 mt-2 pt-2 border-t border-border/40">
-          <Textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Add a comment..."
-            className="text-xs min-h-[60px] resize-none"
-          />
-          <div className="flex justify-end">
-            <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()} className="h-7 text-xs px-3">
-              Add Comment
-            </Button>
+        showInput ? (
+          <div className="space-y-2 mt-2 pt-2 border-t border-border/40">
+            <Textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Write a comment..."
+              className="text-xs min-h-[60px] resize-none"
+              autoFocus
+            />
+            <div className="flex items-center justify-end gap-1.5">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-[10px]"
+                onClick={() => { setShowInput(false); setNewComment(''); }}
+              >
+                <X className="h-3 w-3 mr-1" />
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="h-6 px-2 text-[10px]"
+                onClick={handleAddComment}
+                disabled={!newComment.trim()}
+              >
+                <Check className="h-3 w-3 mr-1" />
+                Save
+              </Button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <button
+            onClick={() => setShowInput(true)}
+            className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors mt-1"
+          >
+            <MessageSquarePlus className="h-3.5 w-3.5" />
+            Add comment
+          </button>
+        )
       )}
     </div>
   );

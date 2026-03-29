@@ -48,7 +48,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Library, AlertTriangle, Shield, Sparkles, Plus, MoreVertical, Pencil, Trash2, Search, X } from 'lucide-react';
+import { Library, AlertTriangle, Shield, Sparkles, Plus, MoreVertical, Pencil, Trash2, Search, X, Undo2, Map } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { toast } from 'sonner';
 
 interface Framework {
   id: number;
@@ -65,6 +68,10 @@ interface Threat {
   description: string;
   category: string;
   is_custom: boolean;
+  is_modified: boolean;
+  original_name: string | null;
+  original_description: string | null;
+  original_category: string | null;
   user_id: number | null;
 }
 
@@ -75,6 +82,10 @@ interface Mitigation {
   description: string;
   category: string;
   is_custom: boolean;
+  is_modified: boolean;
+  original_name: string | null;
+  original_description: string | null;
+  original_category: string | null;
   user_id: number | null;
 }
 
@@ -85,6 +96,7 @@ export default function KnowledgeBase() {
   const [threats, setThreats] = useState<Threat[]>([]);
   const [mitigations, setMitigations] = useState<Mitigation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingContent, setLoadingContent] = useState(false);
 
   // Filter state
   const [threatSearch, setThreatSearch] = useState('');
@@ -119,12 +131,15 @@ export default function KnowledgeBase() {
 
   useEffect(() => {
     if (selectedFramework) {
-      loadThreats(selectedFramework);
-      loadMitigations(selectedFramework);
+      setLoadingContent(true);
       setThreatSearch('');
       setThreatCategoryFilter('all');
       setMitigationSearch('');
       setMitigationCategoryFilter('all');
+      Promise.all([
+        loadThreats(selectedFramework),
+        loadMitigations(selectedFramework),
+      ]).finally(() => setLoadingContent(false));
     }
   }, [selectedFramework]);
 
@@ -138,6 +153,7 @@ export default function KnowledgeBase() {
       }
     } catch (error) {
       console.error('Error loading frameworks:', error);
+      toast.error('Failed to load frameworks. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -149,6 +165,7 @@ export default function KnowledgeBase() {
       setThreats(response.data);
     } catch (error) {
       console.error('Error loading threats:', error);
+      toast.error('Failed to load threats. Please try again.');
     }
   };
 
@@ -158,6 +175,7 @@ export default function KnowledgeBase() {
       setMitigations(response.data);
     } catch (error) {
       console.error('Error loading mitigations:', error);
+      toast.error('Failed to load mitigations. Please try again.');
     }
   };
 
@@ -169,8 +187,10 @@ export default function KnowledgeBase() {
       setFrameworkForm({ name: '', description: '' });
       loadFrameworks();
       setSelectedFramework(response.data.id);
+      toast.success('Framework created successfully.');
     } catch (error) {
       console.error('Error creating framework:', error);
+      toast.error('Failed to create framework. Please try again.');
     }
   };
 
@@ -182,8 +202,10 @@ export default function KnowledgeBase() {
       setEditingFramework(null);
       setFrameworkForm({ name: '', description: '' });
       loadFrameworks();
+      toast.success('Framework updated successfully.');
     } catch (error) {
       console.error('Error updating framework:', error);
+      toast.error('Failed to update framework. Please try again.');
     }
   };
 
@@ -207,8 +229,10 @@ export default function KnowledgeBase() {
         setSelectedFramework(null);
       }
       loadFrameworks();
+      toast.success('Framework deleted successfully.');
     } catch (error) {
       console.error('Error deleting framework:', error);
+      toast.error('Failed to delete framework. Please try again.');
     }
   };
 
@@ -237,8 +261,10 @@ export default function KnowledgeBase() {
       setThreatDialogOpen(false);
       setThreatForm({ name: '', description: '', category: '' });
       loadThreats(selectedFramework);
+      toast.success('Threat created successfully.');
     } catch (error) {
       console.error('Error creating threat:', error);
+      toast.error('Failed to create threat. Please try again.');
     }
   };
 
@@ -250,16 +276,14 @@ export default function KnowledgeBase() {
       setEditingThreat(null);
       setThreatForm({ name: '', description: '', category: '' });
       if (selectedFramework) loadThreats(selectedFramework);
+      toast.success('Threat updated successfully.');
     } catch (error) {
       console.error('Error updating threat:', error);
+      toast.error('Failed to update threat. Please try again.');
     }
   };
 
   const openDeleteThreatDialog = (threat: Threat) => {
-    if (!threat.is_custom) {
-      alert('Cannot delete pre-defined threats');
-      return;
-    }
     setThreatToDelete(threat);
     setDeleteThreatOpen(true);
   };
@@ -271,8 +295,21 @@ export default function KnowledgeBase() {
       setDeleteThreatOpen(false);
       setThreatToDelete(null);
       if (selectedFramework) loadThreats(selectedFramework);
+      toast.success('Threat deleted successfully.');
     } catch (error) {
       console.error('Error deleting threat:', error);
+      toast.error('Failed to delete threat. Please try again.');
+    }
+  };
+
+  const handleRevertThreat = async (threat: Threat) => {
+    try {
+      await threatsApi.revert(threat.id);
+      if (selectedFramework) loadThreats(selectedFramework);
+      toast.success('Threat reverted to original.');
+    } catch (error) {
+      console.error('Error reverting threat:', error);
+      toast.error('Failed to revert threat.');
     }
   };
 
@@ -302,8 +339,10 @@ export default function KnowledgeBase() {
       setMitigationDialogOpen(false);
       setMitigationForm({ name: '', description: '', category: '' });
       loadMitigations(selectedFramework);
+      toast.success('Mitigation created successfully.');
     } catch (error) {
       console.error('Error creating mitigation:', error);
+      toast.error('Failed to create mitigation. Please try again.');
     }
   };
 
@@ -315,16 +354,14 @@ export default function KnowledgeBase() {
       setEditingMitigation(null);
       setMitigationForm({ name: '', description: '', category: '' });
       if (selectedFramework) loadMitigations(selectedFramework);
+      toast.success('Mitigation updated successfully.');
     } catch (error) {
       console.error('Error updating mitigation:', error);
+      toast.error('Failed to update mitigation. Please try again.');
     }
   };
 
   const openDeleteMitigationDialog = (mitigation: Mitigation) => {
-    if (!mitigation.is_custom) {
-      alert('Cannot delete pre-defined mitigations');
-      return;
-    }
     setMitigationToDelete(mitigation);
     setDeleteMitigationOpen(true);
   };
@@ -336,8 +373,21 @@ export default function KnowledgeBase() {
       setDeleteMitigationOpen(false);
       setMitigationToDelete(null);
       if (selectedFramework) loadMitigations(selectedFramework);
+      toast.success('Mitigation deleted successfully.');
     } catch (error) {
       console.error('Error deleting mitigation:', error);
+      toast.error('Failed to delete mitigation. Please try again.');
+    }
+  };
+
+  const handleRevertMitigation = async (mitigation: Mitigation) => {
+    try {
+      await mitigationsApi.revert(mitigation.id);
+      if (selectedFramework) loadMitigations(selectedFramework);
+      toast.success('Mitigation reverted to original.');
+    } catch (error) {
+      console.error('Error reverting mitigation:', error);
+      toast.error('Failed to revert mitigation.');
     }
   };
 
@@ -401,53 +451,42 @@ export default function KnowledgeBase() {
         </Card>
       ) : (
         <div className="space-y-5">
-          {/* Framework Selection */}
-          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-            {frameworks.map((framework, index) => {
+          {/* Framework Selection — 8 per row, compact */}
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8">
+            {frameworks.map((framework) => {
               const isSelected = selectedFramework === framework.id;
               return (
                 <Card
                   key={framework.id}
-                  className={`cursor-pointer relative transition-all duration-300 hover:shadow-lg rounded-xl group ${isSelected ? 'border-primary/60 ring-2 ring-primary/50 ring-offset-2 shadow-md' : 'hover:border-primary/30'
-                    }`}
+                  className={`cursor-pointer relative transition-all duration-200 rounded-xl group ${
+                    isSelected
+                      ? 'border-primary/60 ring-2 ring-primary/40 ring-offset-1 shadow-sm bg-primary/5'
+                      : 'hover:border-primary/30 hover:shadow-sm'
+                  }`}
                   onClick={() => setSelectedFramework(framework.id)}
-                  style={{
-                    animation: 'slideUp 0.5s ease-out forwards',
-                    animationDelay: `${index * 100}ms`,
-                    opacity: 0
-                  }}
                 >
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-4">
-                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl shrink-0 shadow-sm transition-all duration-300 ${isSelected
-                        ? 'bg-primary text-primary-foreground shadow-lg scale-110'
-                        : 'bg-primary/10 text-primary group-hover:bg-primary/15 group-hover:scale-105'
-                        }`}>
-                        <Library className={`h-5 w-5 transition-transform duration-300 ${isSelected ? 'rotate-12' : 'group-hover:rotate-12'}`} />
-                      </div>
-                      <div className="flex-1 min-w-0 pr-8">
-                        <div className="flex items-center gap-2 mb-1.5 ">
-                          <h3 className="font-bold text-base bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text truncate">
-                            {framework.name}
-                          </h3>
-                          {framework.is_custom && (
-                            <Badge variant="outline" className="text-[10px] py-2 font-semibold uppercase tracking-wider">
-                              Custom
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed font-medium">
-                          {framework.description}
-                        </p>
-                      </div>
+                  <CardContent className="p-3 flex items-center gap-2.5">
+                    <div className={`flex h-7 w-7 items-center justify-center rounded-lg shrink-0 transition-all duration-200 ${
+                      isSelected
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-primary/10 text-primary group-hover:bg-primary/20'
+                    }`}>
+                      <Library className="h-3.5 w-3.5" />
                     </div>
-
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold truncate leading-tight ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                        {framework.name}
+                      </p>
+                      {framework.is_custom && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Custom</span>
+                      )}
+                    </div>
                     {framework.is_custom && canWrite && (
-                      <div className="absolute top-4 right-4" onClick={(e) => e.stopPropagation()}>
+                      <div onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-muted transition-all rounded-lg">
-                              <MoreVertical className="h-4 w-4" />
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-muted rounded-md shrink-0">
+                              <MoreVertical className="h-3 w-3" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40">
@@ -473,9 +512,41 @@ export default function KnowledgeBase() {
             })}
           </div>
 
+          {/* Framework Description Panel */}
+          {selectedFramework && (() => {
+            const fw = frameworks.find(f => f.id === selectedFramework);
+            if (!fw) return null;
+            return (
+              <Card className="border-border/60 rounded-xl">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0 mt-0.5">
+                    <Library className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-sm">{fw.name}</h3>
+                      {fw.is_custom && (
+                        <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wider">Custom</Badge>
+                      )}
+                      {loadingContent && (
+                        <span className="text-xs text-muted-foreground animate-pulse">Loading threats &amp; mitigations…</span>
+                      )}
+                      {!loadingContent && (
+                        <span className="text-xs text-muted-foreground">
+                          {threats.length} threats · {mitigations.length} mitigations
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{fw.description}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* Threats and Mitigations Tabs */}
           <Tabs defaultValue="threats" className="w-full space-y-4">
-            <TabsList className="grid w-full max-w-[420px] grid-cols-2 h-11 p-1 rounded-xl shadow-sm">
+            <TabsList className="grid w-full max-w-[580px] grid-cols-3 h-11 p-1 rounded-xl shadow-sm">
               <TabsTrigger value="threats" className="gap-2 rounded-lg font-semibold transition-all duration-200 data-[state=active]:shadow-sm">
                 <AlertTriangle className="h-4 w-4" />
                 Threats ({threats.length})
@@ -483,6 +554,10 @@ export default function KnowledgeBase() {
               <TabsTrigger value="mitigations" className="gap-2 rounded-lg font-semibold transition-all duration-200 data-[state=active]:shadow-sm">
                 <Shield className="h-4 w-4" />
                 Mitigations ({mitigations.length})
+              </TabsTrigger>
+              <TabsTrigger value="coverage" className="gap-2 rounded-lg font-semibold transition-all duration-200 data-[state=active]:shadow-sm">
+                <Map className="h-4 w-4" />
+                Coverage
               </TabsTrigger>
             </TabsList>
 
@@ -619,36 +694,53 @@ export default function KnowledgeBase() {
                             <TableCell>
                               <Badge variant="outline" className="font-medium shadow-sm rounded-lg">{threat.category}</Badge>
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground max-w-md font-medium">
-                              {threat.description}
+                            <TableCell className="text-sm text-muted-foreground max-w-xs font-medium">
+                              <span className="line-clamp-2" title={threat.description}>{threat.description}</span>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={threat.is_custom ? 'default' : 'secondary'} className="gap-1.5 font-semibold shadow-sm rounded-lg">
-                                {threat.is_custom && <Sparkles className="h-3 w-3" />}
-                                {threat.is_custom ? 'Custom' : 'Predefined'}
-                              </Badge>
+                              {threat.is_custom ? (
+                                <Badge variant="default" className="gap-1.5 font-semibold shadow-sm rounded-lg">
+                                  <Sparkles className="h-3 w-3" />Custom
+                                </Badge>
+                              ) : threat.is_modified ? (
+                                <Badge variant="outline" className="gap-1.5 font-semibold shadow-sm rounded-lg border-amber-400 text-amber-700 dark:text-amber-400">
+                                  <Pencil className="h-3 w-3" />Modified
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="font-semibold shadow-sm rounded-lg">Predefined</Badge>
+                              )}
                             </TableCell>
                             <TableCell>
-                              {threat.is_custom && canWrite && (
+                              {canWrite && (
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-muted transition-all rounded-lg">
                                       <MoreVertical className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-40">
+                                  <DropdownMenuContent align="end" className="w-44">
                                     <DropdownMenuItem onClick={() => openThreatDialog(threat)} className="cursor-pointer">
                                       <Pencil className="mr-2 h-4 w-4" />
                                       Edit
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => openDeleteThreatDialog(threat)}
-                                      className="text-destructive cursor-pointer focus:text-destructive"
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      Delete
-                                    </DropdownMenuItem>
+                                    {!threat.is_custom && threat.is_modified && (
+                                      <DropdownMenuItem onClick={() => handleRevertThreat(threat)} className="cursor-pointer">
+                                        <Undo2 className="mr-2 h-4 w-4" />
+                                        Revert to original
+                                      </DropdownMenuItem>
+                                    )}
+                                    {threat.is_custom && (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          onClick={() => openDeleteThreatDialog(threat)}
+                                          className="text-destructive cursor-pointer focus:text-destructive"
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Delete
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               )}
@@ -795,36 +887,53 @@ export default function KnowledgeBase() {
                             <TableCell>
                               <Badge variant="outline" className="font-medium shadow-sm rounded-lg">{mitigation.category}</Badge>
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground max-w-md font-medium">
-                              {mitigation.description}
+                            <TableCell className="text-sm text-muted-foreground max-w-xs font-medium">
+                              <span className="line-clamp-2" title={mitigation.description}>{mitigation.description}</span>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={mitigation.is_custom ? 'default' : 'secondary'} className="gap-1.5 font-semibold shadow-sm rounded-lg">
-                                {mitigation.is_custom && <Sparkles className="h-3 w-3" />}
-                                {mitigation.is_custom ? 'Custom' : 'Predefined'}
-                              </Badge>
+                              {mitigation.is_custom ? (
+                                <Badge variant="default" className="gap-1.5 font-semibold shadow-sm rounded-lg">
+                                  <Sparkles className="h-3 w-3" />Custom
+                                </Badge>
+                              ) : mitigation.is_modified ? (
+                                <Badge variant="outline" className="gap-1.5 font-semibold shadow-sm rounded-lg border-amber-400 text-amber-700 dark:text-amber-400">
+                                  <Pencil className="h-3 w-3" />Modified
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="font-semibold shadow-sm rounded-lg">Predefined</Badge>
+                              )}
                             </TableCell>
                             <TableCell>
-                              {mitigation.is_custom && canWrite && (
+                              {canWrite && (
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-muted transition-all rounded-lg">
                                       <MoreVertical className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-40">
+                                  <DropdownMenuContent align="end" className="w-44">
                                     <DropdownMenuItem onClick={() => openMitigationDialog(mitigation)} className="cursor-pointer">
                                       <Pencil className="mr-2 h-4 w-4" />
                                       Edit
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => openDeleteMitigationDialog(mitigation)}
-                                      className="text-destructive cursor-pointer focus:text-destructive"
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      Delete
-                                    </DropdownMenuItem>
+                                    {!mitigation.is_custom && mitigation.is_modified && (
+                                      <DropdownMenuItem onClick={() => handleRevertMitigation(mitigation)} className="cursor-pointer">
+                                        <Undo2 className="mr-2 h-4 w-4" />
+                                        Revert to original
+                                      </DropdownMenuItem>
+                                    )}
+                                    {mitigation.is_custom && (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          onClick={() => openDeleteMitigationDialog(mitigation)}
+                                          className="text-destructive cursor-pointer focus:text-destructive"
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Delete
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               )}
@@ -836,6 +945,108 @@ export default function KnowledgeBase() {
                   </CardContent>
                 </Card>
               )}
+            </TabsContent>
+
+            {/* Coverage Tab */}
+            <TabsContent value="coverage" className="space-y-4 animate-fadeIn">
+              {(() => {
+                const allCategories = Array.from(
+                  new Set([...threats.map(t => t.category), ...mitigations.map(m => m.category)])
+                ).filter(Boolean).sort();
+
+                if (allCategories.length === 0) {
+                  return (
+                    <Card className="border-dashed border-2 rounded-xl">
+                      <CardContent className="flex flex-col items-center justify-center p-16">
+                        <Map className="h-10 w-10 text-muted-foreground mb-3" />
+                        <h3 className="text-base font-bold mb-1">No coverage data</h3>
+                        <p className="text-sm text-muted-foreground text-center">
+                          Add threats and mitigations to this framework to see coverage.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+
+                const chartData = allCategories.map(cat => ({
+                  category: cat,
+                  threats: threats.filter(t => t.category === cat).length,
+                  mitigations: mitigations.filter(m => m.category === cat).length,
+                }));
+
+                const chartConfig = {
+                  threats: { label: 'Threats', color: 'var(--chart-1)' },
+                  mitigations: { label: 'Mitigations', color: 'var(--chart-2)' },
+                } satisfies ChartConfig;
+
+                const totalThreats = threats.length;
+                const totalMitigations = mitigations.length;
+                const overallCoverage = Math.round(
+                  allCategories.reduce((sum, cat) => {
+                    const t = threats.filter(x => x.category === cat).length;
+                    const m = mitigations.filter(x => x.category === cat).length;
+                    return sum + (t === 0 ? (m > 0 ? 100 : 0) : Math.min(100, Math.round((m / t) * 100)));
+                  }, 0) / allCategories.length
+                );
+                const coverageColor = overallCoverage >= 75 ? 'text-green-600' : overallCoverage >= 40 ? 'text-amber-600' : 'text-red-600';
+                const barHeight = Math.max(320, allCategories.length * 80);
+
+                return (
+                  <>
+                    {/* Summary strip */}
+                    <div className="grid grid-cols-4 gap-3">
+                      {[
+                        { label: 'Categories', value: allCategories.length, color: '' },
+                        { label: 'Threats', value: totalThreats, color: 'text-orange-600' },
+                        { label: 'Mitigations', value: totalMitigations, color: 'text-green-600' },
+                        { label: 'Avg Coverage', value: `${overallCoverage}%`, color: coverageColor },
+                      ].map(({ label, value, color }) => (
+                        <Card key={label} className="rounded-xl">
+                          <CardContent className="p-3 text-center">
+                            <p className={`text-xl font-bold tabular-nums ${color}`}>{value}</p>
+                            <p className="text-[11px] text-muted-foreground">{label}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {/* Chart */}
+                    <Card className="rounded-xl border-border/60">
+                      <CardContent className="p-0 pt-4">
+                        <ChartContainer config={chartConfig} className="w-full" style={{ height: barHeight }}>
+                          <BarChart
+                            data={chartData}
+                            layout="vertical"
+                            margin={{ top: 0, right: 24, left: 0, bottom: 8 }}
+                            barCategoryGap="20%"
+                            barGap={4}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                            <XAxis
+                              type="number"
+                              allowDecimals={false}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              type="category"
+                              dataKey="category"
+                              width={150}
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fontSize: 12 }}
+                            />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8, paddingBottom: 8 }} />
+                            <Bar dataKey="threats" fill="var(--chart-1)" radius={[0, 6, 6, 0]} />
+                            <Bar dataKey="mitigations" fill="var(--chart-2)" radius={[0, 6, 6, 0]} />
+                          </BarChart>
+                        </ChartContainer>
+                      </CardContent>
+                    </Card>
+                  </>
+                );
+              })()}
             </TabsContent>
           </Tabs>
         </div>

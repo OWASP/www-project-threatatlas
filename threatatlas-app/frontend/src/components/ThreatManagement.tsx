@@ -40,9 +40,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { AlertTriangle, Plus, Trash2, Search, X, Shield, ChevronDown, Layers } from 'lucide-react';
 import { RiskSelector } from '@/components/RiskSelector';
-import { getSeverityVariant } from '@/lib/risk';
+import { getSeverityVariant, getSeverityStripeClass, getStatusClasses } from '@/lib/risk';
 import { CommentSection } from '@/components/CommentSection';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface Threat {
   id: number;
@@ -170,6 +171,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
       setAvailableMitigations(availableMitigationsRes.data);
     } catch (error) {
       console.error('Error loading threats:', error);
+      toast.error('Failed to load threats');
     } finally {
       setLoading(false);
     }
@@ -190,8 +192,10 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
       setAddDialogOpen(false);
       setSearchQuery('');
       loadData();
+      toast.success('Threat attached successfully');
     } catch (error) {
       console.error('Error attaching threat:', error);
+      toast.error('Failed to attach threat');
     }
   };
 
@@ -199,8 +203,10 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
     try {
       await diagramThreatsApi.update(diagramThreatId, updates);
       loadData();
+      toast.success('Threat updated');
     } catch (error) {
       console.error('Error updating threat:', error);
+      toast.error('Failed to update threat');
     }
   };
 
@@ -208,8 +214,10 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
     try {
       await diagramThreatsApi.delete(diagramThreatId);
       loadData();
+      toast.success('Threat removed');
     } catch (error) {
       console.error('Error removing threat:', error);
+      toast.error('Failed to remove threat');
     }
   };
 
@@ -230,8 +238,10 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
       setMitigationSearchQuery('');
       setCurrentThreat(null);
       loadData();
+      toast.success('Mitigation attached successfully');
     } catch (error) {
       console.error('Error attaching mitigation:', error);
+      toast.error('Failed to attach mitigation');
     }
   };
 
@@ -239,8 +249,10 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
     try {
       await diagramMitigationsApi.delete(mitigationId);
       loadData();
+      toast.success('Mitigation removed');
     } catch (error) {
       console.error('Error removing mitigation:', error);
+      toast.error('Failed to remove mitigation');
     }
   };
 
@@ -248,8 +260,10 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
     try {
       await diagramMitigationsApi.update(mitigationId, updates);
       loadData();
+      toast.success('Mitigation updated');
     } catch (error) {
       console.error('Error updating mitigation:', error);
+      toast.error('Failed to update mitigation');
     }
   };
 
@@ -263,10 +277,12 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
       setCreateThreatDialogOpen(false);
       setThreatForm({ name: '', description: '', category: '', framework_id: 0 });
       loadData();
+      toast.success('Custom threat created');
       // Optionally attach the newly created threat
       await handleAttachThreat(response.data);
     } catch (error) {
       console.error('Error creating custom threat:', error);
+      toast.error('Failed to create custom threat');
     }
   };
 
@@ -279,10 +295,12 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
       });
       setCreateMitigationDialogOpen(false);
       setMitigationForm({ name: '', description: '', category: '', framework_id: 0 });
+      toast.success('Custom mitigation created');
       // Attach the newly created mitigation (this will also clear currentThreat and reload data)
       await handleAttachMitigation(response.data);
     } catch (error) {
       console.error('Error creating custom mitigation:', error);
+      toast.error('Failed to create custom mitigation');
     }
   };
 
@@ -317,248 +335,263 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
   };
 
   return (
-    <Card>
-      <CardContent className="p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-            <h3 className="font-semibold text-sm">Threats ({attachedThreats.length})</h3>
-          </div>
-          <Button
-            size="sm"
-            onClick={() => setAddDialogOpen(true)}
-            disabled={!activeModelId}
-            title={!activeModelId ? "Select a model to add threats" : ""}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add
-          </Button>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-bold text-muted-foreground tracking-wider">THREATS</p>
+          {attachedThreats.length > 0 && (
+            <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{attachedThreats.length}</Badge>
+          )}
         </div>
+        <Button
+          size="sm"
+          className="h-8 gap-1.5"
+          onClick={() => setAddDialogOpen(true)}
+          disabled={!activeModelId}
+          title={!activeModelId ? 'Select a model to add threats' : ''}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add Threat
+        </Button>
+      </div>
 
-      {loading ? (
-        <Card>
-          <CardContent className="p-4 text-center text-sm text-muted-foreground">
-            Loading threats...
-          </CardContent>
-        </Card>
-      ) : attachedThreats.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="p-6 text-center">
-            <AlertTriangle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground mb-3 font-medium">No threats attached</p>
-            {activeModelId ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setAddDialogOpen(true)}
-                className="rounded-lg"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Threat
-              </Button>
-            ) : (
-              <div className="space-y-4">
-                <p className="text-xs text-muted-foreground bg-muted/60 p-4 rounded-lg border border-dashed leading-relaxed max-w-[280px] mx-auto">
-                   There are no threats attached to this element across all models. 
-                   <span className="block mt-2 font-medium opacity-80">Select a specific model to add new threats.</span>
-                </p>
+      {/* Stats bar */}
+      {attachedThreats.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {(['identified', 'mitigated', 'accepted'] as const).map((s) => {
+            const count = attachedThreats.filter((t) => t.status === s).length;
+            return (
+              <div key={s} className={`rounded-lg border px-3 py-2 text-center ${getStatusClasses(s)}`}>
+                <p className="text-base font-bold tabular-nums">{count}</p>
+                <p className="text-[10px] capitalize">{s}</p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Content */}
+      {loading ? (
+        <div className="flex items-center justify-center py-10">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      ) : attachedThreats.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-10 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 mb-3">
+            <AlertTriangle className="h-5 w-5 text-orange-600" />
+          </div>
+          <p className="text-sm font-semibold mb-1">No threats attached</p>
+          {activeModelId ? (
+            <Button size="sm" variant="outline" onClick={() => setAddDialogOpen(true)} className="mt-2 gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
+              Add Threat
+            </Button>
+          ) : (
+            <p className="text-xs text-muted-foreground max-w-[240px] mt-1 leading-relaxed">
+              Select a model above to start attaching threats to this element.
+            </p>
+          )}
+        </div>
       ) : (
         <div className="space-y-3">
-          {attachedThreats.map((dt) => (
-            <Collapsible
-              key={dt.id}
-              open={expandedThreats[dt.id] !== false}
-              onOpenChange={() => toggleThreat(dt.id)}
-            >
-              <Card className="hover:bg-muted/30 transition-colors">
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <CollapsibleTrigger asChild>
-                        <button className="flex-1 pt-2 text-left">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-semibold text-sm">{dt.threat.name}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              {dt.threat.category}
-                            </Badge>
-                            {dt.severity && (
-                              <Badge variant={getSeverityVariant(dt.severity)} className="text-xs capitalize">
-                                {dt.severity}
-                              </Badge>
-                            )}
-                            {dt.risk_score !== null && (
-                              <Badge variant="outline" className="text-xs">
-                                Risk: {dt.risk_score}
-                              </Badge>
-                            )}
-                            {dt.model && !activeModelId && (
-                              <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                                <Layers className="h-3 w-3" />
-                                {dt.model.name}
-                              </Badge>
-                            )}
-                            <ChevronDown 
-                              className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ml-auto ${
-                                expandedThreats[dt.id] !== false ? 'transform rotate-180' : ''
-                              }`}
-                            />
+          {attachedThreats.map((dt) => {
+            const isExpanded = expandedThreats[dt.id] !== false;
+            const linkedMits = elementMitigations.filter((dm: any) => dm.threat_id === dt.id);
+            return (
+              <Collapsible key={dt.id} open={isExpanded} onOpenChange={() => toggleThreat(dt.id)}>
+                <Card className="overflow-hidden transition-shadow hover:shadow-sm">
+                  {/* Severity stripe */}
+                  <div className={`h-0.5 w-full ${getSeverityStripeClass(dt.severity)}`} />
+                  <CardContent className="p-4">
+                    {/* Card header */}
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10 shrink-0 mt-0.5">
+                        <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold leading-snug">{dt.threat.name}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                              <Badge variant="outline" className="text-[10px]">{dt.threat.category}</Badge>
+                              {dt.severity && (
+                                <Badge variant={getSeverityVariant(dt.severity)} className="text-[10px] capitalize">
+                                  {dt.severity}
+                                </Badge>
+                              )}
+                              {dt.risk_score !== null && (
+                                <Badge variant="secondary" className="text-[10px] font-mono">
+                                  Risk {dt.risk_score}
+                                </Badge>
+                              )}
+                              {dt.model && !activeModelId && (
+                                <Badge variant="secondary" className="text-[10px] gap-1">
+                                  <Layers className="h-2.5 w-2.5" />{dt.model.name}
+                                </Badge>
+                              )}
+                              {linkedMits.length > 0 && (
+                                <Badge variant="outline" className="text-[10px] gap-1 text-green-700 border-green-300">
+                                  <Shield className="h-2.5 w-2.5" />{linkedMits.length}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-sm text-muted-foreground">
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive"
+                              aria-label="Remove threat"
+                              onClick={(e) => { e.stopPropagation(); setThreatToDelete(dt); }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                              </Button>
+                            </CollapsibleTrigger>
+                          </div>
+                        </div>
+                        {/* Description preview when collapsed */}
+                        {!isExpanded && (
+                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-1 leading-relaxed">
                             {dt.threat.description}
                           </p>
-                        </button>
-                      </CollapsibleTrigger>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setThreatToDelete(dt);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-
-                    <CollapsibleContent>
-                      <div className="space-y-2 pt-2">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs">Status:</Label>
-                      <Select
-                        value={dt.status}
-                        onValueChange={(value) =>
-                          handleUpdateThreat(dt.id, { status: value })
-                        }
-                      >
-                        <SelectTrigger className="h-7 text-xs w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="identified">Identified</SelectItem>
-                          <SelectItem value="mitigated">Mitigated</SelectItem>
-                          <SelectItem value="accepted">Accepted</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Badge variant={getStatusColor(dt.status)} className="text-xs">
-                        {dt.status}
-                      </Badge>
-                    </div>
-
-                    {/* Risk Assessment */}
-                    <div className="space-y-2 pt-1">
-                      <Label className="text-xs font-semibold">Risk Assessment</Label>
-                      <RiskSelector
-                        likelihood={dt.likelihood}
-                        impact={dt.impact}
-                        onLikelihoodChange={(value) => handleUpdateThreat(dt.id, { likelihood: value })}
-                        onImpactChange={(value) => handleUpdateThreat(dt.id, { impact: value })}
-                      />
-                    </div>
-
-                    <div className="pt-2">
-                      <CommentSection
-                        comments={dt.comments}
-                        canWrite={canWrite}
-                        authorName={authorName}
-                        onSave={(newComments) => handleUpdateThreat(dt.id, { comments: newComments })}
-                      />
-                    </div>
-
-                    <Separator />
-
-                    {/* Mitigations for this threat */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs font-semibold flex items-center gap-1">
-                          <Shield className="h-3 w-3 text-green-600" />
-                          Mitigations
-                        </Label>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          disabled={!activeModelId}
-                          title={!activeModelId ? "Select a model to add mitigations" : ""}
-                          onClick={() => {
-                            setCurrentThreat(dt);
-                            setAddMitigationDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Mitigation
-                        </Button>
+                        )}
                       </div>
-
-                      {elementMitigations.filter((dm: any) => dm.threat_id === dt.id).length > 0 ? (
-                        <div className="space-y-2">
-                          {elementMitigations.filter((dm: any) => dm.threat_id === dt.id).map((dm: any) => (
-                            <div
-                              key={dm.id}
-                              className="p-3 rounded bg-green-500/5 border border-green-500/20 space-y-2"
-                            >
-                              <div className="flex items-start gap-2">
-                                <Shield className="h-3 w-3 text-green-600 shrink-0 mt-0.5" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium">{dm.mitigation.name}</p>
-                                  <p className="text-xs text-muted-foreground mt-0.5">{dm.mitigation.description}</p>
-                                </div>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6 shrink-0"
-                                  onClick={() => setMitigationToDelete(dm)}
-                                >
-                                  <Trash2 className="h-3 w-3 text-destructive" />
-                                </Button>
-                              </div>
-                              
-                              <div className="flex items-center gap-2 pl-5">
-                                <Label className="text-xs">Status:</Label>
-                                <Select
-                                  value={dm.status}
-                                  onValueChange={(value) => handleUpdateMitigation(dm.id, { status: value })}
-                                >
-                                  <SelectTrigger className="h-6 text-xs w-28">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="proposed">Proposed</SelectItem>
-                                    <SelectItem value="implemented">Implemented</SelectItem>
-                                    <SelectItem value="verified">Verified</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Badge variant="outline" className="text-xs h-5">
-                                  {dm.status}
-                                </Badge>
-                              </div>
-
-                              <div className="pl-5 pt-1">
-                                <CommentSection
-                                  comments={dm.comments}
-                                  canWrite={canWrite}
-                                  authorName={authorName}
-                                  onSave={(newComments) => handleUpdateMitigation(dm.id, { comments: newComments })}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground italic">No mitigations added yet</p>
-                      )}
                     </div>
+
+                    {/* Expanded content */}
+                    <CollapsibleContent>
+                      <div className="mt-4 space-y-4 pt-4 border-t">
+                        {/* Full description */}
+                        <p className="text-xs text-muted-foreground leading-relaxed">{dt.threat.description}</p>
+
+                        {/* Status */}
+                        <div>
+                          <p className="text-xs font-bold text-muted-foreground tracking-wider mb-1.5">STATUS</p>
+                          <Select
+                            value={dt.status}
+                            onValueChange={(value) => handleUpdateThreat(dt.id, { status: value })}
+                          >
+                            <SelectTrigger className={`h-8 text-xs rounded-lg w-full ${getStatusClasses(dt.status)}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="identified">Identified</SelectItem>
+                              <SelectItem value="mitigated">Mitigated</SelectItem>
+                              <SelectItem value="accepted">Accepted</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Risk Assessment */}
+                        <div>
+                          <p className="text-xs font-bold text-muted-foreground tracking-wider mb-2">RISK ASSESSMENT</p>
+                          <RiskSelector
+                            likelihood={dt.likelihood}
+                            impact={dt.impact}
+                            onLikelihoodChange={(value) => handleUpdateThreat(dt.id, { likelihood: value })}
+                            onImpactChange={(value) => handleUpdateThreat(dt.id, { impact: value })}
+                          />
+                        </div>
+
+                        {/* Comments */}
+                        <CommentSection
+                          comments={dt.comments}
+                          canWrite={canWrite}
+                          authorName={authorName}
+                          onSave={(newComments) => handleUpdateThreat(dt.id, { comments: newComments })}
+                        />
+
+                        <Separator />
+
+                        {/* Mitigations */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-bold text-muted-foreground tracking-wider flex items-center gap-1.5">
+                              <Shield className="h-3 w-3 text-green-600" />
+                              MITIGATIONS
+                              {linkedMits.length > 0 && (
+                                <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{linkedMits.length}</Badge>
+                              )}
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs gap-1"
+                              disabled={!activeModelId}
+                              title={!activeModelId ? 'Select a model to add mitigations' : ''}
+                              onClick={() => { setCurrentThreat(dt); setAddMitigationDialogOpen(true); }}
+                            >
+                              <Plus className="h-3 w-3" />
+                              Add
+                            </Button>
+                          </div>
+
+                          {linkedMits.length === 0 ? (
+                            <p className="text-xs text-muted-foreground italic py-1">No mitigations linked yet.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {linkedMits.map((dm: any) => (
+                                <div key={dm.id} className="rounded-xl border border-green-500/20 bg-green-500/5 p-3 space-y-2">
+                                  <div className="flex items-start gap-2">
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-green-500/10 shrink-0 mt-0.5">
+                                      <Shield className="h-3 w-3 text-green-600" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-semibold">{dm.mitigation.name}</p>
+                                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                                        {dm.mitigation.description}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive shrink-0"
+                                      aria-label="Remove mitigation"
+                                      onClick={() => setMitigationToDelete(dm)}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                  <div className="flex items-center gap-2 pl-8">
+                                    <Select
+                                      value={dm.status}
+                                      onValueChange={(value) => handleUpdateMitigation(dm.id, { status: value })}
+                                    >
+                                      <SelectTrigger className={`h-6 text-[11px] rounded-md w-auto px-2 gap-1 ${getStatusClasses(dm.status)}`}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="proposed">Proposed</SelectItem>
+                                        <SelectItem value="implemented">Implemented</SelectItem>
+                                        <SelectItem value="verified">Verified</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="pl-8">
+                                    <CommentSection
+                                      comments={dm.comments}
+                                      canWrite={canWrite}
+                                      authorName={authorName}
+                                      onSave={(newComments) => handleUpdateMitigation(dm.id, { comments: newComments })}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </CollapsibleContent>
-                  </div>
-                </CardContent>
-              </Card>
-            </Collapsible>
-          ))}
+                  </CardContent>
+                </Card>
+              </Collapsible>
+            );
+          })}
         </div>
       )}
 
@@ -600,6 +633,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
                     size="sm"
                     variant="ghost"
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                    aria-label="Clear search"
                     onClick={() => setSearchQuery('')}
                   >
                     <X className="h-4 w-4" />
@@ -700,6 +734,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
                     size="sm"
                     variant="ghost"
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                    aria-label="Clear search"
                     onClick={() => setMitigationSearchQuery('')}
                   >
                     <X className="h-4 w-4" />
@@ -1028,7 +1063,6 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

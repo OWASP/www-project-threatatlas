@@ -12,8 +12,18 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowRight, ArrowLeft, Loader2, Check, Package, FileText } from 'lucide-react';
+import {
+  ArrowRight,
+  ArrowLeft,
+  Loader2,
+  Check,
+  Package,
+  Globe,
+  Lock,
+  FileText,
+} from 'lucide-react';
 import { Field, FieldLabel, FieldDescription, FieldError } from '@/components/ui/field';
+import { toast } from 'sonner';
 
 interface Framework {
   id: number;
@@ -39,6 +49,7 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
   // Step 1
   const [productName, setProductName] = useState('');
   const [productDescription, setProductDescription] = useState('');
+  const [isPublic, setIsPublic] = useState(false);
   const [productError, setProductError] = useState('');
 
   // Step 2
@@ -55,6 +66,7 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
     setStep(1);
     setProductName('');
     setProductDescription('');
+    setIsPublic(false);
     setProductError('');
     setDiagramName('Main Architecture');
     setDiagramError('');
@@ -107,6 +119,7 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
       const productRes = await productsApi.create({
         name: productName.trim(),
         description: productDescription.trim() || undefined,
+        is_public: isPublic,
       });
       const productId: number = productRes.data.id;
 
@@ -130,9 +143,11 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
 
       onSuccess();
       onOpenChange(false);
+      toast.success('Product created successfully');
       navigate(`/diagrams?product=${productId}&diagram=${diagramId}`);
     } catch (err) {
       console.error('Wizard submit error:', err);
+      toast.error('Failed to create product');
     } finally {
       setSubmitting(false);
     }
@@ -235,6 +250,42 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                 <FieldDescription>
                   Briefly describe the purpose of this product.
                 </FieldDescription>
+              </Field>
+
+              <Field>
+                <FieldLabel>Visibility</FieldLabel>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPublic(false)}
+                    className={`flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors ${
+                      !isPublic
+                        ? 'border-primary bg-primary/5 text-foreground'
+                        : 'border-border text-muted-foreground hover:border-muted-foreground/50'
+                    }`}
+                  >
+                    <Lock className="h-4 w-4 shrink-0" />
+                    <div className="text-left">
+                      <div className="font-medium">Private</div>
+                      <div className="text-xs text-muted-foreground">Only shared users</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPublic(true)}
+                    className={`flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors ${
+                      isPublic
+                        ? 'border-primary bg-primary/5 text-foreground'
+                        : 'border-border text-muted-foreground hover:border-muted-foreground/50'
+                    }`}
+                  >
+                    <Globe className="h-4 w-4 shrink-0" />
+                    <div className="text-left">
+                      <div className="font-medium">Public</div>
+                      <div className="text-xs text-muted-foreground">All users can view</div>
+                    </div>
+                  </button>
+                </div>
               </Field>
             </div>
           )}

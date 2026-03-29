@@ -35,7 +35,8 @@ def list_products(
         query = query.outerjoin(ProductCollaborator).filter(
             or_(
                 ProductModel.user_id == current_user.id,
-                ProductCollaborator.user_id == current_user.id
+                ProductCollaborator.user_id == current_user.id,
+                ProductModel.is_public == True
             )
         ).distinct()
 

@@ -49,6 +49,13 @@ ThreatAtlas uses a `.env` file for configuration. Copy the example and update it
 cp .env.example .env
 ```
 
+### Environment Files
+
+| Setup | Root `.env` | `backend/.env` | `frontend/.env` |
+|---|---|---|---|
+| Docker Compose | Yes | No | No |
+| Local dev (no Docker) | No | Yes | Yes |
+
 ### Important Settings:
 - **`SECRET_KEY`**: Change this to a long random string for security.
 - **`POSTGRES_PASSWORD`**: Change the default before any shared or production deployment.

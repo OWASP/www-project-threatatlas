@@ -46,8 +46,8 @@ api.interceptors.response.use(
 export const productsApi = {
   list: () => api.get('/products'),
   get: (id: number) => api.get(`/products/${id}`),
-  create: (data: { name: string; description?: string }) => api.post('/products', data),
-  update: (id: number, data: { name?: string; description?: string }) => api.put(`/products/${id}`, data),
+  create: (data: { name: string; description?: string; is_public?: boolean }) => api.post('/products', data),
+  update: (id: number, data: { name?: string; description?: string; is_public?: boolean }) => api.put(`/products/${id}`, data),
   delete: (id: number) => api.delete(`/products/${id}`),
 };
 
@@ -66,6 +66,7 @@ export const threatsApi = {
   get: (id: number) => api.get(`/threats/${id}`),
   create: (data: { framework_id: number; name: string; description?: string; category?: string; is_custom?: boolean }) => api.post('/threats', data),
   update: (id: number, data: { name?: string; description?: string; category?: string }) => api.put(`/threats/${id}`, data),
+  revert: (id: number) => api.post(`/threats/${id}/revert`),
   delete: (id: number) => api.delete(`/threats/${id}`),
 };
 
@@ -75,6 +76,7 @@ export const mitigationsApi = {
   get: (id: number) => api.get(`/mitigations/${id}`),
   create: (data: { framework_id: number; name: string; description?: string; category?: string; is_custom?: boolean }) => api.post('/mitigations', data),
   update: (id: number, data: { name?: string; description?: string; category?: string }) => api.put(`/mitigations/${id}`, data),
+  revert: (id: number) => api.post(`/mitigations/${id}/revert`),
   delete: (id: number) => api.delete(`/mitigations/${id}`),
 };
 

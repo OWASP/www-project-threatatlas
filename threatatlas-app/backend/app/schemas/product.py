@@ -6,6 +6,7 @@ class ProductBase(BaseModel):
     """Base schema for Product."""
     name: str
     description: str | None = None
+    is_public: bool = False
 
 
 class ProductCreate(ProductBase):
@@ -16,6 +17,7 @@ class ProductCreate(ProductBase):
 class ProductUpdate(ProductBase):
     """Schema for updating a Product."""
     name: str | None = None
+    is_public: bool | None = None
 
 
 class Product(ProductBase):

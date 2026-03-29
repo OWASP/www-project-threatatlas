@@ -1,8 +1,71 @@
 [
   {
+    "version": "0.4.0",
+    "date": "2026-03-29",
+    "tag": "feature",
+    "entries": [
+      {
+        "type": "added",
+        "text": "Risk matrix (Likelihood × Impact heatmap) on the Analytics page and in the product-level Analytics tab."
+      },
+      {
+        "type": "added",
+        "text": "Expanded knowledge base to 7 frameworks (MITRE ATT&CK, CVSS Risk Framework, OWASP ASVS) with 200+ new threats and mitigations."
+      },
+      {
+        "type": "added",
+        "text": "Coverage chart in Knowledge Base showing threats vs mitigations per category."
+      },
+      {
+        "type": "added",
+        "text": "Toast notifications for all user actions across the application."
+      },
+      {
+        "type": "added",
+        "text": "Skeleton loading states and error boundaries on all pages."
+      },
+      {
+        "type": "added",
+        "text": "Product-level analytics tab with risk, threat, and mitigation charts."
+      },
+      {
+        "type": "added",
+        "text": "Shared ThreatCard component with compact mitigation chips and progress tracking."
+      },
+      {
+        "type": "added",
+        "text": "Smart mitigation search pre-filtered by threat framework and category."
+      },
+      {
+        "type": "improved",
+        "text": "Full UI redesign: Dashboard, ProductDetails, Login, and ThreatDetailsSheet with modern shadcn components."
+      },
+      {
+        "type": "improved",
+        "text": "Theme management migrated to next-themes for proper dark mode and shadcn Sonner compatibility."
+      },
+      {
+        "type": "improved",
+        "text": "Accessibility and responsive design audit: aria-labels, mobile breakpoints, and keyboard navigation."
+      },
+      {
+        "type": "fixed",
+        "text": "Dark mode toast styling and missing frameworks in new diagram dialog."
+      },
+      {
+        "type": "fixed",
+        "text": "Product sharing and visibility: public/private flag persisted correctly, access checks respect visibility, and the share dialog toggles visibility and collaborator management reliably."
+      },
+      {
+        "type": "fixed",
+        "text": "User invitations: accepting an invitation no longer fails with a server error when checking expiration (UTC-aware datetime handling)."
+      }
+    ]
+  },
+  {
     "version": "0.3.0",
     "date": "2026-03-23",
-    "tag": "release",
+    "tag": "feature",
     "entries": [
       {
         "type": "added",
@@ -45,7 +108,7 @@
       },
       {
         "type": "improved",
-        "text": "Diagram node rendering refined: proper `zIndex` layering and improved element selection behavior."
+        "text": "Diagram node rendering refined: proper zIndex layering and improved element selection behavior."
       },
       {
         "type": "improved",

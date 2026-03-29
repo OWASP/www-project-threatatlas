@@ -118,17 +118,11 @@ def update_threat(
             detail=f"Threat with id {threat_id} not found"
         )
 
-    # Check ownership
+    # Check ownership: custom threats only editable by owner or superuser
     if db_threat.is_custom and db_threat.user_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only update your own custom threats"
-        )
-    
-    if not db_threat.is_custom and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can update standard threats"
         )
 
     update_data = threat.model_dump(exclude_unset=True)
@@ -141,15 +135,59 @@ def update_threat(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Framework with id {update_data['framework_id']} not found"
             )
-        
         if framework.is_custom and framework.user_id != current_user.id and not current_user.is_superuser:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You cannot move threats to this framework"
             )
 
+    # Snapshot originals on first edit of a predefined threat
+    if not db_threat.is_custom and not db_threat.is_modified:
+        db_threat.original_name = db_threat.name
+        db_threat.original_description = db_threat.description
+        db_threat.original_category = db_threat.category
+        db_threat.is_modified = True
+
     for field, value in update_data.items():
         setattr(db_threat, field, value)
+
+    db.commit()
+    db.refresh(db_threat)
+    return db_threat
+
+
+@router.post("/{threat_id}/revert", response_model=Threat)
+def revert_threat(
+    threat_id: int,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Revert a modified predefined threat back to its original values."""
+    require_standard_or_admin(current_user)
+
+    db_threat = db.query(ThreatModel).filter(ThreatModel.id == threat_id).first()
+    if not db_threat:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Threat with id {threat_id} not found")
+
+    if db_threat.is_custom:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only predefined threats can be reverted")
+
+    if not db_threat.is_modified:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Threat has not been modified")
+
+    if db_threat.original_name is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot revert: original name snapshot is missing",
+        )
+
+    db_threat.name = db_threat.original_name
+    db_threat.description = db_threat.original_description
+    db_threat.category = db_threat.original_category
+    db_threat.is_modified = False
+    db_threat.original_name = None
+    db_threat.original_description = None
+    db_threat.original_category = None
 
     db.commit()
     db.refresh(db_threat)

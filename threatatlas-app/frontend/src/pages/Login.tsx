@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Network } from 'lucide-react';
+import { Network, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -32,14 +32,14 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
-      <Card className="w-full max-w-lg shadow-lg border-border/60 rounded-2xl">
+      <Card className="animate-fadeInUp w-full max-w-lg shadow-lg border-border/60 rounded-2xl">
         <CardHeader className="space-y-2 text-center pt-8 pb-6">
           <div className="flex justify-center mb-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg">
               <Network className="h-8 w-8" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight">Welcome to ThreatAtlas</CardTitle>
+          <CardTitle className="text-3xl font-bold tracking-tight">OWASP ThreatAtlas</CardTitle>
           <CardDescription className="text-base">Sign in to your account to continue</CardDescription>
         </CardHeader>
         <CardContent className="pb-8">
@@ -71,12 +71,20 @@ export default function Login() {
               />
             </div>
             {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-3.5 rounded-lg border border-destructive/20">
-                {error}
+              <div className="flex items-center gap-2.5 text-sm text-destructive bg-destructive/10 p-3.5 rounded-lg border border-destructive/20 animate-fadeIn">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{error}</span>
               </div>
             )}
             <Button type="submit" className="w-full h-11 shadow-md hover:shadow-lg transition-all" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
             </Button>
           </form>
           <div className="mt-6 text-center text-sm">

@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models import DiagramMitigation as DiagramMitigationModel, Diagram as DiagramModel, Mitigation as MitigationModel, User as UserModel, Model as ModelDB
+from app.models import DiagramMitigation as DiagramMitigationModel, Diagram as DiagramModel, Mitigation as MitigationModel, User as UserModel, Model as ModelDB, Product as ProductModel, ProductCollaborator
 from app.schemas import DiagramMitigation, DiagramMitigationCreate, DiagramMitigationUpdate, DiagramMitigationWithDetails
 from app.auth.dependencies import get_current_user
-from app.auth.permissions import require_resource_access, require_standard_or_admin
+from app.auth.permissions import require_standard_or_admin, can_access_product, can_edit_product, PermissionDenied
 from app.models.enums import UserRole
 
 router = APIRouter(prefix="/diagram-mitigations", tags=["diagram-mitigations"])
@@ -28,11 +28,25 @@ def list_diagram_mitigations(
         joinedload(DiagramMitigationModel.diagram).joinedload(DiagramModel.product)
     )
 
-    # Filter by ownership if not admin
+    # Filter by access if not admin (owner, collaborator, or public product)
     if current_user.role != UserRole.ADMIN.value:
-        query = query.join(DiagramModel).join(DiagramModel.product).filter(
-            DiagramModel.product.has(user_id=current_user.id)
+        from sqlalchemy import or_
+        accessible_diagram_ids = (
+            db.query(DiagramModel.id)
+            .join(ProductModel, DiagramModel.product_id == ProductModel.id)
+            .outerjoin(ProductCollaborator,
+                (ProductCollaborator.product_id == ProductModel.id) &
+                (ProductCollaborator.user_id == current_user.id))
+            .filter(
+                or_(
+                    ProductModel.user_id == current_user.id,
+                    ProductCollaborator.user_id == current_user.id,
+                    ProductModel.is_public == True
+                )
+            )
+            .scalar_subquery()
         )
+        query = query.filter(DiagramMitigationModel.diagram_id.in_(accessible_diagram_ids))
 
     if diagram_id is not None:
         query = query.filter(DiagramMitigationModel.diagram_id == diagram_id)
@@ -61,8 +75,8 @@ def get_diagram_mitigation(
             detail=f"DiagramMitigation with id {diagram_mitigation_id} not found"
         )
 
-    # Check ownership
-    require_resource_access(current_user, diagram_mitigation.diagram.product.user_id)
+    if not can_access_product(current_user, diagram_mitigation.diagram.product):
+        raise PermissionDenied("Not authorized to access this diagram mitigation")
     return diagram_mitigation
 
 
@@ -86,8 +100,8 @@ def create_diagram_mitigation(
             detail=f"Diagram with id {diagram_mitigation.diagram_id} not found"
         )
 
-    # Check ownership of the diagram's product
-    require_resource_access(current_user, diagram.product.user_id)
+    if not can_edit_product(current_user, diagram.product):
+        raise PermissionDenied("Not authorized to modify this diagram")
 
     # Check if model exists and belongs to this diagram
     model = db.query(ModelDB).filter(ModelDB.id == diagram_mitigation.model_id).first()
@@ -157,8 +171,8 @@ def update_diagram_mitigation(
             detail=f"DiagramMitigation with id {diagram_mitigation_id} not found"
         )
 
-    # Check ownership
-    require_resource_access(current_user, db_diagram_mitigation.diagram.product.user_id)
+    if not can_edit_product(current_user, db_diagram_mitigation.diagram.product):
+        raise PermissionDenied("Not authorized to modify this diagram mitigation")
 
     update_data = diagram_mitigation.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -188,8 +202,8 @@ def delete_diagram_mitigation(
             detail=f"DiagramMitigation with id {diagram_mitigation_id} not found"
         )
 
-    # Check ownership
-    require_resource_access(current_user, db_diagram_mitigation.diagram.product.user_id)
+    if not can_edit_product(current_user, db_diagram_mitigation.diagram.product):
+        raise PermissionDenied("Not authorized to delete this diagram mitigation")
 
     db.delete(db_diagram_mitigation)
     db.commit()

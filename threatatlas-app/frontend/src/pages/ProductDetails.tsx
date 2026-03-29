@@ -1,9 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { productsApi, diagramsApi, diagramThreatsApi, diagramMitigationsApi, modelsApi, frameworksApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Label as RechartsLabel } from 'recharts';
+import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import {
   Dialog,
   DialogContent,
@@ -24,15 +31,16 @@ import {
   Calendar,
   ExternalLink,
   Layers,
-  Link2,
   Plus,
   Check,
   Loader2,
-  MessageSquare,
+  Activity,
+  BarChart3,
 } from 'lucide-react';
-import { getSeverityClasses, getStatusClasses } from '@/lib/risk';
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 import ThreatDetailsSheet from '@/components/ThreatDetailsSheet';
+import ThreatCard from '@/components/ThreatCard';
 
 interface Product {
   id: number;
@@ -59,6 +67,8 @@ interface DiagramThreat {
   status: string;
   comments: string;
   severity: 'low' | 'medium' | 'high' | 'critical' | null;
+  likelihood: number | null;
+  impact: number | null;
   risk_score: number | null;
   threat: {
     id: number;
@@ -87,6 +97,455 @@ interface DiagramMitigation {
   };
 }
 
+// ── Product Analytics Charts ──
+function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; mitigations: DiagramMitigation[] }) {
+  const severityData = useMemo(() => [
+    { severity: 'Critical', count: threats.filter(t => t.severity === 'critical').length, fill: 'var(--chart-1)' },
+    { severity: 'High', count: threats.filter(t => t.severity === 'high').length, fill: 'var(--chart-5)' },
+    { severity: 'Medium', count: threats.filter(t => t.severity === 'medium').length, fill: 'var(--chart-3)' },
+    { severity: 'Low', count: threats.filter(t => t.severity === 'low').length, fill: 'var(--chart-2)' },
+  ], [threats]);
+
+  const threatStatusData = useMemo(() => [
+    { status: 'Identified', count: threats.filter(t => t.status === 'identified').length, fill: 'var(--chart-1)' },
+    { status: 'Mitigated', count: threats.filter(t => t.status === 'mitigated').length, fill: 'var(--chart-2)' },
+    { status: 'Accepted', count: threats.filter(t => t.status === 'accepted').length, fill: 'var(--chart-3)' },
+  ], [threats]);
+
+  const mitigationStatusData = useMemo(() => {
+    const data = [
+      { status: 'Proposed', count: mitigations.filter(m => m.status === 'proposed').length, fill: 'var(--chart-1)' },
+      { status: 'Implemented', count: mitigations.filter(m => m.status === 'implemented').length, fill: 'var(--chart-2)' },
+      { status: 'Verified', count: mitigations.filter(m => m.status === 'verified').length, fill: 'var(--chart-3)' },
+    ];
+    return data.some(d => d.count > 0) ? data : [];
+  }, [mitigations]);
+
+  const categoryData = useMemo(() => {
+    const cats: Record<string, number> = {};
+    threats.forEach(t => {
+      const c = t.threat?.category || 'Uncategorized';
+      cats[c] = (cats[c] || 0) + 1;
+    });
+    return Object.entries(cats)
+      .map(([category, count], idx) => ({ category, count, fill: `var(--chart-${(idx % 5) + 1})` }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+  }, [threats]);
+
+  const severityConfig = {
+    Critical: { label: "Critical", color: "hsl(var(--destructive))" },
+    High: { label: "High", color: "hsl(var(--chart-1))" },
+    Medium: { label: "Medium", color: "hsl(var(--chart-5))" },
+    Low: { label: "Low", color: "hsl(var(--chart-2))" },
+  } satisfies ChartConfig;
+
+  const threatStatusConfig = {
+    Identified: { label: "Identified", color: "hsl(var(--destructive))" },
+    Mitigated: { label: "Mitigated", color: "hsl(var(--primary))" },
+    Accepted: { label: "Accepted", color: "hsl(var(--muted-foreground))" },
+  } satisfies ChartConfig;
+
+  const mitigationStatusConfig = {
+    Proposed: { label: "Proposed", color: "hsl(var(--chart-1))" },
+    Implemented: { label: "Implemented", color: "hsl(var(--chart-2))" },
+    Verified: { label: "Verified", color: "hsl(var(--chart-3))" },
+  } satisfies ChartConfig;
+
+  const categoryConfig = {
+    count: { label: "Threats" },
+    ...Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`chart-${i + 1}`, { label: `Chart ${i + 1}`, color: `hsl(var(--chart-${i + 1}))` }])),
+  } satisfies ChartConfig;
+
+  const totalMitigations = mitigations.length;
+
+  if (threats.length === 0 && mitigations.length === 0) {
+    return (
+      <Card className="border-dashed border-2 rounded-xl">
+        <CardContent className="flex flex-col items-center justify-center p-12">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/60 mb-3">
+            <BarChart3 className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-bold mb-1.5">No data yet</h3>
+          <p className="text-sm text-muted-foreground text-center max-w-sm">
+            Analytics will appear once threats and mitigations are added to this product's diagrams.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const levelLabels: Record<number, string> = { 1: 'Very Low', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Very High' };
+  const levels = [1, 2, 3, 4, 5];
+
+  const riskMatrix = useMemo(() => {
+    const m: Record<string, DiagramThreat[]> = {};
+    threats.forEach(t => {
+      if (t.likelihood != null && t.impact != null) {
+        const key = `${t.likelihood}-${t.impact}`;
+        if (!m[key]) m[key] = [];
+        m[key].push(t);
+      }
+    });
+    return m;
+  }, [threats]);
+
+  const getCellStyle = (lik: number, imp: number, filled: boolean) => {
+    const score = lik * imp;
+    let v: string;
+    if (score >= 20) v = 'risk-critical';
+    else if (score >= 12) v = 'risk-high';
+    else if (score >= 6) v = 'risk-medium';
+    else v = 'risk-low';
+    return filled
+      ? { backgroundColor: `var(--${v})`, color: '#fff' }
+      : { backgroundColor: `var(--${v}-muted)` };
+  };
+
+  const threatsWithRisk = threats.filter(t => t.likelihood != null && t.impact != null);
+
+  return (
+    <div className="space-y-4">
+    <div className="grid gap-4 md:grid-cols-2">
+      {/* Severity Distribution */}
+      <Card className="rounded-xl border-border/60 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Activity className="h-4 w-4 text-rose-500" />
+            Risk Severity
+          </CardTitle>
+          <CardDescription className="text-xs">Threats by severity level</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[220px] w-full">
+            <ChartContainer config={severityConfig} className="h-full w-full">
+              <BarChart data={severityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                <XAxis dataKey="severity" tickLine={false} axisLine={false} tickMargin={8} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                <ChartTooltip cursor={{ fill: 'var(--color-muted)' }} content={<ChartTooltipContent hideLabel />} />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={50} />
+              </BarChart>
+            </ChartContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Threat Status Pie */}
+      <Card className="rounded-xl border-border/60 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            Threat Status
+          </CardTitle>
+          <CardDescription className="text-xs">Resolution status of all threats</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center">
+          <div className="h-[220px] w-full">
+            <ChartContainer config={threatStatusConfig} className="h-full w-full [&_.recharts-pie-label-text]:fill-foreground">
+              <PieChart>
+                <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                <Pie data={threatStatusData} dataKey="count" nameKey="status" innerRadius={55} outerRadius={80} strokeWidth={3} stroke="hsl(var(--background))">
+                  <RechartsLabel
+                    content={({ viewBox }) => {
+                      if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                        return (
+                          <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                            <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-2xl font-bold">
+                              {threats.length}
+                            </tspan>
+                            <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 20} className="fill-muted-foreground text-xs">
+                              Threats
+                            </tspan>
+                          </text>
+                        );
+                      }
+                    }}
+                  />
+                  {threatStatusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ChartContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Mitigation Status Pie */}
+      <Card className="rounded-xl border-border/60 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Shield className="h-4 w-4 text-emerald-500" />
+            Mitigation Status
+          </CardTitle>
+          <CardDescription className="text-xs">Implementation progress of controls</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center">
+          <div className="h-[220px] w-full">
+            {mitigationStatusData.length > 0 ? (
+              <ChartContainer config={mitigationStatusConfig} className="h-full w-full [&_.recharts-pie-label-text]:fill-foreground">
+                <PieChart>
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                  <Pie data={mitigationStatusData} dataKey="count" nameKey="status" innerRadius={55} outerRadius={80} strokeWidth={3} stroke="hsl(var(--background))">
+                    <RechartsLabel
+                      content={({ viewBox }) => {
+                        if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                          return (
+                            <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                              <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-2xl font-bold">
+                                {totalMitigations}
+                              </tspan>
+                              <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 20} className="fill-muted-foreground text-xs">
+                                Controls
+                              </tspan>
+                            </text>
+                          );
+                        }
+                      }}
+                    />
+                    {mitigationStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm">
+                <Shield className="h-8 w-8 mb-2 opacity-50" />
+                <p>No mitigations yet</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Top Threat Categories */}
+      <Card className="rounded-xl border-border/60 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Layers className="h-4 w-4 text-blue-500" />
+            Threat Categories
+          </CardTitle>
+          <CardDescription className="text-xs">Most frequent threat categories</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[220px] w-full">
+            {categoryData.length > 0 ? (
+              <ChartContainer config={categoryConfig} className="h-full w-full">
+                <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                  <XAxis type="number" tickLine={false} axisLine={false} tickMargin={8} />
+                  <YAxis dataKey="category" type="category" tickLine={false} axisLine={false} tickMargin={8} width={110} tickFormatter={(val) => val.length > 14 ? val.substring(0, 14) + '...' : val} />
+                  <ChartTooltip cursor={{ fill: 'var(--color-muted)' }} content={<ChartTooltipContent hideLabel />} />
+                  <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={30} />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm">
+                <Layers className="h-8 w-8 mb-2 opacity-50" />
+                <p>No categories yet</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+
+    {/* Risk Matrix */}
+    <Card className="rounded-xl border-border/60 shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          <Grid3x3 className="h-4 w-4 text-primary" />
+          Risk Matrix
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Likelihood vs Impact heatmap ({threatsWithRisk.length} threats with risk scores)
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {threatsWithRisk.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Grid3x3 className="h-7 w-7 mb-2 opacity-50" />
+            <p className="text-sm">No threats with risk assessments yet.</p>
+            <p className="text-xs mt-1">Assign likelihood and impact to threats to populate the matrix.</p>
+          </div>
+        ) : (
+          <div className="overflow-hidden px-2">
+            <div className="w-full">
+              <div className="flex items-end mb-1">
+                <div className="w-20 shrink-0" />
+                <div className="flex-1 text-center text-[10px] font-bold text-muted-foreground tracking-wider mb-1">IMPACT</div>
+              </div>
+              <div className="flex items-center mb-1">
+                <div className="w-20 shrink-0" />
+                {levels.map(imp => (
+                  <div key={imp} className="flex-1 text-center text-[10px] text-muted-foreground font-medium">{levelLabels[imp]}</div>
+                ))}
+              </div>
+              <div className="flex">
+                <div className="w-5 shrink-0 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-muted-foreground tracking-wider -rotate-90 whitespace-nowrap">LIKELIHOOD</span>
+                </div>
+                <div className="flex flex-col gap-1 w-15 shrink-0 justify-center">
+                  {[...levels].reverse().map(lik => (
+                    <div key={lik} className="h-12 flex items-center justify-end pr-2">
+                      <span className="text-[10px] text-muted-foreground font-medium text-right">{levelLabels[lik]}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-1 flex flex-col gap-1">
+                  {[...levels].reverse().map(lik => (
+                    <div key={lik} className="flex gap-1">
+                      {levels.map(imp => {
+                        const key = `${lik}-${imp}`;
+                        const cellThreats = riskMatrix[key] || [];
+                        const count = cellThreats.length;
+                        return (
+                          <Tooltip key={key}>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={cn(
+                                  'flex-1 h-12 rounded-lg flex items-center justify-center transition-all cursor-default border',
+                                  count > 0 ? 'hover:brightness-110 hover:shadow-md font-bold border-transparent' : 'border-border/20'
+                                )}
+                                style={getCellStyle(lik, imp, count > 0)}
+                              >
+                                {count > 0 && <span className="text-sm font-bold">{count}</span>}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="font-semibold text-xs mb-1">Likelihood: {levelLabels[lik]} / Impact: {levelLabels[imp]}</p>
+                              {count === 0 ? (
+                                <p className="text-xs text-muted-foreground">No threats</p>
+                              ) : (
+                                <ul className="text-xs space-y-0.5">
+                                  {cellThreats.slice(0, 5).map((t) => (
+                                    <li key={t.id} className="truncate">- {t.threat?.name}</li>
+                                  ))}
+                                  {count > 5 && <li className="text-muted-foreground">+{count - 5} more</li>}
+                                </ul>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-muted-foreground">
+                {[
+                  { label: 'Low (1–5)', v: '--risk-low' },
+                  { label: 'Medium (6–11)', v: '--risk-medium' },
+                  { label: 'High (12–19)', v: '--risk-high' },
+                  { label: 'Critical (20–25)', v: '--risk-critical' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-1.5">
+                    <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: `var(${item.v})` }} />
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+    </div>
+  );
+}
+
+function ProductDetailsSkeleton() {
+  return (
+    <div className="flex-1 space-y-6 p-4 animate-fadeIn">
+      {/* Back button */}
+      <Skeleton className="h-9 w-40 rounded-lg" />
+
+      {/* Product info + stats */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2 rounded-xl border-border/60">
+          <CardHeader className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-12 w-12 rounded-xl" />
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </CardContent>
+          <CardFooter>
+            <Skeleton className="h-4 w-64" />
+          </CardFooter>
+        </Card>
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="rounded-xl border-border/60">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                </div>
+                <Skeleton className="h-7 w-12" />
+                <Skeleton className="h-3 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Diagrams */}
+      <Card className="rounded-xl border-border/60">
+        <CardHeader>
+          <Skeleton className="h-5 w-32" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2].map((i) => (
+              <Card key={i} className="rounded-xl border-border/60">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Skeleton className="h-10 w-10 rounded-xl" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Threats */}
+      <div className="space-y-3">
+        <Skeleton className="h-5 w-48" />
+        {[1, 2].map((i) => (
+          <Card key={i} className="rounded-xl border-border/60">
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-48" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </div>
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ProductDetails() {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
@@ -113,15 +572,15 @@ export default function ProductDetails() {
 
   useEffect(() => {
     if (productId) {
-      loadProductData();
+      loadProductData(true);
     }
   }, [productId]);
 
-  const loadProductData = async () => {
+  const loadProductData = async (showLoading = false) => {
     if (!productId) return;
 
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const [productRes, diagramsRes] = await Promise.all([
         productsApi.get(parseInt(productId)),
         diagramsApi.list({ product_id: parseInt(productId) }),
@@ -130,8 +589,9 @@ export default function ProductDetails() {
       setProduct(productRes.data);
       setDiagrams(diagramsRes.data);
 
-      // Load threats, mitigations, models, and frameworks for all diagrams
       const diagramIds = diagramsRes.data.map((d: Diagram) => d.id);
+
+      let freshMitigations: DiagramMitigation[] = [];
 
       if (diagramIds.length > 0) {
         const [threatsRes, mitigationsRes, modelsRes, frameworksRes] = await Promise.all([
@@ -141,17 +601,26 @@ export default function ProductDetails() {
           frameworksApi.list(),
         ]);
 
-        const allThreats = threatsRes.flatMap(res => res.data);
-        const allMitigations = mitigationsRes.flatMap(res => res.data);
-        const allModels = modelsRes.flatMap(res => res.data);
+        freshMitigations = mitigationsRes.flatMap(res => res.data);
 
-        setThreats(allThreats);
-        setMitigations(allMitigations);
-        setModels(allModels);
+        setThreats(threatsRes.flatMap(res => res.data));
+        setMitigations(freshMitigations);
+        setModels(modelsRes.flatMap(res => res.data));
+        setFrameworks(frameworksRes.data);
+      } else {
+        const frameworksRes = await frameworksApi.list();
         setFrameworks(frameworksRes.data);
       }
+
+      // Keep selectedItem in sync so the sheet reflects fresh mitigations without closing
+      setSelectedItem((prev: any) => {
+        if (!prev) return null;
+        const linkedMits = freshMitigations.filter((m: DiagramMitigation) => m.threat_id === prev.id);
+        return { ...prev, linkedMitigations: linkedMits };
+      });
     } catch (error) {
       console.error('Error loading product data:', error);
+      toast.error('Failed to load product data');
     } finally {
       setLoading(false);
     }
@@ -163,21 +632,11 @@ export default function ProductDetails() {
 
   const getModelInfo = (threat: DiagramThreat) => {
     const model = models.find(m => m.id === threat.model_id);
-
-    // If model exists, use its framework
     if (model) {
-      return {
-        modelName: model.name,
-        frameworkName: model.framework_name
-      };
+      return { modelName: model.name, frameworkName: model.framework_name };
     }
-
-    // If no model, get framework from the threat itself
     const framework = frameworks.find(f => f.id === threat.threat.framework_id);
-    return {
-      modelName: null,
-      frameworkName: framework?.name || 'Unknown'
-    };
+    return { modelName: null, frameworkName: framework?.name || 'Unknown' };
   };
 
   const navigateToDiagram = (item: any) => {
@@ -197,8 +656,10 @@ export default function ProductDetails() {
       setSelectedItem((prev: any) => prev ? { ...prev, comments } : null);
       await diagramThreatsApi.update(selectedItem.id, { comments });
       await loadProductData();
+      toast.success('Comments updated');
     } catch (error) {
       console.error('Error updating:', error);
+      toast.error('Failed to update comments');
     }
   };
 
@@ -208,8 +669,10 @@ export default function ProductDetails() {
       setSelectedItem((prev: any) => prev ? { ...prev, status } : null);
       await diagramThreatsApi.update(selectedItem.id, { status });
       await loadProductData();
+      toast.success(`Status updated to ${status}`);
     } catch (error) {
       console.error('Error updating status:', error);
+      toast.error('Failed to update status');
     }
   };
 
@@ -220,6 +683,7 @@ export default function ProductDetails() {
       await loadProductData();
     } catch (error) {
       console.error('Error updating risk:', error);
+      toast.error('Failed to update risk assessment');
     }
   };
 
@@ -278,9 +742,11 @@ export default function ProductDetails() {
         })
       );
       setNewDiagramOpen(false);
+      toast.success('Diagram created');
       navigate(`/diagrams?product=${productId}&diagram=${diagramId}`);
     } catch (err) {
       console.error('Error creating diagram:', err);
+      toast.error('Failed to create diagram');
     } finally {
       setNewDiagramSubmitting(false);
     }
@@ -290,25 +756,14 @@ export default function ProductDetails() {
   const criticalThreats = threats.filter(t => t.severity === 'critical').length;
   const highThreats = threats.filter(t => t.severity === 'high').length;
   const mitigatedThreats = threats.filter(t => t.status === 'mitigated').length;
+  const coveragePercent = threats.length > 0 ? Math.round((mitigatedThreats / threats.length) * 100) : 0;
+  const implementedMitigations = mitigations.filter(m => m.status === 'implemented' || m.status === 'verified').length;
 
-  if (loading) {
-    return (
-      <div className="flex-1 space-y-6 p-6 md:p-8 pb-16">
-        <Card className="border-dashed rounded-xl animate-pulse">
-          <CardContent className="flex items-center justify-center p-16">
-            <div className="flex flex-col items-center gap-3">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              <p className="text-sm text-muted-foreground font-medium">Loading product details...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  if (loading) return <ProductDetailsSkeleton />;
 
   if (!product) {
     return (
-      <div className="flex-1 space-y-6 p-6 md:p-8 pb-16">
+      <div className="flex-1 space-y-6 p-4">
         <Card className="border-dashed border-2 rounded-xl">
           <CardContent className="flex flex-col items-center justify-center p-16">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/60 to-muted/40 mb-4 shadow-sm">
@@ -329,396 +784,289 @@ export default function ProductDetails() {
   }
 
   return (
-    <div className="flex-1 space-y-2 mx-auto p-4">
-      {/* Header */}
-      <div className="flex items-start justify-between animate-fadeIn">
-        <div className="space-y-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/products')}
-            className="-ml-2 hover:bg-muted/70 rounded-lg cursor-pointer transition-colors"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Products
-          </Button>
-        </div>
-      </div>
-
+    <div className="flex-1 space-y-5 mx-auto p-4">
       {/* Product Info & Stats */}
-      <div className="grid gap-2 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3 animate-fadeInUp" style={{ animationDelay: '50ms' }}>
         {/* Left: Product Information */}
-        <div className="lg:col-span-1">
-          <Card className="rounded-xl border-border/60 shadow-sm h-full">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Box className="h-5 w-5 text-primary" />
-                {product.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-full m-2 p-0">
-              <div className="p-2 border-dashed border rounded-lg h-full">
-                <p className="text-sm leading-relaxed">
-                  {product.description || 'No description provided'}
-                </p>
+        <Card className="lg:col-span-2 rounded-xl border-border/60 shadow-sm">
+          <CardHeader>
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm shrink-0">
+                <Box className="h-6 w-6 text-primary" />
               </div>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-xl font-bold tracking-tight">{product.name}</CardTitle>
+                {product.description && (
+                  <CardDescription className="mt-1 text-sm leading-relaxed">
+                    {product.description}
+                  </CardDescription>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          {!product.description && (
+            <CardContent className="pt-0">
+              <Empty className="border rounded-xl py-10">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Box className="h-4 w-4 text-muted-foreground" />
+                  </EmptyMedia>
+                  <EmptyTitle>No description</EmptyTitle>
+                  <EmptyDescription>
+                    Edit this product to add a description.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             </CardContent>
-            <CardFooter className="flex-col items-start gap-4 bottom-0 sticky">
-              <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  <span className="font-medium">
-                    Created: {new Date(product.created_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  <span className="font-medium">
-                    Updated: {new Date(product.updated_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </div>
+          )}
+          <CardFooter className="border-t flex items-center justify-end">
+            <div className="flex items-center gap-6 text-xs text-muted-foreground flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                <span className="font-medium">
+                  Created {new Date(product.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                  })}
+                </span>
               </div>
-            </CardFooter>
-          </Card>
-        </div>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                <span className="font-medium">
+                  Updated {new Date(product.updated_at).toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                  })}
+                </span>
+              </div>
+            </div>
+          </CardFooter>
+        </Card>
 
-        {/* Right: Stats in 2x2 Grid */}
-        <div className="grid gap-2 grid-cols-2">
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all">
-            <CardContent className="p-5">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-muted-foreground tracking-wider">DIAGRAMS</p>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-500/5 shadow-sm">
-                    <Grid3x3 className="h-4 w-4 text-blue-600" />
-                  </div>
+        {/* Right: Stats */}
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-muted-foreground tracking-wider">DIAGRAMS</p>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 group-hover:scale-110 transition-transform">
+                  <Grid3x3 className="h-4 w-4 text-blue-600" />
                 </div>
-                <p className="text-2xl font-bold">{diagrams.length}</p>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all">
-            <CardContent className="p-5">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-muted-foreground tracking-wider">THREATS</p>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500/10 to-orange-500/5 shadow-sm">
-                    <AlertTriangle className="h-4 w-4 text-orange-600" />
-                  </div>
-                </div>
-                <p className="text-2xl font-bold">{threats.length}</p>
-                <p className="text-xs text-muted-foreground">
-                  {criticalThreats + highThreats} critical/high
-                </p>
-              </div>
+              <p className="text-2xl font-bold">{diagrams.length}</p>
             </CardContent>
           </Card>
 
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all">
-            <CardContent className="p-5">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-muted-foreground tracking-wider">MITIGATIONS</p>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-green-500/10 to-green-500/5 shadow-sm">
-                    <Shield className="h-4 w-4 text-green-600" />
-                  </div>
+          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-muted-foreground tracking-wider">THREATS</p>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10 group-hover:scale-110 transition-transform">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
                 </div>
-                <p className="text-2xl font-bold">{mitigations.length}</p>
-                <p className="text-xs text-muted-foreground">
-                  {mitigations.filter(m => m.status === 'implemented').length} implemented
-                </p>
               </div>
+              <p className="text-2xl font-bold">{threats.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {criticalThreats + highThreats > 0 ? (
+                  <span className="text-orange-600 font-medium">{criticalThreats + highThreats} critical/high</span>
+                ) : (
+                  'No high-risk threats'
+                )}
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all">
-            <CardContent className="p-5">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-muted-foreground tracking-wider">COVERAGE</p>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm">
-                    <Layers className="h-4 w-4 text-primary" />
-                  </div>
+          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-muted-foreground tracking-wider">MITIGATIONS</p>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10 group-hover:scale-110 transition-transform">
+                  <Shield className="h-4 w-4 text-green-600" />
                 </div>
-                <p className="text-2xl font-bold">
-                  {threats.length > 0 ? Math.round((mitigatedThreats / threats.length) * 100) : 0}%
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {mitigatedThreats} mitigated
-                </p>
               </div>
+              <p className="text-2xl font-bold">{mitigations.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {implementedMitigations} active
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-muted-foreground tracking-wider">COVERAGE</p>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 group-hover:scale-110 transition-transform">
+                  <Layers className="h-4 w-4 text-primary" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold">{coveragePercent}%</p>
+              <Progress value={coveragePercent} className="h-1.5 mt-2" />
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Diagrams List */}
-      <Card className="rounded-xl border-border/60 shadow-sm">
-        <CardHeader className="border-b">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Grid3x3 className="h-5 w-5 text-primary" />
-                Diagrams ({diagrams.length})
-              </CardTitle>
-              <CardDescription className="mt-1">
-                Data flow diagrams for this product
-              </CardDescription>
-            </div>
-            <Button size="sm" onClick={openNewDiagramDialog}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              New Diagram
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {diagrams.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-lg">
-              No diagrams created yet
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {diagrams.map((diagram) => {
-                const diagramThreats = threats.filter(t => t.diagram_id === diagram.id);
-                const diagramMitigations = mitigations.filter(m => m.diagram_id === diagram.id);
-                const diagramModels = models.filter(m => m.diagram_id === diagram.id);
+      {/* Tabbed Content */}
+      <Tabs defaultValue="overview" className="animate-fadeInUp" style={{ animationDelay: '120ms' }}>
+        <TabsList variant="line" className="mb-4">
+          <TabsTrigger value="overview" className="gap-1.5">
+            <Grid3x3 className="h-3.5 w-3.5" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-1.5">
+            <BarChart3 className="h-3.5 w-3.5" />
+            Analytics
+          </TabsTrigger>
+        </TabsList>
 
-                return (
-                  <Card
-                    key={diagram.id}
-                    className="hover:shadow-lg hover:border-primary/30 transition-all duration-300 rounded-xl cursor-pointer group"
-                    onClick={() => navigateToDiagram(diagram.id)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm group-hover:shadow-md transition-all">
-                          <Grid3x3 className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-sm mb-1 truncate flex items-center gap-2">
-                            {diagram.name}
-                            <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </h4>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                            <span className="flex items-center gap-1">
-                              <Layers className="h-3 w-3 text-primary" />
-                              {diagramModels.length} {diagramModels.length === 1 ? 'model' : 'models'}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <AlertTriangle className="h-3 w-3 text-orange-600" />
-                              {diagramThreats.length}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Shield className="h-3 w-3 text-green-600" />
-                              {diagramMitigations.length}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Threats & Mitigations */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-betwee mt-4">
-          <h2 className="text-base font-bold flex items-center gap-2.5">
-            <AlertTriangle className="h-5 w-5 text-orange-600" />
-            Threats & Mitigations ({threats.length})
-          </h2>
-        </div>
-
-        <div className="space-y-3">
-          {threats.length === 0 ? (
-            <Card className="border-dashed border-2 rounded-xl">
-              <CardContent className="flex flex-col items-center justify-center p-12">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 mb-3 shadow-sm">
-                  <AlertTriangle className="h-8 w-8 text-orange-600" />
+        {/* ── Overview Tab ── */}
+        <TabsContent value="overview" className="space-y-5 mt-0">
+          {/* Diagrams List */}
+          <Card className="rounded-xl border-border/60 shadow-sm">
+            <CardHeader className="border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Grid3x3 className="h-5 w-5 text-primary" />
+                    Diagrams ({diagrams.length})
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Data flow diagrams for this product
+                  </CardDescription>
                 </div>
-                <h3 className="text-lg font-bold mb-1.5">No threats found</h3>
-                <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
-                  Start by creating diagrams and attaching threats to elements.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            threats.map((threat) => {
-              const linkedMitigations = getMitigationsForThreat(threat);
-              const { modelName, frameworkName } = getModelInfo(threat);
+                <Button size="sm" onClick={openNewDiagramDialog}>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  New Diagram
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {diagrams.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 border border-dashed rounded-xl">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/60 mb-3">
+                    <Grid3x3 className="h-7 w-7 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-base font-semibold mb-1">No diagrams yet</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Create your first diagram to start threat modeling</p>
+                  <Button size="sm" variant="outline" onClick={openNewDiagramDialog}>
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Create Diagram
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {diagrams.map((diagram, index) => {
+                    const diagramThreats = threats.filter(t => t.diagram_id === diagram.id);
+                    const diagramMitigations = mitigations.filter(m => m.diagram_id === diagram.id);
+                    const diagramModels = models.filter(m => m.diagram_id === diagram.id);
 
-              // Determine icon background and status badge color based on status and mitigations
-              const getIconClass = () => {
-                if (threat.status === 'mitigated') {
-                  return 'bg-gradient-to-br from-green-500/10 to-green-500/5';
-                } else if (threat.status === 'accepted') {
-                  return 'bg-gradient-to-br from-slate-500/10 to-slate-500/5';
-                } else if (linkedMitigations.length === 0) {
-                  // No mitigations - red/orange (danger)
-                  return 'bg-gradient-to-br from-red-500/10 to-red-500/5';
-                } else {
-                  // Has mitigations but not yet mitigated - amber (in progress)
-                  return 'bg-gradient-to-br from-amber-500/10 to-amber-500/5';
-                }
-              };
-
-              const getIconColor = () => {
-                if (threat.status === 'mitigated') {
-                  return 'text-green-600';
-                } else if (threat.status === 'accepted') {
-                  return 'text-slate-600';
-                } else if (linkedMitigations.length === 0) {
-                  return 'text-red-600';
-                } else {
-                  return 'text-amber-600';
-                }
-              };
-
-
-              return (
-                <Card
-                  key={threat.id}
-                  className="hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl group/card"
-                >
-                  <CardContent className="p-5">
-                    <div className="flex gap-5">
-                      {/* Threat Information */}
-                      <div
-                        className="flex-1 space-y-3 cursor-pointer min-w-0"
-                        onClick={() => handleOpenThreat(threat)}
+                    return (
+                      <Card
+                        key={diagram.id}
+                        className="hover:shadow-lg hover:border-primary/30 transition-all duration-300 rounded-xl cursor-pointer group"
+                        onClick={() => navigateToDiagram(diagram.id)}
                       >
-                        <div className="flex items-start gap-3">
-                          <div className={`flex h-10 w-10 items-center justify-center rounded-xl shrink-0 shadow-sm ${getIconClass()}`}>
-                            <AlertTriangle className={`h-5 w-5 ${getIconColor()}`} />
-                          </div>
-                          <div className="flex-1 min-w-0 space-y-2">
-                            <div className="flex items-start justify-between gap-3">
-                              <h3 className="font-bold text-sm">{threat.threat.name}</h3>
-                              <div className="flex items-center gap-2">
-                                {threat.severity && (
-                                  <Badge variant="outline" className={cn('capitalize shadow-sm border', getSeverityClasses(threat.severity))}>
-                                    {threat.severity}
-                                  </Badge>
-                                )}
-                                <Badge variant="outline" className={cn('shadow-sm border capitalize', getStatusClasses(threat.status))}>
-                                  {threat.status}
-                                </Badge>
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm group-hover:shadow-md transition-all">
+                              <Grid3x3 className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-sm mb-1.5 truncate flex items-center gap-2">
+                                {diagram.name}
+                                <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </h4>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="flex items-center gap-1">
+                                      <Layers className="h-3 w-3 text-primary" />
+                                      {diagramModels.length}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{diagramModels.length} {diagramModels.length === 1 ? 'model' : 'models'}</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="flex items-center gap-1">
+                                      <AlertTriangle className="h-3 w-3 text-orange-600" />
+                                      {diagramThreats.length}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{diagramThreats.length} threats</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="flex items-center gap-1">
+                                      <Shield className="h-3 w-3 text-green-600" />
+                                      {diagramMitigations.length}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{diagramMitigations.length} mitigations</TooltipContent>
+                                </Tooltip>
                               </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="outline" className="text-xs shadow-sm">{threat.threat.category}</Badge>
-                              {threat.risk_score !== null && (
-                                <Badge variant="outline" className="text-xs shadow-sm">
-                                  Risk: {threat.risk_score}
-                                </Badge>
-                              )}
-                              <Badge variant="outline" className="text-xs flex items-center gap-1">
-                                <Grid3x3 className="h-3 w-3" />
-                                {getDiagramName(threat.diagram_id)}
-                              </Badge>
-                              <div className="flex items-center gap-1.5">
-                                <Layers className="h-3 w-3 text-muted-foreground" />
-                                {modelName && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {modelName}
-                                  </Badge>
-                                )}
-                                <Badge variant="secondary" className="text-xs">
-                                  {frameworkName}
-                                </Badge>
-                              </div>
-                            </div>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {threat.threat.description}
-                            </p>
-                            {threat.comments && threat.comments !== '[]' && (
-                              <div className="pt-3 pb-1 flex justify-end">
-                                <div className="flex items-center gap-1.5 px-2 py-1 bg-muted/40 hover:bg-muted/60 transition-colors border shadow-sm rounded-md" title="Has comments">
-                                  <MessageSquare className="h-3.5 w-3.5 text-blue-500/80" />
-                                  <span className="text-[10px] font-medium text-muted-foreground">Comments</span>
-                                </div>
-                              </div>
-                            )}
                           </div>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                      {/* Linked Mitigations */}
-                      {linkedMitigations.length > 0 && (
-                        <div className="flex-2 space-y-2 border-l border-border/60 pl-5 min-w-0">
-                          <div className="flex items-center gap-2 text-xs font-bold">
-                            <Link2 className="h-4 w-4 text-green-600" />
-                            <span>Linked Mitigations ({linkedMitigations.length})</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {linkedMitigations.map((mitigation) => {
-                              // Determine mitigation background based on status
-                              const getMitigationClass = () => {
-                                switch (mitigation.status) {
-                                  case 'verified':
-                                    return 'bg-gradient-to-br from-green-400/30 to-green-400/20 border-green-500/40 hover:bg-green-400/35 hover:border-green-500/50 dark:from-green-400/20 dark:to-green-400/10';
-                                  case 'implemented':
-                                    return 'bg-gradient-to-br from-green-200/30 to-green-200/20 border-green-400/40 hover:bg-green-200/35 hover:border-green-400/50 dark:from-green-200/15 dark:to-green-200/10';
-                                  case 'proposed':
-                                  default:
-                                    return 'bg-gradient-to-br from-green-50/60 to-green-50/40 border-green-300/40 hover:bg-green-50/70 hover:border-green-300/50 dark:from-green-50/10 dark:to-green-50/5';
-                                }
-                              };
+          {/* Threats & Mitigations */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold flex items-center gap-2.5">
+                <AlertTriangle className="h-5 w-5 text-orange-600" />
+                Threats & Mitigations ({threats.length})
+              </h2>
+            </div>
 
-                              return (
-                                <div
-                                  key={mitigation.id}
-                                  className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer transition-all duration-200 shadow-sm ${getMitigationClass()}`}
-                                  onClick={() => handleOpenThreat(threat)}
-                                >
-
-                                  <Shield className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                                  <div className="flex-1 min-w-0 space-y-1.5">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <p className="text-xs font-semibold truncate">{mitigation.mitigation.name}</p>
-                                      <Badge variant="outline" className={cn('text-xs shrink-0 shadow-sm border capitalize', getStatusClasses(mitigation.status))}>
-                                        {mitigation.status}
-                                      </Badge>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                                      {mitigation.mitigation.description}
-                                    </p>
-                                    {mitigation.comments && mitigation.comments !== '[]' && (
-                                      <div className="pt-3 pb-1 flex justify-end">
-                                        <div className="flex items-center gap-1.5 px-2 py-1 bg-muted/40 hover:bg-muted/60 transition-colors border shadow-sm rounded-md" title="Has comments">
-                                          <MessageSquare className="h-3.5 w-3.5 text-blue-500/80" />
-                                          <span className="text-[10px] font-medium text-muted-foreground">Comments</span>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+            <div className="space-y-3">
+              {threats.length === 0 ? (
+                <Card className="border-dashed border-2 rounded-xl">
+                  <CardContent className="flex flex-col items-center justify-center p-12">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 mb-3 shadow-sm">
+                      <AlertTriangle className="h-8 w-8 text-orange-600" />
                     </div>
+                    <h3 className="text-lg font-bold mb-1.5">No threats found</h3>
+                    <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
+                      Start by creating diagrams and attaching threats to elements.
+                    </p>
                   </CardContent>
                 </Card>
-              );
-            })
-          )}
-        </div>
-      </div>
+              ) : (
+                threats.map((threat, index) => {
+                  const linkedMitigations = getMitigationsForThreat(threat);
+                  const { modelName, frameworkName } = getModelInfo(threat);
+
+                  return (
+                    <ThreatCard
+                      key={threat.id}
+                      threat={threat}
+                      linkedMitigations={linkedMitigations}
+                      index={index}
+                      onOpen={() => handleOpenThreat(threat)}
+                      onNavigateToDiagram={() => navigateToDiagram(threat)}
+                      contextItems={[
+                        { icon: <Grid3x3 className="h-3 w-3" />, label: getDiagramName(threat.diagram_id) },
+                        ...(modelName ? [{ icon: <Layers className="h-3 w-3" />, label: modelName }] : []),
+                        { icon: <Layers className="h-3 w-3" />, label: frameworkName },
+                      ]}
+                    />
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── Analytics Tab ── */}
+        <TabsContent value="analytics" className="mt-0">
+          <ProductAnalytics threats={threats} mitigations={mitigations} />
+        </TabsContent>
+      </Tabs>
 
       {/* Threat Details Sheet */}
       <ThreatDetailsSheet
@@ -773,7 +1121,6 @@ export default function ProductDetails() {
           </DialogHeader>
 
           <div className="py-2 min-h-[140px]">
-            {/* Step 1: Diagram name */}
             {newDiagramStep === 1 && (
               <div className="space-y-1.5">
                 <Label htmlFor="nd-name">Diagram name <span className="text-destructive">*</span></Label>
@@ -788,7 +1135,6 @@ export default function ProductDetails() {
               </div>
             )}
 
-            {/* Step 2: Frameworks */}
             {newDiagramStep === 2 && (
               <div className="space-y-2">
                 <div className="grid gap-2">

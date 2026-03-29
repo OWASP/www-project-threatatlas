@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useTheme } from 'next-themes';
 import {
     Box,
     LayoutDashboard,
@@ -7,12 +7,25 @@ import {
     Network,
     Moon,
     Sun,
+    Monitor,
     LogOut,
     Users,
     PieChart,
     Notebook
 } from 'lucide-react';
+import { useState } from 'react';
 import PasswordChangeDialog from '@/components/PasswordChangeDialog';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
     Sidebar,
     SidebarContent,
@@ -41,22 +54,19 @@ export default function AppSidebar() {
     const location = useLocation();
     const { state } = useSidebar();
     const { user, logout, isAdmin } = useAuth();
-    const [theme, setTheme] = useState<'light' | 'dark'>('light');
+    const { theme, setTheme } = useTheme();
 
-    useEffect(() => {
-        const saved = localStorage.getItem('theme') as 'light' | 'dark' | null;
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const initial = saved ?? (prefersDark ? 'dark' : 'light');
-        setTheme(initial);
-        document.documentElement.classList.toggle('dark', initial === 'dark');
-    }, []);
+    const [logoutOpen, setLogoutOpen] = useState(false);
 
-    const toggleTheme = () => {
-        const next = theme === 'light' ? 'dark' : 'light';
-        setTheme(next);
-        localStorage.setItem('theme', next);
-        document.documentElement.classList.toggle('dark', next === 'dark');
+    const cycleTheme = () => {
+        if (theme === 'light') setTheme('dark');
+        else if (theme === 'dark') setTheme('system');
+        else setTheme('light');
     };
+
+    const themeIcon = theme === 'light' ? <Sun className="h-4 w-4" /> : theme === 'dark' ? <Moon className="h-4 w-4" /> : <Monitor className="h-4 w-4" />;
+    const themeLabel = theme === 'light' ? 'Light mode' : theme === 'dark' ? 'Dark mode' : 'System mode';
+    const themeTooltip = theme === 'light' ? 'Switch to dark mode' : theme === 'dark' ? 'Switch to system mode' : 'Switch to light mode';
 
     const isCollapsed = state === 'collapsed';
 
@@ -198,9 +208,11 @@ export default function AppSidebar() {
                         className={`flex items-center py-2 rounded-lg ${isCollapsed ? 'justify-center px-0' : 'gap-2.5 px-2'
                             }`}
                     >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 border border-primary/25 text-primary text-xs font-bold shadow-sm transition-transform group-hover:scale-105">
-                            {initials || '?'}
-                        </div>
+                        <Avatar size="default" className="border border-primary/25 shadow-sm">
+                            <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
+                                {initials || '?'}
+                            </AvatarFallback>
+                        </Avatar>
                         {!isCollapsed && (
                             <div className="flex flex-col min-w-0">
                                 <span className="text-xs font-semibold text-sidebar-foreground truncate leading-tight">
@@ -221,22 +233,18 @@ export default function AppSidebar() {
 
                     <SidebarMenuItem>
                         <SidebarMenuButton
-                            onClick={toggleTheme}
+                            onClick={cycleTheme}
                             className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 rounded-lg"
-                            tooltip={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+                            tooltip={themeTooltip}
                         >
-                            {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                            {!isCollapsed && (
-                                <span className="text-sm">
-                                    {theme === 'light' ? 'Dark mode' : 'Light mode'}
-                                </span>
-                            )}
+                            {themeIcon}
+                            {!isCollapsed && <span className="text-sm">{themeLabel}</span>}
                         </SidebarMenuButton>
                     </SidebarMenuItem>
 
                     <SidebarMenuItem>
                         <SidebarMenuButton
-                            onClick={logout}
+                            onClick={() => setLogoutOpen(true)}
                             className="text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive transition-colors duration-150 rounded-lg"
                             tooltip="Log out"
                         >
@@ -248,6 +256,23 @@ export default function AppSidebar() {
             </SidebarFooter>
 
             <SidebarRail />
+
+            <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Log out</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to log out? Any unsaved changes will be lost.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={logout} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Log out
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Sidebar>
     );
 }

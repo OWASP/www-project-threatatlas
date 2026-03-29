@@ -16,37 +16,65 @@ import { Shield } from 'lucide-react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Toaster } from '@/components/ui/sonner';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ThemeProvider } from 'next-themes';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 
 function HeaderBreadcrumb() {
   const location = useLocation();
 
   const getPageInfo = () => {
     if (location.pathname.startsWith('/products/')) {
-      return { title: 'Product Details', subtitle: 'Security analysis & overview' };
+      return { title: 'Product Details', parent: { title: 'Products', href: '/products' } };
     }
     switch (location.pathname) {
-      case '/': return { title: 'Dashboard', subtitle: 'Threat monitoring overview' };
-      case '/products': return { title: 'Products', subtitle: 'Manage security products' };
-      case '/diagrams': return { title: 'Diagrams', subtitle: 'Threat modeling canvas' };
-      case '/analytics': return { title: 'Analytics', subtitle: 'Global statistics and overview' };
-      case '/knowledge': return { title: 'Knowledge Base', subtitle: 'Threats & mitigations' };
-      case '/users': return { title: 'User Management', subtitle: 'Manage users and invitations' };
-      default: return { title: 'ThreatAtlas', subtitle: 'Security platform' };
+      case '/': return { title: 'Dashboard' };
+      case '/products': return { title: 'Products' };
+      case '/diagrams': return { title: 'Diagrams' };
+      case '/analytics': return { title: 'Analytics' };
+      case '/knowledge': return { title: 'Knowledge Base' };
+      case '/users': return { title: 'User Management' };
+      case '/changelog': return { title: 'Changelog' };
+      default: return { title: 'ThreatAtlas' };
     }
   };
 
   const pageInfo = getPageInfo();
+  const parent = 'parent' in pageInfo ? pageInfo.parent : null;
 
   return (
-    <div className="flex items-center gap-4 animate-fadeIn">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 shadow-sm transition-all duration-300 hover:shadow-md hover:scale-105">
-        <Shield className="h-4 w-4 text-primary transition-transform duration-300 group-hover:rotate-12" />
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <span className="text-base font-semibold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">{pageInfo.title}</span>
-        <span className="text-xs text-muted-foreground font-medium">{pageInfo.subtitle}</span>
-      </div>
-    </div>
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+            <Shield className="h-4 w-4 text-primary" />
+            <span className="hidden sm:inline">ThreatAtlas</span>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        {parent && (
+          <>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href={parent.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                {parent.title}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+          </>
+        )}
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage className="font-semibold">{pageInfo.title}</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
   );
 }
 
@@ -63,16 +91,18 @@ function AppContent() {
           </div>
         </header>
         <main className="flex-1 bg-gradient-to-br from-background via-muted/20 to-background">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/products/:productId" element={<ProductDetails />} />
-            <Route path="/diagrams" element={<Diagrams />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/knowledge" element={<KnowledgeBase />} />
-            <Route path="/users" element={<UserManagement />} />
-            <Route path="/changelog" element={<Changelog />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/products/:productId" element={<ProductDetails />} />
+              <Route path="/diagrams" element={<Diagrams />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/knowledge" element={<KnowledgeBase />} />
+              <Route path="/users" element={<UserManagement />} />
+              <Route path="/changelog" element={<Changelog />} />
+            </Routes>
+          </ErrorBoundary>
         </main>
       </SidebarInset>
     </>
@@ -81,26 +111,29 @@ function AppContent() {
 
 export function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
-          <Route
-            path="/*"
-            element={
-              <ProtectedRoute>
-                <SidebarProvider>
-                  <TooltipProvider>
-                    <AppContent />
-                  </TooltipProvider>
-                </SidebarProvider>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<ErrorBoundary><Login /></ErrorBoundary>} />
+            <Route path="/accept-invitation/:token" element={<ErrorBoundary><AcceptInvitation /></ErrorBoundary>} />
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <SidebarProvider>
+                    <TooltipProvider>
+                      <AppContent />
+                    </TooltipProvider>
+                  </SidebarProvider>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+          <Toaster position="bottom-right" richColors closeButton />
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

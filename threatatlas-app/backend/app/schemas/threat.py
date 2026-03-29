@@ -27,6 +27,10 @@ class Threat(ThreatBase):
     id: int
     framework_id: int
     is_custom: bool
+    is_modified: bool = False
+    original_name: str | None = None
+    original_description: str | None = None
+    original_category: str | None = None
     created_at: datetime
     updated_at: datetime
 

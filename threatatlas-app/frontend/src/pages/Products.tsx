@@ -2,15 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { productsApi, diagramsApi } from '@/lib/api';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +14,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import {
   Card,
   CardContent,
@@ -40,6 +41,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Plus,
   MoreVertical,
@@ -60,6 +63,7 @@ interface Product {
   id: number;
   name: string;
   description: string | null;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -70,6 +74,37 @@ interface Diagram {
   name: string;
   diagram_data: any;
   created_at: string;
+}
+
+function ProductsSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {[1, 2, 3].map((i) => (
+        <Card key={i} className="rounded-xl border-border/60">
+          <CardHeader className="space-y-3">
+            <div className="flex items-start justify-between">
+              <Skeleton className="h-11 w-11 rounded-xl" />
+              <Skeleton className="h-8 w-8 rounded-lg" />
+            </div>
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-full" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-4 w-32" />
+            <div className="rounded-xl border border-border/60 p-4 space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          </CardContent>
+          <CardFooter className="pt-3 gap-2">
+            <Skeleton className="h-9 flex-1 rounded-lg" />
+            <Skeleton className="h-9 flex-1 rounded-lg" />
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
+  );
 }
 
 export default function Products() {
@@ -110,6 +145,7 @@ export default function Products() {
       setDiagrams(diagramsMap);
     } catch (error) {
       console.error('Error loading products:', error);
+      toast.error('Failed to load products');
     } finally {
       setLoading(false);
     }
@@ -123,8 +159,10 @@ export default function Products() {
       setSelectedProduct(null);
       setFormData({ name: '', description: '' });
       loadProducts();
+      toast.success('Product updated');
     } catch (error) {
       console.error('Error updating product:', error);
+      toast.error('Failed to update product');
     }
   };
 
@@ -135,8 +173,10 @@ export default function Products() {
       setDeleteOpen(false);
       setSelectedProduct(null);
       loadProducts();
+      toast.success('Product deleted');
     } catch (error) {
       console.error('Error deleting product:', error);
+      toast.error('Failed to delete product');
     }
   };
 
@@ -150,6 +190,7 @@ export default function Products() {
       navigate(`/diagrams?product=${productId}&diagram=${response.data.id}`);
     } catch (error) {
       console.error('Error creating diagram:', error);
+      toast.error('Failed to create diagram');
     }
   };
 
@@ -166,8 +207,10 @@ export default function Products() {
       setDeleteDiagramOpen(false);
       setSelectedDiagramId(null);
       loadProducts();
+      toast.success('Diagram deleted');
     } catch (error) {
       console.error('Error deleting diagram:', error);
+      toast.error('Failed to delete diagram');
     }
   };
 
@@ -203,22 +246,7 @@ export default function Products() {
       {/* Content */}
       <div className="mx-auto">
         {loading ? (
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="border-dashed animate-pulse rounded-xl">
-                <CardHeader className="space-y-2">
-                  <div className="h-5 bg-muted rounded-lg" />
-                  <div className="h-4 bg-muted rounded-lg w-2/3" />
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="h-3 bg-muted rounded-lg" />
-                    <div className="h-3 bg-muted rounded-lg" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <ProductsSkeleton />
         ) : products.length === 0 ? (
           <Card className="border-dashed border-2 rounded-xl">
             <CardContent className="flex flex-col items-center justify-center py-16 px-6">
@@ -248,20 +276,35 @@ export default function Products() {
               return (
                 <Card
                   key={product.id}
-                  className="group flex flex-col hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl border-border/60"
-                  style={{
-                    animationDelay: `${index * 50}ms`,
-                    animation: 'fadeInUp 0.5s ease-out forwards',
-                    opacity: 0,
-                  }}
+                  className="animate-fadeInUp group flex flex-col hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl border-border/60 overflow-hidden"
+                  style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-3 mb-2">
+                  <CardHeader className="pb-3 pt-4 px-4">
+                    {/* Title row: icon + name + menu */}
+                    <div className="flex items-start gap-3">
                       <div
-                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shrink-0 shadow-sm group-hover:shadow-md transition-all duration-300 cursor-pointer"
+                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0 group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300 cursor-pointer mt-0.5"
                         onClick={() => navigate(`/products/${product.id}`)}
                       >
-                        <Box className="h-5 w-5 text-primary" />
+                        <Box className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <CardTitle
+                          className="text-sm font-bold line-clamp-1 cursor-pointer hover:text-primary transition-colors leading-snug"
+                          onClick={() => navigate(`/products/${product.id}`)}
+                        >
+                          {product.name}
+                        </CardTitle>
+                        <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground">
+                          <Calendar className="h-3 w-3 shrink-0" />
+                          <span>
+                            {new Date(product.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        </div>
                       </div>
                       {canWrite && (
                         <DropdownMenu>
@@ -269,7 +312,7 @@ export default function Products() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 shrink-0"
+                              className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreVertical className="h-4 w-4" />
@@ -279,6 +322,8 @@ export default function Products() {
                             <ShareProductDialog
                               productId={product.id}
                               productName={product.name}
+                              isPublic={product.is_public}
+                              onProductUpdate={loadProducts}
                               trigger={
                                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                                   <Users className="mr-2 h-4 w-4" />
@@ -303,52 +348,41 @@ export default function Products() {
                         </DropdownMenu>
                       )}
                     </div>
-                    <CardTitle
-                      className="text-base font-bold line-clamp-1 cursor-pointer hover:text-primary transition-colors"
-                      onClick={() => navigate(`/products/${product.id}`)}
-                    >
-                      {product.name}
-                    </CardTitle>
-                    <CardDescription className="text-sm line-clamp-2 leading-relaxed">
-                      {product.description || 'No description provided'}
-                    </CardDescription>
+
+                    {/* Description */}
+                    {product.description ? (
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-2.5">
+                        {product.description}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/50 italic mt-2.5">No description</p>
+                    )}
                   </CardHeader>
 
-                  <CardContent className="flex-1 pt-0 space-y-3">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Calendar className="h-3.5 w-3.5" />
-                      <span className="font-medium">
-                        {new Date(product.created_at).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </span>
-                    </div>
-
-                    <div className="rounded-xl border border-border/60 bg-gradient-to-br from-muted/30 to-muted/20 p-4 shadow-sm">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
+                  <CardContent className="flex-1 pt-0 px-4 pb-4">
+                    {/* Diagrams panel */}
+                    <div className="rounded-lg border border-border/60 overflow-hidden">
+                      {/* Panel header */}
+                      <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b border-border/40">
+                        <div className="flex items-center gap-1.5">
                           <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" />
                           <span className="text-xs font-semibold">Diagrams</span>
                         </div>
-                        <Badge variant="secondary" className="text-xs h-5 px-2 shadow-sm">
+                        <Badge variant="secondary" className="text-[11px] h-5 px-1.5 font-mono">
                           {diagramCount}
                         </Badge>
                       </div>
 
                       {diagramCount === 0 ? (
-                        <div className="rounded-lg border border-dashed border-border/60 p-3 text-center bg-background/50">
-                          <FileText className="h-6 w-6 text-muted-foreground mx-auto mb-1.5" />
-                          <p className="text-xs text-muted-foreground mb-2.5 font-medium">
-                            No diagrams yet
-                          </p>
+                        <div className="flex flex-col items-center justify-center py-5 px-3 gap-2.5">
+                          <FileText className="h-5 w-5 text-muted-foreground/40" />
+                          <p className="text-xs text-muted-foreground font-medium">No diagrams yet</p>
                           {canWrite && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleCreateDiagram(product.id)}
-                              className="w-full h-7 text-xs hover:bg-primary/5 hover:border-primary/30 transition-all"
+                              className="h-7 text-xs hover:bg-primary/5 hover:border-primary/30 transition-all"
                             >
                               <Plus className="mr-1 h-3 w-3" />
                               Create Diagram
@@ -356,45 +390,50 @@ export default function Products() {
                           )}
                         </div>
                       ) : (
-                        <div className="space-y-1.5">
+                        <>
                           {productDiagrams.slice(0, 3).map((diagram) => (
                             <div
                               key={diagram.id}
-                              className="flex items-center justify-between p-2 rounded-lg hover:bg-background/80 transition-all duration-200 group/diagram cursor-pointer border border-transparent hover:border-border/60"
-                              onClick={() =>
-                                navigate(`/diagrams?product=${product.id}&diagram=${diagram.id}`)
-                              }
+                              className="flex items-center gap-2 px-3 py-2 hover:bg-muted/30 transition-colors cursor-pointer group/diagram border-b border-border/30 last:border-0"
+                              onClick={() => navigate(`/diagrams?product=${product.id}&diagram=${diagram.id}`)}
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                <span className="text-xs truncate font-medium">{diagram.name}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
+                              <Grid3x3 className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                              <span className="text-xs truncate font-medium flex-1 group-hover/diagram:text-primary transition-colors">
+                                {diagram.name}
+                              </span>
+                              <div className="flex items-center gap-0.5 shrink-0">
                                 {canWrite && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0 opacity-0 group-hover/diagram:opacity-100 transition-all hover:bg-destructive/10"
-                                    onClick={(e) => openDeleteDiagramDialog(e, diagram.id)}
-                                  >
-                                    <Trash2 className="h-3 w-3 text-destructive" />
-                                  </Button>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-5 w-5 p-0 opacity-0 group-hover/diagram:opacity-100 transition-all hover:bg-destructive/10 rounded"
+                                        onClick={(e) => openDeleteDiagramDialog(e, diagram.id)}
+                                      >
+                                        <Trash2 className="h-3 w-3 text-destructive" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Delete diagram</TooltipContent>
+                                  </Tooltip>
                                 )}
-                                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover/diagram:text-primary shrink-0 transition-colors" />
+                                <ArrowRight className="h-3 w-3 text-muted-foreground/40 group-hover/diagram:text-primary group-hover/diagram:translate-x-0.5 transition-all" />
                               </div>
                             </div>
                           ))}
                           {diagramCount > 3 && (
-                            <p className="text-xs text-muted-foreground text-center py-1 font-medium">
-                              +{diagramCount - 3} more diagram{diagramCount - 3 > 1 ? 's' : ''}
-                            </p>
+                            <div className="px-3 py-1.5 bg-muted/20 border-t border-border/30 text-center">
+                              <span className="text-[11px] text-muted-foreground font-medium">
+                                +{diagramCount - 3} more diagram{diagramCount - 3 > 1 ? 's' : ''}
+                              </span>
+                            </div>
                           )}
-                        </div>
+                        </>
                       )}
                     </div>
                   </CardContent>
 
-                  <CardFooter className="pt-3 flex gap-2">
+                  <CardFooter className="px-4 pb-4 pt-2 flex gap-2">
                     <Button
                       variant="default"
                       size="sm"
@@ -404,15 +443,17 @@ export default function Products() {
                       <Eye className="mr-1.5 h-3.5 w-3.5" />
                       View Details
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 group-hover:border-primary/50 group-hover:bg-primary/5 transition-all shadow-sm hover:shadow"
-                      onClick={() => handleCreateDiagram(product.id)}
-                    >
-                      <Plus className="mr-1.5 h-3.5 w-3.5" />
-                      New Diagram
-                    </Button>
+                    {canWrite && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 hover:border-primary/40 hover:bg-primary/5 transition-all shadow-sm hover:shadow"
+                        onClick={() => handleCreateDiagram(product.id)}
+                      >
+                        <Plus className="mr-1.5 h-3.5 w-3.5" />
+                        New Diagram
+                      </Button>
+                    )}
                   </CardFooter>
                 </Card>
               );
@@ -462,26 +503,24 @@ export default function Products() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Product Dialog */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="sm:max-w-[450px]">
-          <DialogHeader>
-            <DialogTitle>Delete Product</DialogTitle>
-            <DialogDescription>
+      {/* Delete Product Alert Dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
+            <AlertDialogDescription>
               Are you sure you want to delete "{selectedProduct?.name}"? This action
               cannot be undone and will delete all associated diagrams and threats.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Diagram Alert Dialog */}
       <AlertDialog open={deleteDiagramOpen} onOpenChange={setDeleteDiagramOpen}>
@@ -507,19 +546,6 @@ export default function Products() {
         onOpenChange={setWizardOpen}
         onSuccess={loadProducts}
       />
-
-      <style>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(16px) scale(0.98);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-      `}</style>
     </div>
   );
 }

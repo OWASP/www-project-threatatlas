@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models import DiagramThreat as DiagramThreatModel, Diagram as DiagramModel, Threat as ThreatModel, User as UserModel, Model as ModelDB
+from app.models import DiagramThreat as DiagramThreatModel, Diagram as DiagramModel, Threat as ThreatModel, User as UserModel, Model as ModelDB, Product as ProductModel, ProductCollaborator
 from app.schemas import DiagramThreat, DiagramThreatCreate, DiagramThreatUpdate, DiagramThreatWithDetails
 from app.auth.dependencies import get_current_user
-from app.auth.permissions import require_resource_access, require_standard_or_admin
+from app.auth.permissions import require_standard_or_admin, can_access_product, can_edit_product, PermissionDenied
 from app.models.enums import UserRole
 
 router = APIRouter(prefix="/diagram-threats", tags=["diagram-threats"])
@@ -47,11 +47,25 @@ def list_diagram_threats(
         joinedload(DiagramThreatModel.diagram).joinedload(DiagramModel.product)
     )
 
-    # Filter by ownership if not admin
+    # Filter by access if not admin (owner, collaborator, or public product)
     if current_user.role != UserRole.ADMIN.value:
-        query = query.join(DiagramModel).join(DiagramModel.product).filter(
-            DiagramModel.product.has(user_id=current_user.id)
+        from sqlalchemy import or_
+        accessible_diagram_ids = (
+            db.query(DiagramModel.id)
+            .join(ProductModel, DiagramModel.product_id == ProductModel.id)
+            .outerjoin(ProductCollaborator,
+                (ProductCollaborator.product_id == ProductModel.id) &
+                (ProductCollaborator.user_id == current_user.id))
+            .filter(
+                or_(
+                    ProductModel.user_id == current_user.id,
+                    ProductCollaborator.user_id == current_user.id,
+                    ProductModel.is_public == True
+                )
+            )
+            .scalar_subquery()
         )
+        query = query.filter(DiagramThreatModel.diagram_id.in_(accessible_diagram_ids))
 
     if diagram_id is not None:
         query = query.filter(DiagramThreatModel.diagram_id == diagram_id)
@@ -80,8 +94,8 @@ def get_diagram_threat(
             detail=f"DiagramThreat with id {diagram_threat_id} not found"
         )
 
-    # Check ownership
-    require_resource_access(current_user, diagram_threat.diagram.product.user_id)
+    if not can_access_product(current_user, diagram_threat.diagram.product):
+        raise PermissionDenied("Not authorized to access this diagram threat")
     return diagram_threat
 
 
@@ -105,8 +119,8 @@ def create_diagram_threat(
             detail=f"Diagram with id {diagram_threat.diagram_id} not found"
         )
 
-    # Check ownership of the diagram's product
-    require_resource_access(current_user, diagram.product.user_id)
+    if not can_edit_product(current_user, diagram.product):
+        raise PermissionDenied("Not authorized to modify this diagram")
 
     # Check if model exists and belongs to this diagram
     model = db.query(ModelDB).filter(ModelDB.id == diagram_threat.model_id).first()
@@ -184,8 +198,8 @@ def update_diagram_threat(
             detail=f"DiagramThreat with id {diagram_threat_id} not found"
         )
 
-    # Check ownership
-    require_resource_access(current_user, db_diagram_threat.diagram.product.user_id)
+    if not can_edit_product(current_user, db_diagram_threat.diagram.product):
+        raise PermissionDenied("Not authorized to modify this diagram threat")
 
     update_data = diagram_threat.model_dump(exclude_unset=True)
 
@@ -224,8 +238,8 @@ def delete_diagram_threat(
             detail=f"DiagramThreat with id {diagram_threat_id} not found"
         )
 
-    # Check ownership
-    require_resource_access(current_user, db_diagram_threat.diagram.product.user_id)
+    if not can_edit_product(current_user, db_diagram_threat.diagram.product):
+        raise PermissionDenied("Not authorized to delete this diagram threat")
 
     db.delete(db_diagram_threat)
     db.commit()

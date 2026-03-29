@@ -105,6 +105,10 @@ def can_access_product(user: User, product: Product) -> bool:
     if user.role == UserRole.ADMIN.value:
         return True
 
+    # Public products accessible to all authenticated users
+    if product.is_public:
+        return True
+
     # Product owner can access
     if product.user_id == user.id:
         return True
@@ -115,6 +119,18 @@ def can_access_product(user: User, product: Product) -> bool:
             return True
 
     return False
+
+
+def require_product_access(user: User, product: Product) -> None:
+    """Raise PermissionDenied if user cannot access the product."""
+    if not can_access_product(user, product):
+        raise PermissionDenied("Not authorized to access this resource")
+
+
+def require_product_edit(user: User, product: Product) -> None:
+    """Raise PermissionDenied if user cannot edit the product."""
+    if not can_edit_product(user, product):
+        raise PermissionDenied("Not authorized to modify this resource")
 
 
 def can_edit_product(user: User, product: Product) -> bool:

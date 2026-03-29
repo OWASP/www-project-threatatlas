@@ -1,7 +1,7 @@
 """Invitation management endpoints for admin-only invitation-based user registration."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -63,7 +63,7 @@ def create_invitation(
         .filter(
             InvitationModel.email == data.email,
             InvitationModel.is_accepted == False,
-            InvitationModel.expires_at > datetime.utcnow(),
+            InvitationModel.expires_at > datetime.now(timezone.utc),
         )
         .first()
     )
@@ -79,7 +79,7 @@ def create_invitation(
         token=InvitationModel.generate_token(),
         role=data.role,
         invited_by=current_user.id,
-        expires_at=datetime.utcnow()
+        expires_at=datetime.now(timezone.utc)
         + timedelta(hours=settings.invitation_expire_hours),
     )
 
@@ -130,7 +130,7 @@ def list_invitations(
         query = query.filter(InvitationModel.is_accepted == False)
 
     if not include_expired:
-        query = query.filter(InvitationModel.expires_at > datetime.utcnow())
+        query = query.filter(InvitationModel.expires_at > datetime.now(timezone.utc))
 
     return query.order_by(InvitationModel.created_at.desc()).all()
 
@@ -210,7 +210,7 @@ def accept_invitation(
             detail="Invitation already accepted",
         )
 
-    if invitation.expires_at < datetime.utcnow():
+    if invitation.expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invitation expired",
@@ -242,7 +242,7 @@ def accept_invitation(
 
     # Mark invitation as accepted
     invitation.is_accepted = True
-    invitation.accepted_at = datetime.utcnow()
+    invitation.accepted_at = datetime.now(timezone.utc)
     invitation.user_id = new_user.id
 
     db.commit()
@@ -339,8 +339,8 @@ def resend_invitation(
         )
 
     # Extend expiration if expired
-    if invitation.expires_at < datetime.utcnow():
-        invitation.expires_at = datetime.utcnow() + timedelta(
+    if invitation.expires_at < datetime.now(timezone.utc):
+        invitation.expires_at = datetime.now(timezone.utc) + timedelta(
             hours=settings.invitation_expire_hours
         )
         db.commit()
