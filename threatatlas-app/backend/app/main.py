@@ -29,6 +29,7 @@ from app.routers import (
     groups,
     scim_tokens,
     scim,
+    product_downloads,
 )
 from app.routers.scim import ScimError
 
@@ -83,6 +84,7 @@ app.include_router(collaborators.router, prefix="/api")
 app.include_router(oidc_providers.router, prefix="/api")
 app.include_router(groups.router, prefix="/api")
 app.include_router(scim_tokens.router, prefix="/api")
+app.include_router(product_downloads.router, prefix="/api")
 # SCIM endpoints are mounted at /scim/v2 (not /api) per RFC 7644 convention.
 app.include_router(scim.router)
 

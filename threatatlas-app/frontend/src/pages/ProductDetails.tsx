@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { productsApi, diagramsApi, diagramThreatsApi, diagramMitigationsApi, modelsApi, frameworksApi } from '@/lib/api';
+import { productsApi, diagramsApi, diagramThreatsApi, diagramMitigationsApi, modelsApi, frameworksApi, triggerDownload } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +29,20 @@ import {
   Check,
   Loader2,
   MessageSquare,
+  Download,
+  FileJson,
+  FileSpreadsheet,
+  FileText as FileReport,
+  Package,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { getSeverityClasses, getStatusClasses } from '@/lib/risk';
 import { cn } from '@/lib/utils';
 import ThreatDetailsSheet from '@/components/ThreatDetailsSheet';
@@ -338,18 +351,54 @@ export default function ProductDetails() {
   return (
     <div className="flex-1 space-y-2 mx-auto p-4">
       {/* Header */}
-      <div className="flex items-start justify-between animate-fadeIn">
-        <div className="space-y-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/products')}
-            className="-ml-2 hover:bg-muted/70 rounded-lg cursor-pointer transition-colors"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Products
-          </Button>
-        </div>
+      <div className="flex items-center justify-between animate-fadeIn">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/products')}
+          className="-ml-2 hover:bg-muted/70 rounded-lg cursor-pointer transition-colors"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Products
+        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="shadow-sm">
+              <Download className="mr-2 h-4 w-4" />
+              Download
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel>Export this product</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => triggerDownload(`/api/products/${product.id}/download/diagrams`)}
+            >
+              <FileJson className="mr-2 h-4 w-4" />
+              Diagrams (JSON)
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => triggerDownload(`/api/products/${product.id}/download/threats-mitigations`)}
+            >
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Threats & Mitigations (CSV)
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => triggerDownload(`/api/products/${product.id}/download/report`)}
+            >
+              <FileReport className="mr-2 h-4 w-4" />
+              Full report (HTML)
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => triggerDownload(`/api/products/${product.id}/download/bundle`)}
+            >
+              <Package className="mr-2 h-4 w-4" />
+              All files (ZIP bundle)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Product Info & Stats */}

@@ -152,6 +152,36 @@ export const scimTokensApi = {
 // so the browser performs the full authorization flow.
 export const oidcLoginUrl = (loginPath: string) => `${API_BASE_URL}${loginPath}`;
 
+/**
+ * Fetch an authenticated URL and save the response as a file.
+ *
+ * Uses axios so the Authorization header is set by our interceptor; then
+ * builds a blob URL, clicks a hidden anchor, and cleans up. The filename is
+ * taken from the `Content-Disposition` header when present.
+ */
+export async function triggerDownload(pathWithLeadingSlash: string): Promise<void> {
+  // The path starts with `/api/...`; axios baseURL already includes `/api`, so strip it.
+  const url = pathWithLeadingSlash.startsWith('/api/')
+    ? pathWithLeadingSlash.slice(4)
+    : pathWithLeadingSlash;
+
+  const res = await api.get(url, { responseType: 'blob' });
+  const disposition: string | undefined = res.headers['content-disposition'];
+  let filename = 'download';
+  if (disposition) {
+    const m = /filename\s*=\s*"?([^";]+)"?/i.exec(disposition);
+    if (m) filename = m[1];
+  }
+  const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(blobUrl);
+}
+
 // Product API
 export type ProductStatus = 'design' | 'development' | 'testing' | 'deployment' | 'production';
 
