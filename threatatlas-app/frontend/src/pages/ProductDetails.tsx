@@ -38,6 +38,13 @@ interface Product {
   id: number;
   name: string;
   description: string | null;
+  status: 'design' | 'development' | 'testing' | 'deployment' | 'production' | null;
+  repository_url: string | null;
+  confluence_url: string | null;
+  application_url: string | null;
+  business_area: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -356,12 +363,73 @@ export default function ProductDetails() {
                 {product.name}
               </CardTitle>
             </CardHeader>
-            <CardContent className="h-full m-2 p-0">
-              <div className="p-2 border-dashed border rounded-lg h-full">
+            <CardContent className="h-full m-2 p-0 space-y-2">
+              <div className="p-2 border-dashed border rounded-lg">
                 <p className="text-sm leading-relaxed">
                   {product.description || 'No description provided'}
                 </p>
               </div>
+
+              {(product.status ||
+                product.business_area ||
+                product.owner_name ||
+                product.owner_email ||
+                product.repository_url ||
+                product.confluence_url ||
+                product.application_url) && (
+                <div className="p-3 border border-border/60 rounded-lg bg-muted/20 space-y-2 text-sm">
+                  {product.status && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0">Status</span>
+                      <Badge variant="outline" className="capitalize">{product.status}</Badge>
+                    </div>
+                  )}
+                  {product.business_area && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Business area</span>
+                      <span>{product.business_area}</span>
+                    </div>
+                  )}
+                  {(product.owner_name || product.owner_email) && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Owner</span>
+                      <span>
+                        {product.owner_name}
+                        {product.owner_name && product.owner_email && ' · '}
+                        {product.owner_email && (
+                          <a href={`mailto:${product.owner_email}`} className="text-primary hover:underline">
+                            {product.owner_email}
+                          </a>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {product.repository_url && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Repository</span>
+                      <a href={product.repository_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                        {product.repository_url}
+                      </a>
+                    </div>
+                  )}
+                  {product.confluence_url && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Confluence</span>
+                      <a href={product.confluence_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                        {product.confluence_url}
+                      </a>
+                    </div>
+                  )}
+                  {product.application_url && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Application</span>
+                      <a href={product.application_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                        {product.application_url}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex-col items-start gap-4 bottom-0 sticky">
               <div className="flex items-center gap-6 text-sm text-muted-foreground">

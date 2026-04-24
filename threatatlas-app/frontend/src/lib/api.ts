@@ -153,11 +153,25 @@ export const scimTokensApi = {
 export const oidcLoginUrl = (loginPath: string) => `${API_BASE_URL}${loginPath}`;
 
 // Product API
+export type ProductStatus = 'design' | 'development' | 'testing' | 'deployment' | 'production';
+
+export interface ProductInput {
+  name?: string;
+  description?: string | null;
+  status?: ProductStatus | null;
+  repository_url?: string | null;
+  confluence_url?: string | null;
+  application_url?: string | null;
+  business_area?: string | null;
+  owner_name?: string | null;
+  owner_email?: string | null;
+}
+
 export const productsApi = {
   list: () => api.get('/products'),
   get: (id: number) => api.get(`/products/${id}`),
-  create: (data: { name: string; description?: string }) => api.post('/products', data),
-  update: (id: number, data: { name?: string; description?: string }) => api.put(`/products/${id}`, data),
+  create: (data: ProductInput & { name: string }) => api.post('/products', data),
+  update: (id: number, data: ProductInput) => api.put(`/products/${id}`, data),
   delete: (id: number) => api.delete(`/products/${id}`),
 };
 

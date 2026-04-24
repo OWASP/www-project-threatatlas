@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { productsApi, diagramsApi, frameworksApi, modelsApi } from '@/lib/api';
+import { productsApi, diagramsApi, frameworksApi, modelsApi, type ProductStatus } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,7 +12,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowRight, ArrowLeft, Loader2, Check, Package, FileText } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ArrowRight, ArrowLeft, Loader2, Check, Package, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { Field, FieldLabel, FieldDescription, FieldError } from '@/components/ui/field';
 
 interface Framework {
@@ -40,6 +47,14 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
   const [productName, setProductName] = useState('');
   const [productDescription, setProductDescription] = useState('');
   const [productError, setProductError] = useState('');
+  const [showMore, setShowMore] = useState(false);
+  const [status, setStatus] = useState<ProductStatus | ''>('');
+  const [repositoryUrl, setRepositoryUrl] = useState('');
+  const [confluenceUrl, setConfluenceUrl] = useState('');
+  const [applicationUrl, setApplicationUrl] = useState('');
+  const [businessArea, setBusinessArea] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
 
   // Step 2
   const [diagramName, setDiagramName] = useState('Main Architecture');
@@ -56,6 +71,14 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
     setProductName('');
     setProductDescription('');
     setProductError('');
+    setShowMore(false);
+    setStatus('');
+    setRepositoryUrl('');
+    setConfluenceUrl('');
+    setApplicationUrl('');
+    setBusinessArea('');
+    setOwnerName('');
+    setOwnerEmail('');
     setDiagramName('Main Architecture');
     setDiagramError('');
     setSelectedFrameworks([]);
@@ -106,7 +129,14 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
     try {
       const productRes = await productsApi.create({
         name: productName.trim(),
-        description: productDescription.trim() || undefined,
+        description: productDescription.trim() || null,
+        status: status || null,
+        repository_url: repositoryUrl.trim() || null,
+        confluence_url: confluenceUrl.trim() || null,
+        application_url: applicationUrl.trim() || null,
+        business_area: businessArea.trim() || null,
+        owner_name: ownerName.trim() || null,
+        owner_email: ownerEmail.trim() || null,
       });
       const productId: number = productRes.data.id;
 
@@ -236,6 +266,98 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                   Briefly describe the purpose of this product.
                 </FieldDescription>
               </Field>
+
+              <button
+                type="button"
+                onClick={() => setShowMore((s) => !s)}
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showMore ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                {showMore ? 'Hide additional details' : 'Show additional details (optional)'}
+              </button>
+
+              {showMore && (
+                <div className="space-y-3 pt-2 border-t border-border/40">
+                  <Field>
+                    <FieldLabel htmlFor="wiz-status">Project status</FieldLabel>
+                    <Select value={status || 'none'} onValueChange={(v) => setStatus(v === 'none' ? '' : (v as ProductStatus))}>
+                      <SelectTrigger id="wiz-status">
+                        <SelectValue placeholder="Not specified" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Not specified</SelectItem>
+                        <SelectItem value="design">Design</SelectItem>
+                        <SelectItem value="development">Development</SelectItem>
+                        <SelectItem value="testing">Testing</SelectItem>
+                        <SelectItem value="deployment">Deployment</SelectItem>
+                        <SelectItem value="production">Production</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="wiz-business-area">Business area</FieldLabel>
+                    <Input
+                      id="wiz-business-area"
+                      placeholder="e.g. Payments, Identity, Marketing"
+                      value={businessArea}
+                      onChange={(e) => setBusinessArea(e.target.value)}
+                    />
+                  </Field>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field>
+                      <FieldLabel htmlFor="wiz-owner-name">Owner name</FieldLabel>
+                      <Input
+                        id="wiz-owner-name"
+                        placeholder="Jane Doe"
+                        value={ownerName}
+                        onChange={(e) => setOwnerName(e.target.value)}
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="wiz-owner-email">Owner email</FieldLabel>
+                      <Input
+                        id="wiz-owner-email"
+                        type="email"
+                        placeholder="jane@example.com"
+                        value={ownerEmail}
+                        onChange={(e) => setOwnerEmail(e.target.value)}
+                      />
+                    </Field>
+                  </div>
+
+                  <Field>
+                    <FieldLabel htmlFor="wiz-repo-url">Repository URL</FieldLabel>
+                    <Input
+                      id="wiz-repo-url"
+                      placeholder="https://github.com/org/repo"
+                      value={repositoryUrl}
+                      onChange={(e) => setRepositoryUrl(e.target.value)}
+                    />
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="wiz-confluence-url">Confluence URL</FieldLabel>
+                    <Input
+                      id="wiz-confluence-url"
+                      placeholder="https://company.atlassian.net/wiki/..."
+                      value={confluenceUrl}
+                      onChange={(e) => setConfluenceUrl(e.target.value)}
+                    />
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="wiz-app-url">Application URL</FieldLabel>
+                    <Input
+                      id="wiz-app-url"
+                      placeholder="https://app.example.com"
+                      value={applicationUrl}
+                      onChange={(e) => setApplicationUrl(e.target.value)}
+                    />
+                  </Field>
+                </div>
+              )}
             </div>
           )}
 

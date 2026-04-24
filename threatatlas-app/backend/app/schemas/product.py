@@ -1,11 +1,34 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+
+ProductStatus = Literal["design", "development", "testing", "deployment", "production"]
+
+
+def _empty_to_none(v):
+    if isinstance(v, str) and v.strip() == "":
+        return None
+    return v
 
 
 class ProductBase(BaseModel):
     """Base schema for Product."""
     name: str
     description: str | None = None
+    status: ProductStatus | None = None
+    repository_url: str | None = Field(default=None, max_length=500)
+    confluence_url: str | None = Field(default=None, max_length=500)
+    application_url: str | None = Field(default=None, max_length=500)
+    business_area: str | None = Field(default=None, max_length=200)
+    owner_name: str | None = Field(default=None, max_length=200)
+    owner_email: EmailStr | None = None
+
+    @field_validator("repository_url", "confluence_url", "application_url", "owner_email", mode="before")
+    @classmethod
+    def _coerce_empty(cls, v):
+        return _empty_to_none(v)
 
 
 class ProductCreate(ProductBase):

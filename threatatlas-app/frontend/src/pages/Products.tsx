@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { productsApi, diagramsApi } from '@/lib/api';
+import { productsApi, diagramsApi, type ProductStatus } from '@/lib/api';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -60,6 +67,13 @@ interface Product {
   id: number;
   name: string;
   description: string | null;
+  status: ProductStatus | null;
+  repository_url: string | null;
+  confluence_url: string | null;
+  application_url: string | null;
+  business_area: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -88,6 +102,13 @@ export default function Products() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    status: '' as ProductStatus | '',
+    repository_url: '',
+    confluence_url: '',
+    application_url: '',
+    business_area: '',
+    owner_name: '',
+    owner_email: '',
   });
 
   useEffect(() => {
@@ -118,10 +139,19 @@ export default function Products() {
   const handleEdit = async () => {
     if (!selectedProduct) return;
     try {
-      await productsApi.update(selectedProduct.id, formData);
+      await productsApi.update(selectedProduct.id, {
+        name: formData.name,
+        description: formData.description || null,
+        status: formData.status || null,
+        repository_url: formData.repository_url || null,
+        confluence_url: formData.confluence_url || null,
+        application_url: formData.application_url || null,
+        business_area: formData.business_area || null,
+        owner_name: formData.owner_name || null,
+        owner_email: formData.owner_email || null,
+      });
       setEditOpen(false);
       setSelectedProduct(null);
-      setFormData({ name: '', description: '' });
       loadProducts();
     } catch (error) {
       console.error('Error updating product:', error);
@@ -176,6 +206,13 @@ export default function Products() {
     setFormData({
       name: product.name,
       description: product.description || '',
+      status: product.status || '',
+      repository_url: product.repository_url || '',
+      confluence_url: product.confluence_url || '',
+      application_url: product.application_url || '',
+      business_area: product.business_area || '',
+      owner_name: product.owner_name || '',
+      owner_email: product.owner_email || '',
     });
     setEditOpen(true);
   };
@@ -423,22 +460,20 @@ export default function Products() {
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Product</DialogTitle>
             <DialogDescription>
-              Update the product information.
+              Update the product information. All fields except name are optional.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="edit-name">Name</Label>
+              <Label htmlFor="edit-name">Name *</Label>
               <Input
                 id="edit-name"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
             <div className="grid gap-2">
@@ -446,10 +481,84 @@ export default function Products() {
               <Textarea
                 id="edit-description"
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={3}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-status">Project status</Label>
+              <Select
+                value={formData.status || 'none'}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, status: v === 'none' ? '' : (v as ProductStatus) })
                 }
-                rows={4}
+              >
+                <SelectTrigger id="edit-status">
+                  <SelectValue placeholder="Not specified" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Not specified</SelectItem>
+                  <SelectItem value="design">Design</SelectItem>
+                  <SelectItem value="development">Development</SelectItem>
+                  <SelectItem value="testing">Testing</SelectItem>
+                  <SelectItem value="deployment">Deployment</SelectItem>
+                  <SelectItem value="production">Production</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-business-area">Business area</Label>
+              <Input
+                id="edit-business-area"
+                value={formData.business_area}
+                onChange={(e) => setFormData({ ...formData, business_area: e.target.value })}
+                placeholder="e.g. Payments, Identity"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-owner-name">Owner name</Label>
+                <Input
+                  id="edit-owner-name"
+                  value={formData.owner_name}
+                  onChange={(e) => setFormData({ ...formData, owner_name: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-owner-email">Owner email</Label>
+                <Input
+                  id="edit-owner-email"
+                  type="email"
+                  value={formData.owner_email}
+                  onChange={(e) => setFormData({ ...formData, owner_email: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-repo">Repository URL</Label>
+              <Input
+                id="edit-repo"
+                value={formData.repository_url}
+                onChange={(e) => setFormData({ ...formData, repository_url: e.target.value })}
+                placeholder="https://github.com/..."
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-confluence">Confluence URL</Label>
+              <Input
+                id="edit-confluence"
+                value={formData.confluence_url}
+                onChange={(e) => setFormData({ ...formData, confluence_url: e.target.value })}
+                placeholder="https://company.atlassian.net/wiki/..."
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-app">Application URL</Label>
+              <Input
+                id="edit-app"
+                value={formData.application_url}
+                onChange={(e) => setFormData({ ...formData, application_url: e.target.value })}
+                placeholder="https://app.example.com"
               />
             </div>
           </div>
