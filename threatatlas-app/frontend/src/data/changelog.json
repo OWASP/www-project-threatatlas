@@ -1,5 +1,24 @@
 [
   {
+    "version": "0.5.1",
+    "date": "2026-04-24",
+    "tag": "patch",
+    "entries": [
+      {
+        "type": "fixed",
+        "text": "Product downloads were saving with a generic \"download\" filename (interpreted by the OS as .txt). CORS middleware now exposes Content-Disposition so the browser hands the server-sent filename (e.g. Payment_Service-report.html) through to JS."
+      },
+      {
+        "type": "improved",
+        "text": "New Product wizard — \"Select Frameworks\" step is now scrollable (max-height) and includes a Select-all / Deselect-all toggle with a \"{n} of {total} selected\" counter. Needed since the default seed now has 11 frameworks."
+      },
+      {
+        "type": "improved",
+        "text": "Product cards on the Products page show the project status (Design / Development / Testing / Deployment / Production) as a colored badge plus the business area as a neutral badge, matching the palette used on the product details page."
+      }
+    ]
+  },
+  {
     "version": "0.5.0",
     "date": "2026-04-24",
     "tag": "feature",
