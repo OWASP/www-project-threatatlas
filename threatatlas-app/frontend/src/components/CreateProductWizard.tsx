@@ -396,41 +396,62 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <div className="grid gap-2">
-                  {frameworks.map((fw) => {
-                    const selected = selectedFrameworks.includes(fw.id);
-                    return (
-                      <div
-                        key={fw.id}
-                        onClick={() => toggleFramework(fw.id)}
-                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors select-none ${
-                          selected
-                            ? 'border-primary/50 bg-primary/5'
-                            : 'border-border hover:border-border/80 hover:bg-muted/40'
-                        }`}
+                <>
+                  {frameworks.length > 0 && (
+                    <div className="flex items-center justify-between px-1 pb-2">
+                      <span className="text-xs text-muted-foreground">
+                        {selectedFrameworks.length} of {frameworks.length} selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFrameworkError('');
+                          setSelectedFrameworks((prev) =>
+                            prev.length === frameworks.length ? [] : frameworks.map((f) => f.id)
+                          );
+                        }}
+                        className="text-xs font-semibold text-primary hover:underline"
                       >
-                        {/* Custom checkbox */}
+                        {selectedFrameworks.length === frameworks.length ? 'Deselect all' : 'Select all'}
+                      </button>
+                    </div>
+                  )}
+                  <div className="grid gap-2 max-h-[340px] overflow-y-auto pr-1 border border-border/40 rounded-lg p-2 bg-muted/10">
+                    {frameworks.map((fw) => {
+                      const selected = selectedFrameworks.includes(fw.id);
+                      return (
                         <div
-                          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                          key={fw.id}
+                          onClick={() => toggleFramework(fw.id)}
+                          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors select-none ${
                             selected
-                              ? 'bg-primary border-primary'
-                              : 'border-muted-foreground/40 bg-background'
+                              ? 'border-primary/50 bg-primary/5'
+                              : 'border-border bg-background hover:border-border/80 hover:bg-muted/40'
                           }`}
                         >
-                          {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                          {/* Custom checkbox */}
+                          <div
+                            className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                              selected
+                                ? 'bg-primary border-primary'
+                                : 'border-muted-foreground/40 bg-background'
+                            }`}
+                          >
+                            {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold leading-tight">{fw.name}</p>
+                            {fw.description && (
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                                {fw.description}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold leading-tight">{fw.name}</p>
-                          {fw.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
-                              {fw.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
               {frameworkError && (
                 <p className="text-xs text-destructive">{frameworkError}</p>

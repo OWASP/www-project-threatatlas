@@ -65,6 +65,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Browsers only expose a small safelist of response headers to JS by
+    # default; Content-Disposition is not on it, so download filenames were
+    # lost and browsers fell back to a generic "download" + ".txt".
+    expose_headers=["Content-Disposition"],
 )
 
 # Include routers

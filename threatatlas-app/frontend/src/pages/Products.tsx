@@ -63,6 +63,16 @@ import {
 import ShareProductDialog from '@/components/ShareProductDialog';
 import CreateProductWizard from '@/components/CreateProductWizard';
 
+const STATUS_CLASSES: Record<string, string> = {
+  design: 'border-sky-500/50 text-sky-700 dark:text-sky-300 bg-sky-500/10',
+  development: 'border-indigo-500/50 text-indigo-700 dark:text-indigo-300 bg-indigo-500/10',
+  testing: 'border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-500/10',
+  deployment: 'border-purple-500/50 text-purple-700 dark:text-purple-300 bg-purple-500/10',
+  production: 'border-emerald-500/50 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10',
+};
+const getStatusBadgeClass = (status: ProductStatus | null): string =>
+  status ? STATUS_CLASSES[status] ?? '' : '';
+
 interface Product {
   id: number;
   name: string;
@@ -346,6 +356,23 @@ export default function Products() {
                     >
                       {product.name}
                     </CardTitle>
+                    {(product.status || product.business_area) && (
+                      <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                        {product.status && (
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] capitalize h-5 px-2 font-semibold ${getStatusBadgeClass(product.status)}`}
+                          >
+                            {product.status}
+                          </Badge>
+                        )}
+                        {product.business_area && (
+                          <Badge variant="secondary" className="text-[10px] h-5 px-2 font-medium">
+                            {product.business_area}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                     <CardDescription className="text-sm line-clamp-2 leading-relaxed">
                       {product.description || 'No description provided'}
                     </CardDescription>

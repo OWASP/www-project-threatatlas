@@ -430,7 +430,18 @@ export default function ProductDetails() {
                   {product.status && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0">Status</span>
-                      <Badge variant="outline" className="capitalize">{product.status}</Badge>
+                      <Badge
+                        variant="outline"
+                        className={`capitalize font-semibold ${
+                          product.status === 'design' ? 'border-sky-500/50 text-sky-700 dark:text-sky-300 bg-sky-500/10' :
+                          product.status === 'development' ? 'border-indigo-500/50 text-indigo-700 dark:text-indigo-300 bg-indigo-500/10' :
+                          product.status === 'testing' ? 'border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-500/10' :
+                          product.status === 'deployment' ? 'border-purple-500/50 text-purple-700 dark:text-purple-300 bg-purple-500/10' :
+                          'border-emerald-500/50 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10'
+                        }`}
+                      >
+                        {product.status}
+                      </Badge>
                     </div>
                   )}
                   {product.business_area && (
