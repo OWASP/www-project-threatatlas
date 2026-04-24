@@ -7,6 +7,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,11 +17,18 @@ import ThreatManagement from '@/components/ThreatManagement';
 interface ElementPropertiesSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedElement: { id: string; type: 'node' | 'edge'; label: string; nodeType?: string } | null;
+  selectedElement: {
+    id: string;
+    type: 'node' | 'edge';
+    label: string;
+    nodeType?: string;
+    description?: string;
+  } | null;
   diagramId: number | null;
   activeModelId: number | null;
   activeModelFrameworkId: number | null;
   onRename: (name: string) => void;
+  onDescriptionChange?: (description: string) => void;
   onDelete: () => void;
   portalContainer?: HTMLElement | null;
 }
@@ -33,19 +41,28 @@ export default function ElementPropertiesSheet({
   activeModelId,
   activeModelFrameworkId,
   onRename,
+  onDescriptionChange,
   onDelete,
   portalContainer,
 }: ElementPropertiesSheetProps) {
   const [elementName, setElementName] = useState('');
+  const [elementDescription, setElementDescription] = useState('');
 
   useEffect(() => {
     if (selectedElement) {
       setElementName(selectedElement.label);
+      setElementDescription(selectedElement.description ?? '');
     }
   }, [selectedElement]);
 
   const handleRename = () => {
     onRename(elementName);
+  };
+
+  const handleDescriptionBlur = () => {
+    if (onDescriptionChange && elementDescription !== (selectedElement?.description ?? '')) {
+      onDescriptionChange(elementDescription);
+    }
   };
 
   return (
@@ -84,6 +101,19 @@ export default function ElementPropertiesSheet({
                     onBlur={handleRename}
                     placeholder="Enter element name"
                     className="w-full"
+                  />
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="element-description">Description</FieldLabel>
+                  <Textarea
+                    id="element-description"
+                    value={elementDescription}
+                    onChange={(e) => setElementDescription(e.target.value)}
+                    onBlur={handleDescriptionBlur}
+                    placeholder="Describe this element: its role, trust level, data handled, owners, etc."
+                    rows={3}
+                    className="w-full resize-y"
                   />
                 </Field>
 

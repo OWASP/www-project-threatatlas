@@ -1,5 +1,32 @@
 [
   {
+    "version": "0.5.0",
+    "date": "2026-04-24",
+    "tag": "feature",
+    "entries": [
+      {
+        "type": "added",
+        "text": "Product optional metadata: project status (Design / Development / Testing / Deployment / Production), repository URL, Confluence URL, application URL, business area, owner name and email. Surfaced in the New Product wizard (collapsible \"Additional details\"), the Edit dialog, and the product details page with clickable links."
+      },
+      {
+        "type": "added",
+        "text": "Product downloads from the details page: Diagrams (JSON, re-importable), Threats & Mitigations (CSV), full Report (standalone print-friendly HTML), and an All-files ZIP bundle with a README."
+      },
+      {
+        "type": "added",
+        "text": "Six new diagram tools under an \"Extended\" section: Cloud Service, API Gateway, Message Queue, Actor, Mobile Client, IoT Device — each with its own color and icon, reusing the existing DFD shape renderers."
+      },
+      {
+        "type": "added",
+        "text": "Description field on the Element Information panel — free-form notes per node (role, trust level, data handled, owners). Persisted with the diagram."
+      },
+      {
+        "type": "added",
+        "text": "Seven new threat-modeling frameworks seeded: DREAD (5/5), VAST (8/8), OCTAVE (6/6), Trike (6/6), Attack Trees (8/8), Kill Chain (7/7), and MITRE ATT&CK (30 techniques across all 14 Enterprise tactics, 13 mitigations). Seeding is idempotent — existing installs pick up the new frameworks on restart."
+      }
+    ]
+  },
+  {
     "version": "0.4.0",
     "date": "2026-04-24",
     "tag": "feature",

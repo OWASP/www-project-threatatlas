@@ -6,6 +6,12 @@ import {
   Cpu,
   Users,
   Box as BoxIcon,
+  Cloud,
+  Router,
+  MessagesSquare,
+  User,
+  Smartphone,
+  Radio,
 } from 'lucide-react';
 
 const nodeStyles = {
@@ -40,6 +46,54 @@ const nodeStyles = {
     iconColor: 'text-slate-600 dark:text-slate-400',
     textColor: 'text-slate-900 dark:text-slate-100',
     shape: 'dashed',
+  },
+  cloud: {
+    icon: Cloud,
+    bg: 'bg-sky-50 dark:bg-sky-950/50',
+    border: 'border-sky-500',
+    iconColor: 'text-sky-600 dark:text-sky-400',
+    textColor: 'text-sky-900 dark:text-sky-100',
+    shape: 'rectangle',
+  },
+  apigateway: {
+    icon: Router,
+    bg: 'bg-indigo-50 dark:bg-indigo-950/50',
+    border: 'border-indigo-500',
+    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    textColor: 'text-indigo-900 dark:text-indigo-100',
+    shape: 'rectangle',
+  },
+  queue: {
+    icon: MessagesSquare,
+    bg: 'bg-purple-50 dark:bg-purple-950/50',
+    border: 'border-purple-500',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+    textColor: 'text-purple-900 dark:text-purple-100',
+    shape: 'parallel',
+  },
+  actor: {
+    icon: User,
+    bg: 'bg-rose-50 dark:bg-rose-950/50',
+    border: 'border-rose-500',
+    iconColor: 'text-rose-600 dark:text-rose-400',
+    textColor: 'text-rose-900 dark:text-rose-100',
+    shape: 'circle',
+  },
+  mobile: {
+    icon: Smartphone,
+    bg: 'bg-emerald-50 dark:bg-emerald-950/50',
+    border: 'border-emerald-500',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    textColor: 'text-emerald-900 dark:text-emerald-100',
+    shape: 'rectangle',
+  },
+  iot: {
+    icon: Radio,
+    bg: 'bg-orange-50 dark:bg-orange-950/50',
+    border: 'border-orange-500',
+    iconColor: 'text-orange-600 dark:text-orange-400',
+    textColor: 'text-orange-900 dark:text-orange-100',
+    shape: 'rectangle',
   },
 };
 

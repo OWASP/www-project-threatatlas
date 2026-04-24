@@ -47,6 +47,12 @@ import {
   Database,
   Users,
   Box as BoxIcon,
+  Cloud,
+  Router,
+  MessagesSquare,
+  User,
+  Smartphone,
+  Radio,
   Trash2,
   Grid3x3,
   History,
@@ -125,7 +131,7 @@ export function DiagramsContent() {
   };
 
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [selectedElement, setSelectedElement] = useState<{ id: string; type: 'node' | 'edge'; label: string; nodeType?: string } | null>(null);
+  const [selectedElement, setSelectedElement] = useState<{ id: string; type: 'node' | 'edge'; label: string; nodeType?: string; description?: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [diagramToDelete, setDiagramToDelete] = useState<Diagram | null>(null);
 
@@ -293,7 +299,8 @@ export function DiagramsContent() {
       id: node.id,
       type: 'node',
       label: node.data.label as string,
-      nodeType: node.data.type as string
+      nodeType: node.data.type as string,
+      description: (node.data.description as string) ?? ''
     });
     setSheetOpen(true);
   };
@@ -729,7 +736,7 @@ export function DiagramsContent() {
         >
           {/* Floating Action Menu for Node Creation */}
           <Panel position="top-left" className="m-4">
-            <Card className="shadow-2xl border bg-background/95 backdrop-blur-md w-48">
+            <Card className="shadow-2xl border bg-background/95 backdrop-blur-md w-52 max-h-[calc(100vh-8rem)] overflow-y-auto">
               <div className="p-2 space-y-1">
                 <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Diagram Tools
@@ -737,37 +744,86 @@ export function DiagramsContent() {
                 <Button
                   variant="ghost"
                   onClick={() => addNode('process')}
-                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-blue-500/10 hover:text-blue-600 transition-all rounded-lg group"
+                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-blue-500/10 hover:text-blue-600 transition-all rounded-lg group"
                 >
-                  <Cpu className="h-5 w-5 text-blue-500 group-hover:scale-110 transition-transform" />
+                  <Cpu className="h-4 w-4 text-blue-500 group-hover:scale-110 transition-transform" />
                   <span className="text-sm font-medium">Process</span>
                 </Button>
-
                 <Button
                   variant="ghost"
                   onClick={() => addNode('datastore')}
-                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-amber-500/10 hover:text-amber-600 transition-all rounded-lg group"
+                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-amber-500/10 hover:text-amber-600 transition-all rounded-lg group"
                 >
-                  <Database className="h-5 w-5 text-amber-500 group-hover:scale-110 transition-transform" />
+                  <Database className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
                   <span className="text-sm font-medium">Data Store</span>
                 </Button>
-
                 <Button
                   variant="ghost"
                   onClick={() => addNode('external')}
-                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-pink-500/10 hover:text-pink-600 transition-all rounded-lg group"
+                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-pink-500/10 hover:text-pink-600 transition-all rounded-lg group"
                 >
-                  <Users className="h-5 w-5 text-pink-500 group-hover:scale-110 transition-transform" />
+                  <Users className="h-4 w-4 text-pink-500 group-hover:scale-110 transition-transform" />
                   <span className="text-sm font-medium">External Entity</span>
                 </Button>
-
                 <Button
                   variant="ghost"
                   onClick={() => addNode('boundary')}
-                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-slate-500/10 hover:text-slate-600 transition-all rounded-lg group"
+                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-slate-500/10 hover:text-slate-600 transition-all rounded-lg group"
                 >
-                  <BoxIcon className="h-5 w-5 text-slate-500 group-hover:scale-110 transition-transform" />
+                  <BoxIcon className="h-4 w-4 text-slate-500 group-hover:scale-110 transition-transform" />
                   <span className="text-sm font-medium">Trust Boundary</span>
+                </Button>
+
+                <div className="px-2 pt-2 pb-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Extended
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => addNode('cloud')}
+                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-sky-500/10 hover:text-sky-600 transition-all rounded-lg group"
+                >
+                  <Cloud className="h-4 w-4 text-sky-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">Cloud Service</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => addNode('apigateway')}
+                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-indigo-500/10 hover:text-indigo-600 transition-all rounded-lg group"
+                >
+                  <Router className="h-4 w-4 text-indigo-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">API Gateway</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => addNode('queue')}
+                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-purple-500/10 hover:text-purple-600 transition-all rounded-lg group"
+                >
+                  <MessagesSquare className="h-4 w-4 text-purple-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">Message Queue</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => addNode('actor')}
+                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-rose-500/10 hover:text-rose-600 transition-all rounded-lg group"
+                >
+                  <User className="h-4 w-4 text-rose-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">Actor</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => addNode('mobile')}
+                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-emerald-500/10 hover:text-emerald-600 transition-all rounded-lg group"
+                >
+                  <Smartphone className="h-4 w-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">Mobile Client</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => addNode('iot')}
+                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-orange-500/10 hover:text-orange-600 transition-all rounded-lg group"
+                >
+                  <Radio className="h-4 w-4 text-orange-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">IoT Device</span>
                 </Button>
               </div>
             </Card>
@@ -781,6 +837,12 @@ export function DiagramsContent() {
               if (type === 'process') return '#3b82f6';
               if (type === 'datastore') return '#f59e0b';
               if (type === 'external') return '#ec4899';
+              if (type === 'cloud') return '#0ea5e9';
+              if (type === 'apigateway') return '#6366f1';
+              if (type === 'queue') return '#a855f7';
+              if (type === 'actor') return '#f43f5e';
+              if (type === 'mobile') return '#10b981';
+              if (type === 'iot') return '#f97316';
               return '#94a3b8';
             }}
             maskColor="rgba(0, 0, 0, 0.05)"
@@ -798,6 +860,17 @@ export function DiagramsContent() {
         diagramId={selectedDiagram}
         activeModelId={activeModelId}
         activeModelFrameworkId={activeModel?.framework_id || null}
+        onDescriptionChange={(description) => {
+          if (!selectedElement || selectedElement.type !== 'node') return;
+          setNodes((nds) =>
+            nds.map((node) =>
+              node.id === selectedElement.id
+                ? { ...node, data: { ...node.data, description } }
+                : node
+            )
+          );
+          setSelectedElement({ ...selectedElement, description });
+        }}
         onRename={(name) => {
           if (!selectedElement) return;
           if (selectedElement.type === 'node') {
