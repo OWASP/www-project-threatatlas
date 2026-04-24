@@ -18,6 +18,29 @@ services:
     networks:
       - threatatlas-network
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: threatatlas-keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Frontchannel URLs (browser) always use http://localhost:8080.
+      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME_STRICT: "false"
+      # Backchannel URLs (token, userinfo) echo the request host, so when the
+      # backend container calls http://keycloak:8080/... Keycloak responds with
+      # token_endpoint pointing at keycloak:8080 — reachable on the docker net.
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    networks:
+      - threatatlas-network
+
   backend:
     build:
       context: ./backend
@@ -43,6 +66,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

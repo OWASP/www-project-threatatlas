@@ -42,6 +42,116 @@ api.interceptors.response.use(
   }
 );
 
+// Auth / SSO API
+export interface OIDCProviderInfo {
+  name: string;
+  display_name: string;
+  login_url: string;
+}
+
+export const authApi = {
+  listOidcProviders: () => api.get<OIDCProviderInfo[]>('/auth/oidc/providers'),
+};
+
+// Admin-managed SSO provider configuration
+export interface SsoProvider {
+  id: number;
+  name: string;
+  display_name: string;
+  issuer: string;
+  metadata_url: string | null;
+  client_id: string;
+  scopes: string;
+  is_enabled: boolean;
+}
+
+export interface SsoProviderCreate {
+  name: string;
+  display_name: string;
+  issuer: string;
+  metadata_url?: string | null;
+  client_id: string;
+  client_secret: string;
+  scopes?: string;
+  is_enabled?: boolean;
+}
+
+export interface SsoProviderUpdate {
+  display_name?: string;
+  issuer?: string;
+  metadata_url?: string | null;
+  client_id?: string;
+  client_secret?: string;
+  scopes?: string;
+  is_enabled?: boolean;
+}
+
+export const ssoApi = {
+  list: () => api.get<SsoProvider[]>('/sso/providers'),
+  create: (data: SsoProviderCreate) => api.post<SsoProvider>('/sso/providers', data),
+  update: (id: number, data: SsoProviderUpdate) => api.put<SsoProvider>(`/sso/providers/${id}`, data),
+  delete: (id: number) => api.delete(`/sso/providers/${id}`),
+};
+
+// Groups
+export type UserRole = 'admin' | 'standard' | 'read_only';
+
+export interface Group {
+  id: number;
+  name: string;
+  description: string | null;
+  role: UserRole;
+  scim_external_id: string | null;
+  created_at: string;
+}
+
+export interface GroupMember {
+  id: number;
+  email: string;
+  username: string;
+  full_name: string | null;
+}
+
+export interface GroupDetail extends Group {
+  members: GroupMember[];
+}
+
+export const groupsApi = {
+  list: () => api.get<Group[]>('/groups'),
+  get: (id: number) => api.get<GroupDetail>(`/groups/${id}`),
+  create: (data: { name: string; description?: string | null; role: UserRole }) =>
+    api.post<GroupDetail>('/groups', data),
+  update: (id: number, data: { name?: string; description?: string | null; role?: UserRole }) =>
+    api.put<GroupDetail>(`/groups/${id}`, data),
+  delete: (id: number) => api.delete(`/groups/${id}`),
+  setMembers: (id: number, userIds: number[]) =>
+    api.put<GroupDetail>(`/groups/${id}/members`, { user_ids: userIds }),
+  addMember: (id: number, userId: number) => api.post<GroupDetail>(`/groups/${id}/members/${userId}`),
+  removeMember: (id: number, userId: number) => api.delete<GroupDetail>(`/groups/${id}/members/${userId}`),
+};
+
+// SCIM tokens
+export interface ScimToken {
+  id: number;
+  name: string;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface ScimTokenCreated extends ScimToken {
+  token: string;
+}
+
+export const scimTokensApi = {
+  list: () => api.get<ScimToken[]>('/scim-tokens'),
+  create: (name: string) => api.post<ScimTokenCreated>('/scim-tokens', { name }),
+  revoke: (id: number) => api.delete(`/scim-tokens/${id}`),
+};
+
+// Absolute URL for an OIDC login redirect — consumed via `window.location.href`
+// so the browser performs the full authorization flow.
+export const oidcLoginUrl = (loginPath: string) => `${API_BASE_URL}${loginPath}`;
+
 // Product API
 export const productsApi = {
   list: () => api.get('/products'),

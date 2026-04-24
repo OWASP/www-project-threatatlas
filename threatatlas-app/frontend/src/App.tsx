@@ -8,6 +8,7 @@ import Diagrams from '@/pages/Diagrams';
 import KnowledgeBase from '@/pages/KnowledgeBase';
 import Analytics from '@/pages/Analytics';
 import Login from '@/pages/Login';
+import AuthCallback from '@/pages/AuthCallback';
 import Changelog from '@/pages/Changelog';
 import AcceptInvitation from '@/pages/AcceptInvitation';
 import UserManagement from '@/pages/UserManagement';
@@ -85,6 +86,7 @@ export function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
           <Route
             path="/*"

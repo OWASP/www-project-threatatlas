@@ -1,5 +1,64 @@
 [
   {
+    "version": "0.4.0",
+    "date": "2026-04-24",
+    "tag": "feature",
+    "entries": [
+      {
+        "type": "added",
+        "text": "Single Sign-On via generic OIDC: works with Microsoft Entra ID, Okta, PingFederate, Keycloak / Red Hat SSO, Auth0, Google, and any OIDC-compliant provider."
+      },
+      {
+        "type": "added",
+        "text": "SSO providers are managed at runtime via User Management → SSO Providers — no redeploys or env-var edits needed. Client secrets are encrypted at rest (Fernet) using the app SECRET_KEY."
+      },
+      {
+        "type": "added",
+        "text": "Login screen auto-renders a button per enabled SSO provider; callback page finalizes the JWT handoff."
+      },
+      {
+        "type": "added",
+        "text": "Optional Discovery URL override per provider — enables split DNS setups (e.g. docker-net internal hostname for backchannel vs. public hostname in the issuer claim)."
+      },
+      {
+        "type": "added",
+        "text": "Groups with role grants: create named groups that grant admin / standard / read_only, assign users, and a user's effective role is automatically the most permissive between their direct role and any group membership."
+      },
+      {
+        "type": "added",
+        "text": "Full SCIM 2.0 server at /scim/v2 (RFC 7643 / 7644): Users and Groups CRUD, discovery endpoints (ServiceProviderConfig, ResourceTypes, Schemas), filter parsing (eq), PATCH with add / replace / remove including member path filters (members[value eq \"id\"])."
+      },
+      {
+        "type": "added",
+        "text": "SCIM bearer tokens: admin-generated, SHA-256 hashed at rest, shown in plaintext exactly once. Full inbound provisioning from Keycloak (via the scim-for-keycloak extension), Okta, Entra ID, JumpCloud, Authentik, etc."
+      },
+      {
+        "type": "added",
+        "text": "Ready-to-run Keycloak 25 dev environment: pre-imported realm with a confidential client, two test users, OIDC correctly configured for the Docker network, and a pre-registered OIDC provider in ThreatAtlas."
+      },
+      {
+        "type": "added",
+        "text": "Documentation: docs/scim-keycloak.md walks through token generation, scim-for-keycloak setup, SCIM client configuration, and role-mapping workflow."
+      },
+      {
+        "type": "improved",
+        "text": "User model: users.hashed_password is now nullable to support SSO-only accounts, and users.scim_external_id ties records back to the upstream IdP."
+      },
+      {
+        "type": "improved",
+        "text": "RBAC permission checks (require_admin, require_standard_or_admin, resource access) now evaluate effective_role, so group-granted roles are honored everywhere."
+      },
+      {
+        "type": "improved",
+        "text": "/auth/me now returns effective_role alongside the direct role, so the UI can reflect group-based elevation."
+      },
+      {
+        "type": "improved",
+        "text": "SessionMiddleware wired into the app: required by Authlib for OIDC state/nonce and previously missing — OIDC flows now actually work end-to-end."
+      }
+    ]
+  },
+  {
     "version": "0.3.0",
     "date": "2026-03-23",
     "tag": "release",

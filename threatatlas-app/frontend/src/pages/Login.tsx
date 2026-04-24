@@ -1,19 +1,34 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Network } from 'lucide-react';
+import { Network, KeyRound } from 'lucide-react';
+import { authApi, oidcLoginUrl, type OIDCProviderInfo } from '@/lib/api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [providers, setProviders] = useState<OIDCProviderInfo[]>([]);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const callbackError = searchParams.get('error');
+    if (callbackError) {
+      setError(`Single sign-on failed: ${callbackError}`);
+    }
+
+    authApi
+      .listOidcProviders()
+      .then((res) => setProviders(res.data))
+      .catch(() => setProviders([]));
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +43,10 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSsoLogin = (provider: OIDCProviderInfo) => {
+    window.location.href = oidcLoginUrl(provider.login_url);
   };
 
   return (
@@ -79,6 +98,32 @@ export default function Login() {
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
+
+          {providers.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <div className="relative flex items-center">
+                <div className="flex-grow border-t border-border/60" />
+                <span className="mx-3 text-xs uppercase tracking-wider text-muted-foreground">or continue with</span>
+                <div className="flex-grow border-t border-border/60" />
+              </div>
+              <div className="grid gap-2">
+                {providers.map((provider) => (
+                  <Button
+                    key={provider.name}
+                    type="button"
+                    variant="outline"
+                    className="w-full h-11 rounded-lg justify-center gap-2"
+                    onClick={() => handleSsoLogin(provider)}
+                    disabled={loading}
+                  >
+                    <KeyRound className="h-4 w-4" />
+                    {provider.display_name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-6 text-center text-sm">
             <p className="text-muted-foreground">
               Don't have an account? Contact your administrator for an invitation.

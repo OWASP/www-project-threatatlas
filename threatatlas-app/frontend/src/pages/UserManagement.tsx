@@ -48,6 +48,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import SsoProvidersSection from '@/components/SsoProvidersSection';
+import GroupsSection from '@/components/GroupsSection';
+import ScimTokensSection from '@/components/ScimTokensSection';
 
 interface User {
   id: number;
@@ -671,6 +674,12 @@ export default function UserManagement() {
           )}
         </CardContent>
       </Card>
+
+      <GroupsSection />
+
+      <SsoProvidersSection />
+
+      <ScimTokensSection />
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="!max-w-xl max-h-[90vh] overflow-y-auto">
