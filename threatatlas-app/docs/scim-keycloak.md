@@ -7,6 +7,20 @@ client by default — you enable it with the community extension
 
 This guide covers the local-dev setup.
 
+## 0. Start the dev stack with Keycloak
+
+The Keycloak service lives in `docker-compose.dev.yml` (overlay) so the base
+`docker-compose.yml` stays production-clean. From `threatatlas-app/`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+
+This boots Postgres, backend, frontend, **and** Keycloak 25 with the
+`threatatlas` realm auto-imported (client `threatatlas`,
+secret `threatatlas-dev-secret`, users `alice@threatatlas.dev` /
+`bob@threatatlas.dev` — password `test123`).
+
 ## 1. Generate a SCIM bearer token
 
 1. Sign in to ThreatAtlas as an admin.
