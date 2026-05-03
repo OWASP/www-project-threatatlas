@@ -487,7 +487,12 @@ def approve_all_proposals(
                 elif t == "create_model":
                     created_models.append(result)
             except ValueError as exc:
-                errors.append(f"{proposal['id']}: {exc}")
+                logger.warning(
+                    "approve_all_proposals: validation failed for proposal %s",
+                    proposal["id"],
+                    exc_info=True,
+                )
+                errors.append(f"{proposal['id']}: invalid proposal data")
             except Exception:
                 logger.exception("approve_all_proposals: failed for proposal %s", proposal["id"])
                 errors.append(f"{proposal['id']}: approval failed")
