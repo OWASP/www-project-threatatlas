@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # JWT Authentication
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 360
 
     # CORS
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # Invitations
     invitation_expire_hours: int = 168  # 7 days
     frontend_url: str = "http://localhost:5173"
+
+    # Redis (optional — system works without it)
+    redis_url: str = "redis://localhost:6379/0"
 
     model_config = SettingsConfigDict(
         env_file=".env",

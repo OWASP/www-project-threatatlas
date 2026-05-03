@@ -641,10 +641,10 @@ export default function KnowledgeBase() {
               {threats.length === 0 ? (
                 <Card className="border-dashed border-2 rounded-xl">
                   <CardContent className="flex flex-col items-center justify-center p-16">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 mb-4 shadow-sm">
-                      <AlertTriangle className="h-8 w-8 text-orange-600" />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-4 shadow-sm" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
+                      <AlertTriangle className="h-8 w-8" style={{ color: 'var(--risk-high)' }} />
                     </div>
-                    <h3 className="text-lg font-bold mb-2">No threats available</h3>
+                    <h3 className="text-lg font-medium mb-2">No threats available</h3>
                     <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
                       This framework doesn't have any threats defined yet.
                     </p>
@@ -654,7 +654,7 @@ export default function KnowledgeBase() {
                 <Card className="border-dashed rounded-xl">
                   <CardContent className="flex flex-col items-center justify-center p-12">
                     <Search className="h-8 w-8 text-muted-foreground mb-3" />
-                    <h3 className="text-base font-bold mb-1">No threats match your filters</h3>
+                    <h3 className="text-base font-medium mb-1">No threats match your filters</h3>
                     <p className="text-sm text-muted-foreground text-center">
                       Try adjusting your search or category filter.
                     </p>
@@ -686,8 +686,8 @@ export default function KnowledgeBase() {
                             }}
                           >
                             <TableCell>
-                              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 shadow-sm">
-                                <AlertTriangle className="h-4 w-4 text-orange-600" />
+                              <div className="flex h-9 w-9 items-center justify-center rounded-xl shadow-sm" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
+                                <AlertTriangle className="h-4 w-4" style={{ color: 'var(--risk-high)' }} />
                               </div>
                             </TableCell>
                             <TableCell className="font-semibold">{threat.name}</TableCell>
@@ -703,7 +703,7 @@ export default function KnowledgeBase() {
                                   <Sparkles className="h-3 w-3" />Custom
                                 </Badge>
                               ) : threat.is_modified ? (
-                                <Badge variant="outline" className="gap-1.5 font-semibold shadow-sm rounded-lg border-amber-400 text-amber-700 dark:text-amber-400">
+                                <Badge variant="outline" className="gap-1.5 font-semibold shadow-sm rounded-lg" style={{ borderColor: 'color-mix(in srgb, var(--lemon-500) 40%, transparent)', color: 'var(--risk-medium)' }}>
                                   <Pencil className="h-3 w-3" />Modified
                                 </Badge>
                               ) : (
@@ -834,10 +834,10 @@ export default function KnowledgeBase() {
               {mitigations.length === 0 ? (
                 <Card className="border-dashed border-2 rounded-xl">
                   <CardContent className="flex flex-col items-center justify-center p-16">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 mb-4 shadow-sm">
-                      <Shield className="h-8 w-8 text-green-600" />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-4 shadow-sm" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
+                      <Shield className="h-8 w-8" style={{ color: 'var(--risk-low)' }} />
                     </div>
-                    <h3 className="text-lg font-bold mb-2">No mitigations available</h3>
+                    <h3 className="text-lg font-medium mb-2">No mitigations available</h3>
                     <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
                       This framework doesn't have any mitigations defined yet.
                     </p>
@@ -847,7 +847,7 @@ export default function KnowledgeBase() {
                 <Card className="border-dashed rounded-xl">
                   <CardContent className="flex flex-col items-center justify-center p-12">
                     <Search className="h-8 w-8 text-muted-foreground mb-3" />
-                    <h3 className="text-base font-bold mb-1">No mitigations match your filters</h3>
+                    <h3 className="text-base font-medium mb-1">No mitigations match your filters</h3>
                     <p className="text-sm text-muted-foreground text-center">
                       Try adjusting your search or category filter.
                     </p>
@@ -879,8 +879,8 @@ export default function KnowledgeBase() {
                             }}
                           >
                             <TableCell>
-                              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-green-500/10 to-green-500/5 shadow-sm">
-                                <Shield className="h-4 w-4 text-green-600" />
+                              <div className="flex h-9 w-9 items-center justify-center rounded-xl shadow-sm" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
+                                <Shield className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
                               </div>
                             </TableCell>
                             <TableCell className="font-semibold">{mitigation.name}</TableCell>
@@ -896,7 +896,7 @@ export default function KnowledgeBase() {
                                   <Sparkles className="h-3 w-3" />Custom
                                 </Badge>
                               ) : mitigation.is_modified ? (
-                                <Badge variant="outline" className="gap-1.5 font-semibold shadow-sm rounded-lg border-amber-400 text-amber-700 dark:text-amber-400">
+                                <Badge variant="outline" className="gap-1.5 font-semibold shadow-sm rounded-lg" style={{ borderColor: 'color-mix(in srgb, var(--lemon-500) 40%, transparent)', color: 'var(--risk-medium)' }}>
                                   <Pencil className="h-3 w-3" />Modified
                                 </Badge>
                               ) : (
@@ -959,7 +959,7 @@ export default function KnowledgeBase() {
                     <Card className="border-dashed border-2 rounded-xl">
                       <CardContent className="flex flex-col items-center justify-center p-16">
                         <Map className="h-10 w-10 text-muted-foreground mb-3" />
-                        <h3 className="text-base font-bold mb-1">No coverage data</h3>
+                        <h3 className="text-base font-medium mb-1">No coverage data</h3>
                         <p className="text-sm text-muted-foreground text-center">
                           Add threats and mitigations to this framework to see coverage.
                         </p>
@@ -975,8 +975,8 @@ export default function KnowledgeBase() {
                 }));
 
                 const chartConfig = {
-                  threats: { label: 'Threats', color: 'var(--chart-1)' },
-                  mitigations: { label: 'Mitigations', color: 'var(--chart-2)' },
+                  threats: { label: 'Threats', color: 'var(--risk-high)' },
+                  mitigations: { label: 'Mitigations', color: 'var(--risk-low)' },
                 } satisfies ChartConfig;
 
                 const totalThreats = threats.length;
@@ -988,7 +988,7 @@ export default function KnowledgeBase() {
                     return sum + (t === 0 ? (m > 0 ? 100 : 0) : Math.min(100, Math.round((m / t) * 100)));
                   }, 0) / allCategories.length
                 );
-                const coverageColor = overallCoverage >= 75 ? 'text-green-600' : overallCoverage >= 40 ? 'text-amber-600' : 'text-red-600';
+                const coverageColor = overallCoverage >= 75 ? 'var(--risk-low)' : overallCoverage >= 40 ? 'var(--risk-medium)' : 'var(--risk-critical)';
                 const barHeight = Math.max(320, allCategories.length * 80);
 
                 return (
@@ -997,13 +997,13 @@ export default function KnowledgeBase() {
                     <div className="grid grid-cols-4 gap-3">
                       {[
                         { label: 'Categories', value: allCategories.length, color: '' },
-                        { label: 'Threats', value: totalThreats, color: 'text-orange-600' },
-                        { label: 'Mitigations', value: totalMitigations, color: 'text-green-600' },
-                        { label: 'Avg Coverage', value: `${overallCoverage}%`, color: coverageColor },
-                      ].map(({ label, value, color }) => (
+                        { label: 'Threats', value: totalThreats, colorVar: 'var(--risk-high)' },
+                        { label: 'Mitigations', value: totalMitigations, colorVar: 'var(--risk-low)' },
+                        { label: 'Avg Coverage', value: `${overallCoverage}%`, colorVar: coverageColor },
+                      ].map(({ label, value, colorVar }) => (
                         <Card key={label} className="rounded-xl">
                           <CardContent className="p-3 text-center">
-                            <p className={`text-xl font-bold tabular-nums ${color}`}>{value}</p>
+                            <p className="text-xl font-bold tabular-nums" style={colorVar ? { color: colorVar } : {}}>{value}</p>
                             <p className="text-[11px] text-muted-foreground">{label}</p>
                           </CardContent>
                         </Card>
@@ -1038,8 +1038,8 @@ export default function KnowledgeBase() {
                             />
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8, paddingBottom: 8 }} />
-                            <Bar dataKey="threats" fill="var(--chart-1)" radius={[0, 6, 6, 0]} />
-                            <Bar dataKey="mitigations" fill="var(--chart-2)" radius={[0, 6, 6, 0]} />
+                            <Bar dataKey="threats" fill="var(--risk-high)" radius={[0, 6, 6, 0]} />
+                            <Bar dataKey="mitigations" fill="var(--risk-low)" radius={[0, 6, 6, 0]} />
                           </BarChart>
                         </ChartContainer>
                       </CardContent>

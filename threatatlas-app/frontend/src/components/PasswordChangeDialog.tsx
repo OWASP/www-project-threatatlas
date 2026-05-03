@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,9 +16,10 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 
 interface PasswordChangeDialogProps {
   collapsed?: boolean;
+  trigger?: ReactNode;
 }
 
-export default function PasswordChangeDialog({ collapsed = false }: PasswordChangeDialogProps) {
+export default function PasswordChangeDialog({ collapsed = false, trigger }: PasswordChangeDialogProps) {
   const [open, setOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -84,10 +85,12 @@ export default function PasswordChangeDialog({ collapsed = false }: PasswordChan
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className={collapsed ? "h-8 w-8 p-0" : "w-full justify-start"}>
-          <Key className={`h-4 w-4 ${collapsed ? "" : "mr-2"}`} />
-          {!collapsed && "Change Password"}
-        </Button>
+        {trigger ?? (
+          <Button variant="ghost" size="sm" className={collapsed ? "h-8 w-8 p-0" : "w-full justify-start"}>
+            <Key className={`h-4 w-4 ${collapsed ? "" : "mr-2"}`} />
+            {!collapsed && "Change Password"}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -159,7 +162,12 @@ export default function PasswordChangeDialog({ collapsed = false }: PasswordChan
               </div>
             )}
             {success && (
-              <div className="text-sm text-green-600 bg-green-50/50 p-3 rounded-lg border border-green-200/50 animate-in fade-in zoom-in duration-200">
+              <div className="text-sm p-3 rounded-lg animate-in fade-in zoom-in duration-200" style={{
+                color: 'var(--element-mitigation)',
+                backgroundColor: 'color-mix(in srgb, var(--element-mitigation) 5%, transparent)',
+                borderWidth: '1px',
+                borderColor: 'color-mix(in srgb, var(--element-mitigation) 30%, transparent)'
+              }}>
                 Password changed successfully!
               </div>
             )}

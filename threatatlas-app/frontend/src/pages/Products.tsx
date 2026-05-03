@@ -119,6 +119,7 @@ export default function Products() {
   const [deleteDiagramOpen, setDeleteDiagramOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedDiagramId, setSelectedDiagramId] = useState<number | null>(null);
+  const [expandedDiagrams, setExpandedDiagrams] = useState<Record<number, boolean>>({});
 
   const [formData, setFormData] = useState({
     name: '',
@@ -253,7 +254,7 @@ export default function Products() {
               <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/60 to-muted/40 mb-4 shadow-sm">
                 <Box className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-bold mb-2">No products yet</h3>
+              <h3 className="text-xl font-medium mb-2">No products yet</h3>
               <p className="text-sm text-muted-foreground mb-8 text-center max-w-md leading-relaxed">
                 {canWrite
                   ? 'Create your first product to start threat modeling and secure your applications'
@@ -272,12 +273,19 @@ export default function Products() {
             {products.map((product, index) => {
               const productDiagrams = diagrams[product.id] || [];
               const diagramCount = productDiagrams.length;
+              const isExpanded = !!expandedDiagrams[product.id];
+              const visibleDiagrams = isExpanded ? productDiagrams : productDiagrams.slice(0, 3);
 
               return (
                 <Card
                   key={product.id}
-                  className="animate-fadeInUp group flex flex-col hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl border-border/60 overflow-hidden"
+                  className="animate-fadeInUp group flex flex-col hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl border-border/60 overflow-hidden cursor-pointer"
                   style={{ animationDelay: `${index * 50}ms` }}
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.closest('[data-card-action], button, a, [role="menuitem"]')) return;
+                    navigate(`/products/${product.id}`);
+                  }}
                 >
                   <CardHeader className="pb-3 pt-4 px-4">
                     {/* Title row: icon + name + menu */}
@@ -313,6 +321,7 @@ export default function Products() {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              data-card-action
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreVertical className="h-4 w-4" />
@@ -325,19 +334,20 @@ export default function Products() {
                               isPublic={product.is_public}
                               onProductUpdate={loadProducts}
                               trigger={
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <DropdownMenuItem data-card-action onSelect={(e) => e.preventDefault()}>
                                   <Users className="mr-2 h-4 w-4" />
                                   Share Product
                                 </DropdownMenuItem>
                               }
                             />
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => openEditDialog(product)}>
+                            <DropdownMenuItem data-card-action onClick={() => openEditDialog(product)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               Edit Product
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
+                              data-card-action
                               onClick={() => openDeleteDialog(product)}
                               className="text-destructive focus:text-destructive"
                             >
@@ -381,6 +391,7 @@ export default function Products() {
                             <Button
                               variant="outline"
                               size="sm"
+                              data-card-action
                               onClick={() => handleCreateDiagram(product.id)}
                               className="h-7 text-xs hover:bg-primary/5 hover:border-primary/30 transition-all"
                             >
@@ -391,9 +402,10 @@ export default function Products() {
                         </div>
                       ) : (
                         <>
-                          {productDiagrams.slice(0, 3).map((diagram) => (
+                          {visibleDiagrams.map((diagram) => (
                             <div
                               key={diagram.id}
+                              data-card-action
                               className="flex items-center gap-2 px-3 py-2 hover:bg-muted/30 transition-colors cursor-pointer group/diagram border-b border-border/30 last:border-0"
                               onClick={() => navigate(`/diagrams?product=${product.id}&diagram=${diagram.id}`)}
                             >
@@ -408,6 +420,7 @@ export default function Products() {
                                       <Button
                                         variant="ghost"
                                         size="sm"
+                                        data-card-action
                                         className="h-5 w-5 p-0 opacity-0 group-hover/diagram:opacity-100 transition-all hover:bg-destructive/10 rounded"
                                         onClick={(e) => openDeleteDiagramDialog(e, diagram.id)}
                                       >
@@ -422,11 +435,21 @@ export default function Products() {
                             </div>
                           ))}
                           {diagramCount > 3 && (
-                            <div className="px-3 py-1.5 bg-muted/20 border-t border-border/30 text-center">
+                            <button
+                              type="button"
+                              data-card-action
+                              className="w-full px-3 py-1.5 bg-muted/20 border-t border-border/30 text-center hover:bg-muted/30 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedDiagrams((prev) => ({ ...prev, [product.id]: !isExpanded }));
+                              }}
+                            >
                               <span className="text-[11px] text-muted-foreground font-medium">
-                                +{diagramCount - 3} more diagram{diagramCount - 3 > 1 ? 's' : ''}
+                                {isExpanded
+                                  ? 'Show less'
+                                  : `+${diagramCount - 3} more diagram${diagramCount - 3 > 1 ? 's' : ''}`}
                               </span>
-                            </div>
+                            </button>
                           )}
                         </>
                       )}
@@ -437,6 +460,7 @@ export default function Products() {
                     <Button
                       variant="default"
                       size="sm"
+                      data-card-action
                       className="flex-1 shadow-sm hover:shadow-md transition-all"
                       onClick={() => navigate(`/products/${product.id}`)}
                     >
@@ -447,6 +471,7 @@ export default function Products() {
                       <Button
                         variant="outline"
                         size="sm"
+                        data-card-action
                         className="flex-1 hover:border-primary/40 hover:bg-primary/5 transition-all shadow-sm hover:shadow"
                         onClick={() => handleCreateDiagram(product.id)}
                       >

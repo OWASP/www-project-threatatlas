@@ -51,3 +51,7 @@ pnpm-debug.log*
 .vscode/
 *.swp
 *.bak
+
+
+# .claude
+.claude/

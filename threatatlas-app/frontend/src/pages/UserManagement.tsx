@@ -585,7 +585,7 @@ export default function UserManagement() {
                   <TableRow key={user.id}>
                     <TableCell>
                       {user.is_active ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <CheckCircle2 className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
                       ) : (
                         <XCircle className="h-4 w-4 text-muted-foreground" />
                       )}

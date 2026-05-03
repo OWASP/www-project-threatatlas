@@ -30,6 +30,8 @@ class DiagramMitigationVersionSnapshot(BaseModel):
     threat_id: int | None = None
     status: str
     comments: str | None = None
+    mitigation_name: str | None = None
+    node_label: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -66,6 +68,7 @@ class DiagramVersionSummary(BaseModel):
     node_count: int
     edge_count: int
     threat_count: int
+    mitigation_count: int = 0
     total_risk_score: int
 
     model_config = ConfigDict(from_attributes=True)
@@ -95,6 +98,15 @@ class ThreatChange(BaseModel):
     risk_score_delta: int | None = None
 
 
+class MitigationChange(BaseModel):
+    """Change to a mitigation."""
+    element_id: str
+    mitigation_id: int
+    change_type: str  # 'added', 'removed', 'modified'
+    before: DiagramMitigationVersionSnapshot | None = None
+    after: DiagramMitigationVersionSnapshot | None = None
+
+
 class DiagramVersionComparison(BaseModel):
     """Comparison result between two versions."""
     from_version: int
@@ -112,6 +124,11 @@ class DiagramVersionComparison(BaseModel):
     threats_added: list[ThreatChange] = []
     threats_removed: list[ThreatChange] = []
     threats_modified: list[ThreatChange] = []
+
+    # Mitigation changes
+    mitigations_added: list[MitigationChange] = []
+    mitigations_removed: list[MitigationChange] = []
+    mitigations_modified: list[MitigationChange] = []
 
     # Summary statistics
     total_risk_score_delta: int

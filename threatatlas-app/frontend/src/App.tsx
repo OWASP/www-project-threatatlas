@@ -11,8 +11,8 @@ import Login from '@/pages/Login';
 import Changelog from '@/pages/Changelog';
 import AcceptInvitation from '@/pages/AcceptInvitation';
 import UserManagement from '@/pages/UserManagement';
+import Settings from '@/pages/Settings';
 import { Separator } from '@/components/ui/separator';
-import { Shield } from 'lucide-react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -42,6 +42,7 @@ function HeaderBreadcrumb() {
       case '/analytics': return { title: 'Analytics' };
       case '/knowledge': return { title: 'Knowledge Base' };
       case '/users': return { title: 'User Management' };
+      case '/settings': return { title: 'Settings' };
       case '/changelog': return { title: 'Changelog' };
       default: return { title: 'ThreatAtlas' };
     }
@@ -55,8 +56,7 @@ function HeaderBreadcrumb() {
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <Shield className="h-4 w-4 text-primary" />
-            <span className="hidden sm:inline">ThreatAtlas</span>
+            <span className="hidden sm:inline">Home</span>
           </BreadcrumbLink>
         </BreadcrumbItem>
         {parent && (
@@ -83,7 +83,7 @@ function AppContent() {
     <>
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-4 border-b border-border/60 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 px-6 shadow-sm transition-all duration-300">
+        <header className="sticky top-0 z-50 flex h-[81px] shrink-0 items-center gap-4 border-b border-sidebar-border bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 px-6 transition-all duration-300">
           <div className="flex items-center gap-4">
             <SidebarTrigger className="hover:bg-muted/70 transition-all duration-200 rounded-lg p-2 -ml-2 hover:scale-105" />
             <Separator orientation="vertical" className="h-7 bg-border/60" />
@@ -100,6 +100,7 @@ function AppContent() {
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/knowledge" element={<KnowledgeBase />} />
               <Route path="/users" element={<UserManagement />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/changelog" element={<Changelog />} />
             </Routes>
           </ErrorBoundary>

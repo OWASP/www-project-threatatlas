@@ -105,8 +105,9 @@ export function CommentSection({ comments, onSave, canWrite, authorName }: Comme
           {parsedComments.map((comment) => (
             <div key={comment.id} className="bg-muted/50 p-3 rounded-lg border border-border/40 space-y-1 group">
               <div className="flex justify-between items-start gap-2">
-                <div className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <span className="font-semibold text-foreground/80 text-[11px]">{comment.author}</span>
+                  <span className="text-[10px] text-muted-foreground opacity-60">|</span>
                   <span className="text-[10px] text-muted-foreground opacity-70">
                     {format(new Date(comment.timestamp), 'MMM d, yyyy h:mm a')}
                   </span>

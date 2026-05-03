@@ -18,6 +18,22 @@ services:
     networks:
       - threatatlas-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: threatatlas-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - threatatlas-network
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -25,6 +41,7 @@ services:
     container_name: threatatlas-backend
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-threatatlas}:${POSTGRES_PASSWORD:-threatatlas_dev}@postgres:5432/${POSTGRES_DB:-threatatlas}
+      REDIS_URL: redis://redis:6379/0
       API_TITLE: ${API_TITLE:-ThreatAtlas API}
       API_VERSION: ${API_VERSION:-1.0.0}
       DEBUG: ${DEBUG:-True}
@@ -43,12 +60,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started   # backend handles Redis unavailability gracefully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 90s             # pydantic-ai install + migrations take longer on first build
     networks:
       - threatatlas-network
     restart: unless-stopped
@@ -70,6 +89,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   threatatlas-network:

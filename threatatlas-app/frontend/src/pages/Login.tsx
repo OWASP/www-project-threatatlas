@@ -31,15 +31,15 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-br from-background via-muted/40 to-background">
       <Card className="animate-fadeInUp w-full max-w-lg shadow-lg border-border/60 rounded-2xl">
         <CardHeader className="space-y-2 text-center pt-8 pb-6">
           <div className="flex justify-center mb-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-primary/80 text-primary-foreground shadow-lg">
               <Network className="h-8 w-8" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight">OWASP ThreatAtlas</CardTitle>
+          <CardTitle className="text-4xl font-extrabold tracking-tight">OWASP ThreatAtlas</CardTitle>
           <CardDescription className="text-base">Sign in to your account to continue</CardDescription>
         </CardHeader>
         <CardContent className="pb-8">
@@ -94,6 +94,9 @@ export default function Login() {
           </div>
         </CardContent>
       </Card>
+      <div className="absolute bottom-4 left-0 right-0 text-center text-xs">
+        The project link is <a href="https://owasp.org/www-project-threatatlas/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold transition-all">OWASP ThreatAtlas</a>
+      </div>
     </div>
   );
 }

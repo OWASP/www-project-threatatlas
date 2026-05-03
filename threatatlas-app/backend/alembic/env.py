@@ -17,6 +17,9 @@ from app.models import (
     DiagramThreat,
     Mitigation,
     DiagramMitigation,
+    AIConfig,
+    AIConversation,
+    AIMessage,
 )
 
 # this is the Alembic Config object, which provides

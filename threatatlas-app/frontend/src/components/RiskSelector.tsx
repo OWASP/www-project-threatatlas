@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
-import { getSeverity, getSeverityVariant } from '@/lib/risk';
 
 interface RiskSelectorProps {
   likelihood: number | null;
@@ -102,16 +100,6 @@ export function RiskSelector({ likelihood, impact, onLikelihoodChange, onImpactC
     setLocalImpact(impact ?? 1);
   }, [likelihood, impact]);
 
-  // Show live score when parent has any committed value, both committed, or the user has moved
-  // a slider away from the default (fixes preview while dragging before commit when both were null).
-  const bothCommitted = likelihood !== null && impact !== null;
-  const oneCommitted = likelihood !== null || impact !== null;
-  const localNonDefault = localLikelihood !== 1 || localImpact !== 1;
-  const showLiveScore = bothCommitted || oneCommitted || localNonDefault;
-
-  const liveScore = showLiveScore ? localLikelihood * localImpact : null;
-  const severity = liveScore != null ? getSeverity(liveScore) : null;
-
   return (
     <div className="space-y-5">
       <SliderRow
@@ -128,24 +116,6 @@ export function RiskSelector({ likelihood, impact, onLikelihoodChange, onImpactC
         onChange={setLocalImpact}
         onCommit={onImpactChange}
       />
-
-      {/* Risk score summary */}
-      {liveScore != null && severity != null ? (
-        <div className="flex items-center justify-between px-3 py-2 bg-muted rounded-lg">
-          <span className="text-xs font-medium">
-            Risk Score: <span className="font-bold tabular-nums">{liveScore}</span>
-          </span>
-          <Badge variant={getSeverityVariant(severity)} className="capitalize text-xs">
-            {severity}
-          </Badge>
-        </div>
-      ) : (
-        <div className="px-3 py-2 bg-muted/50 rounded-lg border border-dashed">
-          <p className="text-xs text-muted-foreground text-center">
-            Set both sliders to calculate risk score
-          </p>
-        </div>
-      )}
     </div>
   );
 }

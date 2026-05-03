@@ -168,7 +168,7 @@ export default function MitigationManagement({ diagramId, activeModelId, element
       <CardContent className="p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-green-600" />
+            <Shield className="h-4 w-4" style={{ color: 'var(--element-mitigation)' }} />
             <h3 className="font-semibold text-sm">Mitigations ({attachedMitigations.length})</h3>
           </div>
           <Button

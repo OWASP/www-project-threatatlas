@@ -16,53 +16,57 @@ interface ChangelogVersion {
   entries: ChangelogEntry[];
 }
 
-const entryConfig: Record<ChangelogEntry['type'], { label: string; icon: React.ElementType; className: string; dotClass: string }> = {
+const entryConfig: Record<ChangelogEntry['type'], { label: string; icon: React.ElementType; badgeStyle: React.CSSProperties; dotStyle: React.CSSProperties }> = {
   added: {
     label: 'Added',
     icon: Plus,
-    className: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-900/30 dark:border-emerald-700/50',
-    dotClass: 'bg-emerald-500',
+    badgeStyle: { color: 'var(--risk-low)', backgroundColor: 'var(--risk-low-muted)', borderColor: 'color-mix(in srgb, var(--matcha-600) 35%, transparent)' },
+    dotStyle: { backgroundColor: 'var(--risk-low)' },
   },
   improved: {
     label: 'Improved',
     icon: Zap,
-    className: 'text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-700/50',
-    dotClass: 'bg-blue-500',
+    badgeStyle: { color: 'var(--risk-high)', backgroundColor: 'var(--risk-high-muted)', borderColor: 'color-mix(in srgb, var(--pomegranate-400) 40%, transparent)' },
+    dotStyle: { backgroundColor: 'var(--primary)' },
   },
   fixed: {
     label: 'Fixed',
     icon: Wrench,
-    className: 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-900/30 dark:border-amber-700/50',
-    dotClass: 'bg-amber-500',
+    badgeStyle: { color: 'var(--risk-medium)', backgroundColor: 'var(--risk-medium-muted)', borderColor: 'color-mix(in srgb, var(--lemon-500) 40%, transparent)' },
+    dotStyle: { backgroundColor: 'var(--risk-medium)' },
   },
   removed: {
     label: 'Removed',
     icon: CheckCircle2,
-    className: 'text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-900/30 dark:border-red-700/50',
-    dotClass: 'bg-red-500',
+    badgeStyle: { color: 'var(--risk-critical)', backgroundColor: 'var(--risk-critical-muted)', borderColor: 'color-mix(in srgb, var(--pomegranate-600) 40%, transparent)' },
+    dotStyle: { backgroundColor: 'var(--risk-critical)' },
   },
 };
 
-const tagConfig: Record<ChangelogVersion['tag'], { label: string; className: string; icon: React.ElementType }> = {
+const tagConfig: Record<ChangelogVersion['tag'], { label: string; badgeStyle: React.CSSProperties; icon: React.ElementType; iconStyle: React.CSSProperties }> = {
   unreleased: {
     label: 'Unreleased',
     icon: GitBranch,
-    className: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700/50',
+    badgeStyle: { backgroundColor: 'color-mix(in srgb, var(--ube-800) 12%, transparent)', color: 'var(--ube-300)', borderColor: 'color-mix(in srgb, var(--ube-300) 40%, transparent)' },
+    iconStyle: { color: 'var(--ube-300)' },
   },
   feature: {
     label: 'Feature Release',
     icon: Rocket,
-    className: 'bg-primary/10 text-primary border-primary/30',
+    badgeStyle: { backgroundColor: 'var(--primary)', opacity: 0.1, color: 'var(--primary)', borderColor: 'color-mix(in srgb, var(--primary) 30%, transparent)' },
+    iconStyle: { color: 'var(--primary)' },
   },
   initial: {
     label: 'Initial Release',
     icon: Rocket,
-    className: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/50',
+    badgeStyle: { backgroundColor: 'var(--risk-low-muted)', color: 'var(--risk-low)', borderColor: 'color-mix(in srgb, var(--matcha-600) 35%, transparent)' },
+    iconStyle: { color: 'var(--risk-low)' },
   },
   patch: {
     label: 'Patch',
     icon: Wrench,
-    className: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700/50',
+    badgeStyle: { backgroundColor: 'var(--risk-medium-muted)', color: 'var(--risk-medium)', borderColor: 'color-mix(in srgb, var(--lemon-500) 40%, transparent)' },
+    iconStyle: { color: 'var(--risk-medium)' },
   },
 };
 
@@ -70,6 +74,10 @@ function VersionCard({ item, index }: { item: ChangelogVersion; index: number })
   const tag = tagConfig[item.tag] ?? tagConfig.feature;
   const TagIcon = tag.icon;
   const isUnreleased = item.tag === 'unreleased';
+  // feature badge style needs special handling — bg-primary/10 can't be expressed as opacity on the element
+  const featureBadgeStyle: React.CSSProperties = item.tag === 'feature'
+    ? { backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)', borderColor: 'color-mix(in srgb, var(--primary) 30%, transparent)' }
+    : tag.badgeStyle;
 
   const grouped = item.entries.reduce<Record<string, ChangelogEntry[]>>((acc, entry) => {
     if (!acc[entry.type]) acc[entry.type] = [];
@@ -84,30 +92,26 @@ function VersionCard({ item, index }: { item: ChangelogVersion; index: number })
     >
       {/* Timeline dot */}
       <div
-        className={cn(
-          'absolute left-0 top-1 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-sm transition-transform duration-200 hover:scale-110',
-          isUnreleased
-            ? 'border-purple-400 bg-purple-100 dark:border-purple-600 dark:bg-purple-900/40'
-            : 'border-primary/40 bg-primary/10 dark:border-primary/50 dark:bg-primary/20'
-        )}
+        className="absolute left-0 top-1 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-sm transition-transform duration-200 hover:scale-110"
+        style={isUnreleased
+          ? { borderColor: 'var(--ube-300)', backgroundColor: 'color-mix(in srgb, var(--ube-800) 15%, transparent)' }
+          : { borderColor: 'color-mix(in srgb, var(--primary) 40%, transparent)', backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)' }
+        }
       >
-        <TagIcon className={cn('h-3.5 w-3.5', isUnreleased ? 'text-purple-600 dark:text-purple-300' : 'text-primary')} />
+        <TagIcon className="h-3.5 w-3.5" style={tag.iconStyle} />
       </div>
 
       <Card
-        className={cn(
-          'border-border/60 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden',
-          isUnreleased && 'border-purple-200/60 dark:border-purple-700/30'
-        )}
+        className="border-border/60 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden"
+        style={isUnreleased ? { borderColor: 'color-mix(in srgb, var(--ube-300) 30%, transparent)' } : {}}
       >
         {/* Top accent bar */}
         <div
-          className={cn(
-            'h-0.5 w-full',
-            isUnreleased
-              ? 'bg-gradient-to-r from-purple-400 to-purple-300'
-              : 'bg-gradient-to-r from-primary/60 to-primary/20'
-          )}
+          className="h-0.5 w-full"
+          style={isUnreleased
+            ? { background: 'linear-gradient(to right, var(--ube-300), color-mix(in srgb, var(--ube-300) 50%, transparent))' }
+            : { background: 'linear-gradient(to right, color-mix(in srgb, var(--primary) 60%, transparent), color-mix(in srgb, var(--primary) 20%, transparent))' }
+          }
         />
 
         <CardContent className="p-5">
@@ -117,7 +121,7 @@ function VersionCard({ item, index }: { item: ChangelogVersion; index: number })
               <h2 className="text-xl font-bold tracking-tight">
                 {isUnreleased ? 'Unreleased' : `v${item.version}`}
               </h2>
-              <Badge variant="outline" className={cn('border text-xs font-semibold px-2 py-0.5', tag.className)}>
+              <Badge variant="outline" className="border text-xs font-semibold px-2 py-0.5" style={featureBadgeStyle}>
                 {tag.label}
               </Badge>
             </div>
@@ -145,7 +149,8 @@ function VersionCard({ item, index }: { item: ChangelogVersion; index: number })
                     <div className="flex items-center gap-2 mb-2">
                       <Badge
                         variant="outline"
-                        className={cn('border text-xs font-semibold gap-1 px-2 py-0.5', cfg.className)}
+                        className="border text-xs font-semibold gap-1 px-2 py-0.5"
+                        style={cfg.badgeStyle}
                       >
                         <Icon className="h-3 w-3" />
                         {cfg.label}
@@ -155,10 +160,8 @@ function VersionCard({ item, index }: { item: ChangelogVersion; index: number })
                       {grouped[type].map((entry, i) => (
                         <li key={i} className="flex items-start gap-2.5 group">
                           <span
-                            className={cn(
-                              'mt-2 h-1.5 w-1.5 rounded-full shrink-0 transition-transform duration-200 group-hover:scale-125',
-                              cfg.dotClass
-                            )}
+                            className="mt-2 h-1.5 w-1.5 rounded-full shrink-0 transition-transform duration-200 group-hover:scale-125"
+                            style={cfg.dotStyle}
                           />
                           <span className="text-sm text-foreground/80 leading-relaxed">{entry.text}</span>
                         </li>

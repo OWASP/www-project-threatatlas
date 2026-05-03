@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
@@ -136,6 +136,43 @@ export const collaboratorsApi = {
     api.put(`/products/${productId}/collaborators/${userId}`, data),
   remove: (productId: number, userId: number) =>
     api.delete(`/products/${productId}/collaborators/${userId}`),
+};
+
+// AI Config API (admin only)
+export const aiConfigApi = {
+  get: () => api.get('/ai-config'),
+  create: (data: {
+    provider: string; model_name: string; api_key: string;
+    base_url?: string; temperature?: number; max_tokens?: number;
+  }) => api.post('/ai-config', data),
+  update: (id: number, data: {
+    provider?: string; model_name?: string; api_key?: string;
+    base_url?: string; temperature?: number; max_tokens?: number; is_active?: boolean;
+  }) => api.put(`/ai-config/${id}`, data),
+  delete: (id: number) => api.delete(`/ai-config/${id}`),
+  tokenStats: () => api.get('/ai-config/token-stats'),
+  test: (data: { provider: string; model_name: string; api_key: string; base_url?: string; temperature?: number; max_tokens?: number }) =>
+    api.post('/ai-config/test', data),
+};
+
+// AI Conversations API
+export const aiConversationsApi = {
+  list: (params?: { diagram_id?: number }) => api.get('/ai-conversations', { params }),
+  create: (data: { diagram_id: number; title?: string }) => api.post('/ai-conversations', data),
+  get: (id: number) => api.get(`/ai-conversations/${id}`),
+  delete: (id: number) => api.delete(`/ai-conversations/${id}`),
+  getMessages: (convId: number) => api.get(`/ai-conversations/${convId}/messages`),
+  approveProposal: (convId: number, msgId: number, proposalId: string) =>
+    api.post(`/ai-conversations/${convId}/messages/${msgId}/approve-proposal`, { proposal_id: proposalId }),
+  dismissProposal: (convId: number, msgId: number, proposalId: string) =>
+    api.post(`/ai-conversations/${convId}/messages/${msgId}/dismiss-proposal`, { proposal_id: proposalId }),
+  approveAll: (convId: number) =>
+    api.post(`/ai-conversations/${convId}/approve-all`),
+  classifyElements: (elements: { id: string; label: string; style: string }[]) =>
+    api.post<{ id: string; suggested_type: string; reasoning: string }[]>(
+      '/ai-conversations/classify-elements',
+      { elements },
+    ),
 };
 
 export default api;

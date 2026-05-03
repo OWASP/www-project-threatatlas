@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Clock, ArrowUp, ArrowDown, Minus, RotateCcw, GitCompare } from 'lucide-react';
+import { Clock, ArrowUp, ArrowDown, Minus, RotateCcw, GitCompare, AlertTriangle, Shield } from 'lucide-react';
 import { diagramVersionsApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,6 +32,7 @@ interface DiagramVersionSummary {
   node_count: number;
   edge_count: number;
   threat_count: number;
+  mitigation_count: number;
   total_risk_score: number;
 }
 
@@ -124,11 +125,11 @@ export default function DiagramVersionHistory({
     const delta = current.total_risk_score - previous.total_risk_score;
 
     if (delta > 0) {
-      return <ArrowUp className="h-4 w-4 text-red-500" />;
+      return <ArrowUp className="h-4 w-4" style={{ color: 'var(--element-threat)' }} />;
     } else if (delta < 0) {
-      return <ArrowDown className="h-4 w-4 text-green-500" />;
+      return <ArrowDown className="h-4 w-4" style={{ color: 'var(--element-mitigation)' }} />;
     }
-    return <Minus className="h-4 w-4 text-gray-400" />;
+    return <Minus className="h-4 w-4 text-muted-foreground/60" />;
   };
 
   return (
@@ -234,21 +235,52 @@ export default function DiagramVersionHistory({
                           </div>
                         )}
 
-                        <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground/80 uppercase tracking-widest pl-1">
-                          <span className="flex items-center gap-1">
-                            <span className="text-foreground">{version.node_count}</span> Nodes
+                        <div className="flex items-center gap-3 flex-wrap pl-1">
+                          {/* Diagram structure */}
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground/70">
+                            <span className="font-bold text-foreground/80">{version.node_count}</span> nodes
+                            <span className="opacity-40 mx-0.5">·</span>
+                            <span className="font-bold text-foreground/80">{version.edge_count}</span> flows
                           </span>
-                          <span className="flex items-center gap-1">
-                            <span className="text-foreground">{version.edge_count}</span> Edges
-                          </span>
+
                           <div className="h-3 w-px bg-border/40" />
-                          <span className="flex items-center gap-1">
-                            <span className={version.threat_count > 0 ? 'text-red-500' : 'text-foreground'}>
+
+                          {/* Threats */}
+                          <span className="flex items-center gap-1 text-[10px] font-medium">
+                            <AlertTriangle className="h-3 w-3" style={version.threat_count > 0 ? { color: 'var(--element-threat)' } : { color: 'var(--muted-foreground)' }} />
+                            <span style={version.threat_count > 0 ? { color: 'var(--element-threat)', fontWeight: 700 } : { color: 'var(--muted-foreground)' }}>
                               {version.threat_count}
-                            </span> Threats
+                            </span>
+                            <span className="text-muted-foreground/60">threats</span>
+                            {previousVersion && version.threat_count !== previousVersion.threat_count && (
+                              <span className="text-[9px] font-semibold ml-0.5" style={{ color: version.threat_count > previousVersion.threat_count ? 'var(--element-threat)' : 'var(--element-mitigation)' }}>
+                                {version.threat_count > previousVersion.threat_count ? `+${version.threat_count - previousVersion.threat_count}` : `${version.threat_count - previousVersion.threat_count}`}
+                              </span>
+                            )}
                           </span>
-                          <span className="flex items-center gap-1">
-                            <span className="text-foreground">{version.total_risk_score}</span> Risk
+
+                          {/* Mitigations */}
+                          <span className="flex items-center gap-1 text-[10px] font-medium">
+                            <Shield className="h-3 w-3" style={version.mitigation_count > 0 ? { color: 'var(--element-mitigation)' } : { color: 'var(--muted-foreground)' }} />
+                            <span style={version.mitigation_count > 0 ? { color: 'var(--element-mitigation)', fontWeight: 700 } : { color: 'var(--muted-foreground)' }}>
+                              {version.mitigation_count}
+                            </span>
+                            <span className="text-muted-foreground/60">mitigations</span>
+                            {previousVersion && version.mitigation_count !== previousVersion.mitigation_count && (
+                              <span className="text-[9px] font-semibold ml-0.5" style={{ color: version.mitigation_count > previousVersion.mitigation_count ? 'var(--element-mitigation)' : 'var(--element-threat)' }}>
+                                {version.mitigation_count > previousVersion.mitigation_count ? `+${version.mitigation_count - previousVersion.mitigation_count}` : `${version.mitigation_count - previousVersion.mitigation_count}`}
+                              </span>
+                            )}
+                          </span>
+
+                          <div className="h-3 w-px bg-border/40" />
+
+                          {/* Risk score */}
+                          <span className="flex items-center gap-1 text-[10px] font-medium">
+                            <span className="text-muted-foreground/60">risk</span>
+                            <span className="font-bold" style={version.total_risk_score > 0 ? { color: 'var(--risk-high)' } : { color: 'var(--muted-foreground)' }}>
+                              {version.total_risk_score}
+                            </span>
                           </span>
                         </div>
                       </div>

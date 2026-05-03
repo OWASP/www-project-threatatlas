@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script to seed the database with knowledge base data (STRIDE and PASTA frameworks)."""
+"""Script to seed the database with knowledge base data (STRIDE, PASTA, OWASP LLM Top 10)."""
 
 import sys
 from pathlib import Path
@@ -16,98 +16,67 @@ from app.seed_data import (
     STRIDE_MITIGATIONS,
     PASTA_THREATS,
     PASTA_MITIGATIONS,
+    OWASP_LLM_THREATS,
+    OWASP_LLM_MITIGATIONS,
 )
+
+
+def _seed_framework(db: Session, name: str, description: str, threats: list, mitigations: list) -> None:
+    existing = db.query(Framework).filter(Framework.name == name).first()
+    if existing:
+        print(f"  · {name} already exists — skipping")
+        return
+
+    framework = Framework(name=name, description=description, is_custom=False)
+    db.add(framework)
+    db.commit()
+    db.refresh(framework)
+
+    for t in threats:
+        db.add(Threat(framework_id=framework.id, is_custom=False, **t))
+    db.commit()
+
+    for m in mitigations:
+        db.add(Mitigation(framework_id=framework.id, is_custom=False, **m))
+    db.commit()
+
+    print(f"  ✓ {name}: {len(threats)} threats, {len(mitigations)} mitigations")
 
 
 def seed_database():
     """Seed the database with frameworks, threats, and mitigations."""
     db: Session = SessionLocal()
-
     try:
-        # Check if frameworks already exist
-        existing_frameworks = db.query(Framework).filter(
-            Framework.name.in_(["STRIDE", "PASTA"])
-        ).all()
-
-        if existing_frameworks:
-            print("Knowledge base already seeded. Skipping...")
-            return
-
         print("Seeding knowledge base...")
 
-        # Create frameworks
-        stride_framework = Framework(
+        _seed_framework(
+            db,
             name=FRAMEWORKS[0]["name"],
-            description=FRAMEWORKS[0]["description"]
+            description=FRAMEWORKS[0]["description"],
+            threats=STRIDE_THREATS,
+            mitigations=STRIDE_MITIGATIONS,
         )
-        pasta_framework = Framework(
+
+        _seed_framework(
+            db,
             name=FRAMEWORKS[1]["name"],
-            description=FRAMEWORKS[1]["description"]
+            description=FRAMEWORKS[1]["description"],
+            threats=PASTA_THREATS,
+            mitigations=PASTA_MITIGATIONS,
         )
 
-        db.add(stride_framework)
-        db.add(pasta_framework)
-        db.commit()
-        db.refresh(stride_framework)
-        db.refresh(pasta_framework)
-
-        print(f"✓ Created frameworks: {stride_framework.name}, {pasta_framework.name}")
-
-        # Create STRIDE threats
-        for threat_data in STRIDE_THREATS:
-            threat = Threat(
-                framework_id=stride_framework.id,
-                name=threat_data["name"],
-                description=threat_data["description"],
-                category=threat_data["category"],
-                is_custom=False
-            )
-            db.add(threat)
-
-        db.commit()
-        print(f"✓ Created {len(STRIDE_THREATS)} STRIDE threats")
-
-        # Create STRIDE mitigations
-        for mitigation_data in STRIDE_MITIGATIONS:
-            mitigation = Mitigation(
-                framework_id=stride_framework.id,
-                name=mitigation_data["name"],
-                description=mitigation_data["description"],
-                category=mitigation_data["category"],
-                is_custom=False
-            )
-            db.add(mitigation)
-
-        db.commit()
-        print(f"✓ Created {len(STRIDE_MITIGATIONS)} STRIDE mitigations")
-
-        # Create PASTA threats
-        for threat_data in PASTA_THREATS:
-            threat = Threat(
-                framework_id=pasta_framework.id,
-                name=threat_data["name"],
-                description=threat_data["description"],
-                category=threat_data["category"],
-                is_custom=False
-            )
-            db.add(threat)
-
-        db.commit()
-        print(f"✓ Created {len(PASTA_THREATS)} PASTA threats")
-
-        # Create PASTA mitigations
-        for mitigation_data in PASTA_MITIGATIONS:
-            mitigation = Mitigation(
-                framework_id=pasta_framework.id,
-                name=mitigation_data["name"],
-                description=mitigation_data["description"],
-                category=mitigation_data["category"],
-                is_custom=False
-            )
-            db.add(mitigation)
-
-        db.commit()
-        print(f"✓ Created {len(PASTA_MITIGATIONS)} PASTA mitigations")
+        _seed_framework(
+            db,
+            name="OWASP LLM Top 10",
+            description=(
+                "The OWASP Top 10 for Large Language Model Applications (2025 edition) identifies "
+                "the most critical security risks specific to LLM-powered systems—from prompt injection "
+                "and sensitive data exposure to supply chain weaknesses and unbounded resource consumption. "
+                "See https://genai.owasp.org/llm-top-10/ for the full specification."
+            ),
+            threats=OWASP_LLM_THREATS,
+            mitigations=OWASP_LLM_MITIGATIONS,
+        )
 
         print("\n✓ Knowledge base seeded successfully!")
 

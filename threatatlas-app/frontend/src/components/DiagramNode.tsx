@@ -8,45 +8,91 @@ import {
   Box as BoxIcon,
 } from 'lucide-react';
 
-const nodeStyles = {
-  process: {
-    icon: Cpu,
-    bg: 'bg-blue-50 dark:bg-blue-950/50',
-    border: 'border-blue-500',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    textColor: 'text-blue-900 dark:text-blue-100',
-    shape: 'circle',
-  },
-  datastore: {
-    icon: Database,
-    bg: 'bg-amber-50 dark:bg-amber-950/50',
-    border: 'border-amber-500',
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    textColor: 'text-amber-900 dark:text-amber-100',
-    shape: 'parallel',
-  },
-  external: {
-    icon: Users,
-    bg: 'bg-pink-50 dark:bg-pink-950/50',
-    border: 'border-pink-500',
-    iconColor: 'text-pink-600 dark:text-pink-400',
-    textColor: 'text-pink-900 dark:text-pink-100',
-    shape: 'rectangle',
-  },
-  boundary: {
-    icon: BoxIcon,
-    bg: 'bg-slate-50 dark:bg-slate-900/50',
-    border: 'border-slate-400',
-    iconColor: 'text-slate-600 dark:text-slate-400',
-    textColor: 'text-slate-900 dark:text-slate-100',
-    shape: 'dashed',
-  },
+function NodeCountBadges({ t, m }: { t: number; m: number }) {
+  if (t === 0 && m === 0) return null;
+  return (
+    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none whitespace-nowrap">
+      {t > 0 && (
+        <span className="inline-flex items-center text-[9px] font-bold leading-none px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive border border-destructive/25">
+          T{t}
+        </span>
+      )}
+      {m > 0 && (
+        <span className="inline-flex items-center text-[9px] font-bold leading-none px-1.5 py-0.5 rounded-full border" style={{
+          backgroundColor: 'color-mix(in srgb, var(--element-mitigation) 15%, transparent)',
+          color: 'var(--element-mitigation)',
+          borderColor: 'color-mix(in srgb, var(--element-mitigation) 25%, transparent)'
+        }}>
+          M{m}
+        </span>
+      )}
+    </div>
+  );
+}
+
+interface NodeStyle {
+  icon: React.ComponentType<any>;
+  bg: React.CSSProperties;
+  border: string;
+  borderColor: string;
+  lineColor: string;
+  iconColor: React.CSSProperties;
+  textColor: React.CSSProperties;
+  shape: 'circle' | 'parallel' | 'rectangle' | 'dashed';
+}
+
+const getNodeStyles = (type: string): NodeStyle => {
+  const baseStyle: Record<string, NodeStyle> = {
+    process: {
+      icon: Cpu,
+      bg: { backgroundColor: 'color-mix(in srgb, var(--primary) 8%, transparent)' },
+      border: 'border-primary/70',
+      borderColor: 'var(--primary)',
+      lineColor: 'var(--primary)',
+      iconColor: { color: 'var(--primary)' },
+      textColor: { color: 'var(--foreground)' },
+      shape: 'circle',
+    },
+    datastore: {
+      icon: Database,
+      bg: { backgroundColor: 'color-mix(in srgb, var(--element-datastore) 8%, transparent)' },
+      border: 'border-[color:var(--element-datastore)]',
+      borderColor: 'var(--element-datastore)',
+      lineColor: 'var(--element-datastore)',
+      iconColor: { color: 'var(--element-datastore)' },
+      textColor: { color: 'var(--lemon-800)' },
+      shape: 'parallel',
+    },
+    external: {
+      icon: Users,
+      bg: { backgroundColor: 'color-mix(in srgb, var(--element-external) 8%, transparent)' },
+      border: 'border-[color:var(--element-external)]',
+      borderColor: 'var(--element-external)',
+      lineColor: 'var(--element-external)',
+      iconColor: { color: 'var(--element-external)' },
+      textColor: { color: 'var(--ube-900)' },
+      shape: 'rectangle',
+    },
+    boundary: {
+      icon: BoxIcon,
+      bg: { backgroundColor: 'color-mix(in srgb, var(--element-boundary) 8%, transparent)' },
+      border: 'border-[color:var(--element-boundary)]',
+      borderColor: 'var(--element-boundary)',
+      lineColor: 'var(--element-boundary)',
+      iconColor: { color: 'var(--element-boundary)' },
+      textColor: { color: 'var(--clay-text-tertiary)' },
+      shape: 'dashed',
+    },
+  };
+  return baseStyle[type] || baseStyle.process;
 };
 
 function DiagramNode({ data, selected }: NodeProps) {
-  const nodeType = (data.type as keyof typeof nodeStyles) || 'process';
-  const style = nodeStyles[nodeType];
+  const nodeType = (data.type as string) || 'process';
+  const style = getNodeStyles(nodeType);
   const Icon = style.icon;
+  const threatCount = (data.threatCount as number) || 0;
+  const mitigationCount = (data.mitigationCount as number) || 0;
 
   // Process - Circle (DFD standard)
   if (style.shape === 'circle') {
@@ -56,63 +102,66 @@ function DiagramNode({ data, selected }: NodeProps) {
           type="target"
           position={Position.Top}
           id="target-top"
-          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-primary !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Top}
           id="source-top"
-          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-primary !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Right}
           id="target-right"
-          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-primary !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Right}
           id="source-right"
-          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-primary !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Bottom}
           id="target-bottom"
-          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-primary !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Bottom}
           id="source-bottom"
-          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-primary !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Left}
           id="target-left"
-          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-primary !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Left}
           id="source-left"
-          className="!bg-blue-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-primary !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
-        <div
-          className={cn(
-            'flex flex-col items-center justify-center rounded-full border-2 shadow-lg transition-all duration-200',
-            'w-24 h-24 p-3',
-            style.bg,
-            style.border,
-            selected && 'ring-2 ring-blue-400 ring-offset-2 shadow-xl scale-110'
-          )}
-        >
-          <Icon className={cn('h-5 w-5 mb-1', style.iconColor)} />
-          <div className={cn('font-medium text-xs text-center leading-tight', style.textColor)}>
-            {data.label as string}
+        <div className="relative">
+          <div
+            className={cn(
+              'flex flex-col items-center justify-center rounded-full border-2 shadow-lg transition-all duration-200',
+              'w-24 h-24 p-3',
+              style.border,
+              selected && 'ring-2 ring-primary/60 ring-offset-2 shadow-xl scale-110'
+            )}
+            style={style.bg as React.CSSProperties}
+          >
+            <Icon className="h-5 w-5 mb-1" style={style.iconColor as React.CSSProperties} />
+            <div className="font-medium text-xs text-center leading-tight" style={style.textColor as React.CSSProperties}>
+              {data.label as string}
+            </div>
           </div>
+          <NodeCountBadges t={threatCount} m={mitigationCount} />
         </div>
       </div>
     );
@@ -126,70 +175,74 @@ function DiagramNode({ data, selected }: NodeProps) {
           type="target"
           position={Position.Top}
           id="target-top"
-          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-datastore)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Top}
           id="source-top"
-          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-datastore)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Right}
           id="target-right"
-          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-datastore)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Right}
           id="source-right"
-          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-datastore)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Bottom}
           id="target-bottom"
-          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-datastore)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Bottom}
           id="source-bottom"
-          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-datastore)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Left}
           id="target-left"
-          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-datastore)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Left}
           id="source-left"
-          className="!bg-amber-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-datastore)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <div className={cn('relative transition-all duration-200', selected && 'scale-105')}>
           {/* Top line */}
-          <div className={cn('absolute top-0 left-0 right-0 h-0.5', style.border.replace('border-', 'bg-'))} />
+          <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: style.lineColor }} />
           {/* Content */}
           <div
-            className={cn(
-              'px-4 py-3 min-w-[140px]',
-              style.bg,
-              selected && 'ring-2 ring-amber-400 ring-offset-2'
-            )}
+            className="px-4 py-3 min-w-[140px]"
+            style={{
+              ...style.bg,
+              ...(selected && {
+                outline: '2px solid var(--element-datastore)',
+                outlineOffset: '2px'
+              })
+            }}
           >
             <div className="flex items-center gap-2">
-              <Icon className={cn('h-4 w-4', style.iconColor)} />
-              <div className={cn('font-medium text-sm', style.textColor)}>
+              <Icon className="h-4 w-4" style={style.iconColor} />
+              <div className="font-medium text-sm" style={style.textColor}>
                 {data.label as string}
               </div>
             </div>
           </div>
           {/* Bottom line */}
-          <div className={cn('absolute bottom-0 left-0 right-0 h-0.5', style.border.replace('border-', 'bg-'))} />
+          <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: style.lineColor }} />
+          <NodeCountBadges t={threatCount} m={mitigationCount} />
         </div>
       </div>
     );
@@ -203,64 +256,69 @@ function DiagramNode({ data, selected }: NodeProps) {
           type="target"
           position={Position.Top}
           id="target-top"
-          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-external)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Top}
           id="source-top"
-          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-external)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Right}
           id="target-right"
-          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-external)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Right}
           id="source-right"
-          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-external)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Bottom}
           id="target-bottom"
-          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-external)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Bottom}
           id="source-bottom"
-          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-external)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Left}
           id="target-left"
-          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-external)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Left}
           id="source-left"
-          className="!bg-pink-500 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-external)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
-        <div
-          className={cn(
-            'px-4 py-3 border-2 shadow-lg transition-all duration-200 min-w-[120px]',
-            style.bg,
-            style.border,
-            selected && 'ring-2 ring-pink-400 ring-offset-2 shadow-xl scale-105'
-          )}
-        >
-          <div className="flex items-center gap-2">
-            <Icon className={cn('h-4 w-4', style.iconColor)} />
-            <div className={cn('font-medium text-sm', style.textColor)}>
-              {data.label as string}
+        <div className="relative">
+          <div
+            className={cn(
+              'px-4 py-3 border-2 shadow-lg transition-all duration-200 min-w-[120px]',
+              selected && 'ring-2 ring-[color:var(--element-external)] ring-offset-2 shadow-xl scale-105'
+            )}
+            style={{
+              ...style.bg,
+              borderColor: style.borderColor,
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <Icon className="h-4 w-4" style={style.iconColor} />
+              <div className="font-medium text-sm" style={style.textColor}>
+                {data.label as string}
+              </div>
             </div>
           </div>
+          <NodeCountBadges t={threatCount} m={mitigationCount} />
         </div>
       </div>
     );
@@ -274,75 +332,96 @@ function DiagramNode({ data, selected }: NodeProps) {
           type="target"
           position={Position.Top}
           id="target-top"
-          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-boundary)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Top}
           id="source-top"
-          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-boundary)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Right}
           id="target-right"
-          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-boundary)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Right}
           id="source-right"
-          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-boundary)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Bottom}
           id="target-bottom"
-          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-boundary)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Bottom}
           id="source-bottom"
-          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-boundary)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="target"
           position={Position.Left}
           id="target-left"
-          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-boundary)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <Handle
           type="source"
           position={Position.Left}
           id="source-left"
-          className="!bg-slate-400 !w-2 !h-2 !border-2 !border-white dark:!border-slate-950"
+          className="!bg-[var(--element-boundary)] !w-2 !h-2 !border-2 !border-white dark:!border-background"
         />
         <div
           className={cn(
             'w-full h-full border-2 border-dashed rounded-lg transition-all duration-200 p-4',
-            style.bg,
-            style.border,
-            selected && 'ring-2 ring-slate-400 ring-offset-2'
+            selected && 'ring-2 ring-stone-400 ring-offset-2'
           )}
-          style={{ minWidth: '200px', minHeight: '150px' }}
+          style={{
+            ...style.bg,
+            minWidth: '200px',
+            minHeight: '150px',
+            borderColor: style.borderColor,
+          }}
         >
           <div className="flex items-start gap-2 absolute top-2 left-2">
-            <Icon className={cn('h-4 w-4', style.iconColor)} />
-            <div className={cn('font-medium text-xs', style.textColor)}>
+            <Icon className="h-4 w-4" style={style.iconColor} />
+            <div className="font-medium text-xs" style={style.textColor}>
               {data.label as string}
             </div>
           </div>
-          <div className="text-xs text-muted-foreground/50 italic absolute bottom-2 right-2">
-            Trust Boundary
+          <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+            {(threatCount > 0 || mitigationCount > 0) && (
+              <div className="flex gap-1">
+                {threatCount > 0 && (
+                  <span className="inline-flex items-center text-[9px] font-bold leading-none px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive border border-destructive/25">
+                    T{threatCount}
+                  </span>
+                )}
+                {mitigationCount > 0 && (
+                  <span className="inline-flex items-center text-[9px] font-bold leading-none px-1.5 py-0.5 rounded-full border" style={{
+                    backgroundColor: 'color-mix(in srgb, var(--element-mitigation) 15%, transparent)',
+                    color: 'var(--element-mitigation)',
+                    borderColor: 'color-mix(in srgb, var(--element-mitigation) 25%, transparent)'
+                  }}>
+                    M{mitigationCount}
+                  </span>
+                )}
+              </div>
+            )}
+            <span className="text-xs text-muted-foreground/50 italic">Trust Boundary</span>
           </div>
         </div>
         <NodeResizer
           minWidth={200}
           minHeight={150}
           isVisible={selected}
-          lineClassName="!border-slate-400"
-          handleClassName="!h-3 !w-3 !bg-slate-400"
+          lineClassName="!border-[var(--element-boundary)]"
+          handleClassName="!h-3 !w-3 !bg-[var(--element-boundary)]"
         />
       </div>
     );

@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
-import { Layers, BarChart3, ShieldCheck } from 'lucide-react';
+import { Layers, BarChart3, ShieldCheck, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
@@ -295,7 +295,7 @@ export default function ModelSelector({
   return (
     <div className="flex items-center gap-1.5 w-full justify-start align-center">
       <Select value={selectedModelId?.toString() || 'all'} onValueChange={handleModelSelect}>
-        <SelectTrigger className="w-fit py-5 flex items-center gap-1.5 h-10 bg-background border-muted shadow-sm px-2 rounded-lg overflow-hidden shrink-0">
+        <SelectTrigger className="w-fit py-5 flex items-center gap-1.5 h-10! bg-background border-muted shadow-sm px-2 rounded-lg overflow-hidden shrink-0">
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-primary" />
             <SelectValue placeholder="Select a model" />
@@ -344,11 +344,11 @@ export default function ModelSelector({
             </div>
 
             <TooltipProvider>
-              <div className="flex items-center gap-3 px-2 h-full font-mono">
+              <div className="flex items-center gap-3 h-full font-mono">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-1 hover:bg-muted/50 px-1.5 py-1 rounded transition-colors cursor-default">
-                      <BarChart3 className="h-4 w-4 text-blue-500" />
+                      <BarChart3 className="h-4 w-4 text-primary" />
                       <span className="text-[14px] font-black tabular-nums">{selectedModel.threat_count}</span>
                       <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Threats</span>
                     </div>
@@ -359,7 +359,7 @@ export default function ModelSelector({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-1 hover:bg-muted/50 px-1.5 py-1 rounded transition-colors cursor-default">
-                      <ShieldCheck className="h-4 w-4 text-green-500" />
+                      <ShieldCheck className="h-4 w-4" style={{ color: 'var(--element-mitigation)' }} />
                       <span className="text-[14px] font-black tabular-nums">{selectedModel.mitigation_count}</span>
                       <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Mitigations</span>
                     </div>

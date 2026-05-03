@@ -33,6 +33,14 @@ import {
 } from 'lucide-react';
 import ThreatManagement from '@/components/ThreatManagement';
 import { cn } from '@/lib/utils';
+import { getElementColor } from '@/lib/designSystem';
+
+const NODE_TYPES = [
+  { value: 'process',   label: 'Process',   Icon: Cpu,      colorVar: 'var(--primary)' },
+  { value: 'datastore', label: 'Data Store', Icon: Database, colorVar: 'var(--element-datastore)' },
+  { value: 'external',  label: 'External',  Icon: Globe,    colorVar: 'var(--element-external)' },
+  { value: 'boundary',  label: 'Boundary',  Icon: Shield,   colorVar: 'var(--element-boundary)' },
+] as const;
 
 interface ElementPropertiesSheetProps {
   open: boolean;
@@ -42,6 +50,7 @@ interface ElementPropertiesSheetProps {
   activeModelId: number | null;
   activeModelFrameworkId: number | null;
   onRename: (name: string) => void;
+  onChangeType?: (newType: string) => void;
   onDelete: () => void;
   portalContainer?: HTMLElement | null;
 }
@@ -66,24 +75,12 @@ function getNodeIcon(nodeType?: string) {
   }
 }
 
-function getNodeColor(nodeType?: string) {
-  switch (nodeType?.toLowerCase()) {
-    case 'process':
-    case 'service':
-      return 'bg-blue-500/10 text-blue-600';
-    case 'store':
-    case 'database':
-      return 'bg-purple-500/10 text-purple-600';
-    case 'external':
-    case 'user':
-    case 'actor':
-      return 'bg-green-500/10 text-green-600';
-    case 'boundary':
-    case 'trust':
-      return 'bg-orange-500/10 text-orange-600';
-    default:
-      return 'bg-muted text-muted-foreground';
-  }
+function getNodeColorStyle(nodeType?: string): React.CSSProperties {
+  const color = getElementColor(nodeType);
+  return {
+    backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
+    color: color,
+  };
 }
 
 export default function ElementPropertiesSheet({
@@ -94,6 +91,7 @@ export default function ElementPropertiesSheet({
   activeModelId,
   activeModelFrameworkId,
   onRename,
+  onChangeType,
   onDelete,
   portalContainer,
 }: ElementPropertiesSheetProps) {
@@ -115,7 +113,7 @@ export default function ElementPropertiesSheet({
   }, [open]);
 
   const NodeIcon = getNodeIcon(selectedElement?.nodeType);
-  const nodeColor = getNodeColor(selectedElement?.nodeType);
+  const nodeColorStyle = getNodeColorStyle(selectedElement?.nodeType);
 
   return (
     <>
@@ -127,7 +125,7 @@ export default function ElementPropertiesSheet({
           {/* Header */}
           <SheetHeader className="px-4 pt-4 pb-3 border-b shrink-0">
             <div className="flex items-start gap-3">
-              <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl shrink-0', nodeColor)}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0" style={nodeColorStyle}>
                 <NodeIcon className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
@@ -144,7 +142,15 @@ export default function ElementPropertiesSheet({
                     {selectedElement?.type ?? 'node'}
                   </Badge>
                   {activeModelId ? (
-                    <Badge variant="outline" className="text-[11px] text-green-700 border-green-300 bg-green-50 dark:bg-green-950/30">
+                    <Badge
+                      variant="outline"
+                      className="text-[11px]"
+                      style={{
+                        color: 'var(--risk-low)',
+                        borderColor: 'color-mix(in srgb, var(--risk-low) 35%, transparent)',
+                        backgroundColor: 'color-mix(in srgb, var(--risk-low) 12%, transparent)',
+                      }}
+                    >
                       Model active
                     </Badge>
                   ) : (
@@ -185,27 +191,50 @@ export default function ElementPropertiesSheet({
 
                 <Separator />
 
-                {/* Metadata */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Element type picker — nodes only */}
+                {selectedElement.type === 'node' && onChangeType && (
                   <div>
-                    <p className="text-xs font-bold text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Box className="h-3 w-3" /> TYPE
+                    <p className="text-xs font-bold text-muted-foreground tracking-wider mb-2 flex items-center gap-1.5">
+                      <Box className="h-3 w-3" /> ELEMENT TYPE
                     </p>
-                    <div className="flex items-center h-9 bg-muted/50 px-3 rounded-lg border">
-                      <Badge variant="secondary" className="capitalize text-xs">
-                        {selectedElement.nodeType ?? selectedElement.type}
-                      </Badge>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {NODE_TYPES.map(({ value, label, Icon, colorVar }) => {
+                        const active = (selectedElement.nodeType ?? 'process') === value;
+                        return (
+                          <button
+                            key={value}
+                            onClick={() => !active && onChangeType(value)}
+                            className={cn(
+                              'flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border text-[10px] font-semibold transition-all',
+                              active
+                                ? 'border-transparent shadow-sm'
+                                : 'border-border/50 hover:border-border bg-transparent hover:bg-muted/40 text-muted-foreground hover:text-foreground'
+                            )}
+                            style={active ? {
+                              backgroundColor: `color-mix(in srgb, ${colorVar} 10%, transparent)`,
+                              borderColor: `color-mix(in srgb, ${colorVar} 40%, transparent)`,
+                              color: colorVar,
+                            } : {}}
+                            title={`Change to ${label}`}
+                          >
+                            <Icon className="h-4 w-4" />
+                            {label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Hash className="h-3 w-3" /> ELEMENT ID
-                    </p>
-                    <div className="flex items-center h-9 bg-muted/50 px-3 rounded-lg border overflow-hidden">
-                      <code className="text-xs font-mono truncate text-muted-foreground">
-                        {selectedElement.id}
-                      </code>
-                    </div>
+                )}
+
+                {/* Metadata */}
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <Hash className="h-3 w-3" /> ELEMENT ID
+                  </p>
+                  <div className="flex items-center h-9 bg-muted/50 px-3 rounded-lg border overflow-hidden">
+                    <code className="text-xs font-mono truncate text-muted-foreground">
+                      {selectedElement.id}
+                    </code>
                   </div>
                 </div>
 

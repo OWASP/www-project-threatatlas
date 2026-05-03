@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -18,7 +18,7 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { productsApi, diagramsApi } from '@/lib/api';
+import { productsApi, diagramsApi, diagramThreatsApi, diagramMitigationsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -58,6 +58,7 @@ import {
   Pencil,
   Maximize,
   Minimize,
+  Sparkles,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -70,6 +71,8 @@ import ElementPropertiesSheet from '@/components/ElementPropertiesSheet';
 import DiagramVersionHistory from '@/components/DiagramVersionHistory';
 import DiagramVersionComparison from '@/components/DiagramVersionComparison';
 import ModelSelector from '@/components/ModelSelector';
+import { ImportDrawioButton } from '@/components/ImportDrawioButton';
+import AIChatSheet from '@/components/AIChatSheet';
 
 interface Product {
   id: number;
@@ -134,6 +137,30 @@ export function DiagramsContent() {
   const [isEditingModel, setIsEditingModel] = useState(false);
   const [isDeletingModel, setIsDeletingModel] = useState(false);
 
+  // Threat/mitigation count badges per element_id
+  const [elementCounts, setElementCounts] = useState<Record<string, { t: number; m: number }>>({});
+
+  const loadElementCounts = async (diagId: number) => {
+    try {
+      const [threatsRes, mitsRes] = await Promise.all([
+        diagramThreatsApi.list({ diagram_id: diagId }),
+        diagramMitigationsApi.list({ diagram_id: diagId }),
+      ]);
+      const counts: Record<string, { t: number; m: number }> = {};
+      for (const dt of threatsRes.data) {
+        if (!counts[dt.element_id]) counts[dt.element_id] = { t: 0, m: 0 };
+        counts[dt.element_id].t += 1;
+      }
+      for (const dm of mitsRes.data) {
+        if (!counts[dm.element_id]) counts[dm.element_id] = { t: 0, m: 0 };
+        counts[dm.element_id].m += 1;
+      }
+      setElementCounts(counts);
+    } catch {
+      // non-critical — silently ignore
+    }
+  };
+
   // Model state
   const [activeModelId, setActiveModelId] = useState<number | null>(null);
   const [activeModel, setActiveModel] = useState<any>(null);
@@ -167,6 +194,7 @@ export function DiagramsContent() {
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [currentVersion, setCurrentVersion] = useState(0);
   const [compareVersions, setCompareVersions] = useState<{ from: number; to: number } | null>(null);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
 
   useEffect(() => {
     loadProducts();
@@ -226,6 +254,7 @@ export function DiagramsContent() {
         setNodes(loadedNodes);
         setEdges(diagram.diagram_data.edges || []);
       }
+      loadElementCounts(diagId);
     } catch (error) {
       console.error('Error loading diagram:', error);
       toast.error('Failed to load diagram.');
@@ -256,9 +285,13 @@ export function DiagramsContent() {
 
     try {
       setSaving(true);
+      const cleanNodes = nodes.map(({ data: { threatCount: _t, mitigationCount: _m, ...restData }, ...rest }) => ({
+        ...rest,
+        data: restData,
+      }));
       await diagramsApi.update(selectedDiagram, {
         name: diagramName,
-        diagram_data: { nodes, edges },
+        diagram_data: { nodes: cleanNodes, edges },
         version_comment: versionComment || undefined,
       });
 
@@ -363,6 +396,24 @@ export function DiagramsContent() {
     setVersionHistoryOpen(false);
   };
 
+  const handleImportSuccess = (diagramId: number) => {
+    loadDiagrams(selectedProduct!);
+    navigate(`/diagrams?product=${selectedProduct}&diagram=${diagramId}`);
+  };
+
+  // Merge threat/mitigation counts into node data for rendering only (never saved)
+  const nodesWithCounts = useMemo(() =>
+    nodes.map(node => ({
+      ...node,
+      data: {
+        ...node.data,
+        threatCount: elementCounts[node.id]?.t ?? 0,
+        mitigationCount: elementCounts[node.id]?.m ?? 0,
+      },
+    })),
+    [nodes, elementCounts]
+  );
+
   const selectedProductData = products.find(p => p.id === selectedProduct);
 
   if (!selectedProduct) {
@@ -370,7 +421,7 @@ export function DiagramsContent() {
       <div className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="max-w-2xl mx-auto space-y-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Data Flow Diagrams</h1>
+            <h1 className="text-3xl font-medium tracking-tight">Data Flow Diagrams</h1>
             <p className="text-muted-foreground mt-1">
               Create and visualize data flow diagrams for your products
             </p>
@@ -407,7 +458,7 @@ export function DiagramsContent() {
         <div className="flex-1 space-y-6 mx-auto">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Data Flow Diagrams</h1>
+              <h1 className="text-3xl font-medium tracking-tight">Data Flow Diagrams</h1>
               <p className="text-muted-foreground mt-1">
                 <Package className="inline-block mr-2 h-4 w-4 text-muted-foreground" />
                 {selectedProductData?.name}
@@ -427,10 +478,13 @@ export function DiagramsContent() {
                 </SelectContent>
               </Select>
               {canWrite && (
-                <Button onClick={handleCreateDiagram}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Diagram
-                </Button>
+                <div className="flex items-center gap-2">
+                  <ImportDrawioButton productId={selectedProduct} onImportSuccess={handleImportSuccess} />
+                  <Button onClick={handleCreateDiagram}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Diagram
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -444,10 +498,13 @@ export function DiagramsContent() {
                   {canWrite ? 'Create your first diagram to start threat modeling' : 'No diagrams available for this product'}
                 </p>
                 {canWrite && (
-                  <Button onClick={handleCreateDiagram}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Diagram
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <ImportDrawioButton productId={selectedProduct} onImportSuccess={handleImportSuccess} />
+                    <Button onClick={handleCreateDiagram}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Diagram
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -658,6 +715,24 @@ export function DiagramsContent() {
 
                   <div className="mx-0.5 h-4 w-px bg-border/60" />
 
+                  {/* AI Analysis */}
+                  {canWrite && selectedDiagram && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={aiChatOpen ? "secondary" : "ghost"}
+                          size="icon"
+                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                          aria-label="AI threat analysis"
+                          onClick={() => setAiChatOpen(!aiChatOpen)}
+                        >
+                          <Sparkles className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>AI Threat Analysis</TooltipContent>
+                    </Tooltip>
+                  )}
+
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -692,6 +767,10 @@ export function DiagramsContent() {
             )}
 
             <div className="h-8 w-px bg-border/40 mx-1 shrink-0" />
+
+            {canWrite && selectedProduct && (
+              <ImportDrawioButton productId={selectedProduct} onImportSuccess={handleImportSuccess} />
+            )}
 
             {canWrite && (
               <Button
@@ -733,7 +812,7 @@ export function DiagramsContent() {
       {/* Canvas */}
       <div className="flex-1 relative" style={{ minHeight: '400px' }}>
         <ReactFlow
-          nodes={nodes}
+          nodes={nodesWithCounts}
           edges={edges}
           nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
@@ -756,36 +835,43 @@ export function DiagramsContent() {
                 <Button
                   variant="ghost"
                   onClick={() => addNode('process')}
-                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-blue-500/10 hover:text-blue-600 transition-all rounded-lg group"
+                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-primary/10 hover:text-primary transition-all rounded-lg group"
                 >
-                  <Cpu className="h-5 w-5 text-blue-500 group-hover:scale-110 transition-transform" />
+                  <Cpu className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
                   <span className="text-sm font-medium">Process</span>
                 </Button>
 
                 <Button
                   variant="ghost"
                   onClick={() => addNode('datastore')}
-                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-amber-500/10 hover:text-amber-600 transition-all rounded-lg group"
+                  className="w-full justify-start gap-3 h-10 px-3 transition-all rounded-lg group"
+                  style={{ '--hover-bg': 'color-mix(in srgb, var(--element-datastore) 12%, transparent)' } as React.CSSProperties}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--element-datastore) 12%, transparent)')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
                 >
-                  <Database className="h-5 w-5 text-amber-500 group-hover:scale-110 transition-transform" />
+                  <Database className="h-5 w-5 group-hover:scale-110 transition-transform" style={{ color: 'var(--element-datastore)' }} />
                   <span className="text-sm font-medium">Data Store</span>
                 </Button>
 
                 <Button
                   variant="ghost"
                   onClick={() => addNode('external')}
-                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-pink-500/10 hover:text-pink-600 transition-all rounded-lg group"
+                  className="w-full justify-start gap-3 h-10 px-3 transition-all rounded-lg group"
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--element-external) 12%, transparent)')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
                 >
-                  <Users className="h-5 w-5 text-pink-500 group-hover:scale-110 transition-transform" />
+                  <Users className="h-5 w-5 group-hover:scale-110 transition-transform" style={{ color: 'var(--element-external)' }} />
                   <span className="text-sm font-medium">External Entity</span>
                 </Button>
 
                 <Button
                   variant="ghost"
                   onClick={() => addNode('boundary')}
-                  className="w-full justify-start gap-3 h-10 px-3 hover:bg-slate-500/10 hover:text-slate-600 transition-all rounded-lg group"
+                  className="w-full justify-start gap-3 h-10 px-3 transition-all rounded-lg group"
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--element-boundary) 15%, transparent)')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
                 >
-                  <BoxIcon className="h-5 w-5 text-slate-500 group-hover:scale-110 transition-transform" />
+                  <BoxIcon className="h-5 w-5 group-hover:scale-110 transition-transform" style={{ color: 'var(--element-boundary)' }} />
                   <span className="text-sm font-medium">Trust Boundary</span>
                 </Button>
               </div>
@@ -797,10 +883,10 @@ export function DiagramsContent() {
             className="bg-background border shadow-xl rounded-xl"
             nodeColor={(node) => {
               const type = node.data.type as string;
-              if (type === 'process') return '#3b82f6';
-              if (type === 'datastore') return '#f59e0b';
-              if (type === 'external') return '#ec4899';
-              return '#94a3b8';
+              if (type === 'process') return 'var(--primary)';
+              if (type === 'datastore') return 'var(--element-datastore)';
+              if (type === 'external') return 'var(--element-external)';
+              return 'var(--element-boundary)';
             }}
             maskColor="rgba(0, 0, 0, 0.05)"
           />
@@ -812,7 +898,10 @@ export function DiagramsContent() {
       {/* Element Properties Sheet */}
       <ElementPropertiesSheet
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={(v) => {
+          setSheetOpen(v);
+          if (!v && selectedDiagram) loadElementCounts(selectedDiagram);
+        }}
         selectedElement={selectedElement}
         diagramId={selectedDiagram}
         activeModelId={activeModelId}
@@ -837,6 +926,21 @@ export function DiagramsContent() {
             );
           }
           setSelectedElement({ ...selectedElement, label: name });
+        }}
+        onChangeType={(newType) => {
+          if (!selectedElement || selectedElement.type !== 'node') return;
+          setNodes((nds) =>
+            nds.map((node) =>
+              node.id === selectedElement.id
+                ? {
+                    ...node,
+                    zIndex: newType === 'boundary' ? -1 : (node.zIndex || 0),
+                    data: { ...node.data, type: newType },
+                  }
+                : node
+            )
+          );
+          setSelectedElement({ ...selectedElement, nodeType: newType });
         }}
         onDelete={() => setShowDeleteConfirm(true)}
         portalContainer={containerRef.current}
@@ -905,6 +1009,22 @@ export function DiagramsContent() {
           diagramId={selectedDiagram}
           fromVersion={compareVersions.from}
           toVersion={compareVersions.to}
+        />
+      )}
+
+      {/* AI Chat Sheet */}
+      {selectedDiagram && (
+        <AIChatSheet
+          open={aiChatOpen}
+          onOpenChange={setAiChatOpen}
+          diagramId={selectedDiagram}
+          activeModelId={activeModelId}
+          frameworkId={activeModel?.framework_id ?? null}
+          portalContainer={containerRef.current}
+          onModelCreated={(modelId, model) => {
+            setActiveModelId(modelId);
+            setActiveModel(model);
+          }}
         />
       )}
     </div>

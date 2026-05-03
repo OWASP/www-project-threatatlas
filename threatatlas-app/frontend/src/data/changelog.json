@@ -1,5 +1,60 @@
 [
   {
+    "version": "0.5.0",
+    "date": "2026-04-28",
+    "tag": "feature",
+    "entries": [
+      {
+        "type": "added",
+        "text": "AI Threat Modeling Assistant: a conversational AI chat panel embedded in the diagram editor that performs deep, framework-exhaustive threat analysis across every element and data flow."
+      },
+      {
+        "type": "added",
+        "text": "AI-assisted diagram import: when importing a DrawIO file, the AI automatically classifies each element into the correct DFD type (process, datastore, external entity, data flow, trust boundary)."
+      },
+      {
+        "type": "added",
+        "text": "DrawIO to DFD import: upload any .drawio or .xml file and convert it into a fully editable Data Flow Diagram with element type mapping."
+      },
+      {
+        "type": "added",
+        "text": "OWASP LLM Top 10 framework added to the knowledge base with threats and mitigations covering prompt injection, insecure output handling, training data poisoning, and more."
+      },
+      {
+        "type": "added",
+        "text": "AI configuration panel in Settings (admin only): configure provider (OpenAI, Anthropic, OpenAI-compatible), model, API key, temperature, and max tokens; API keys are stored encrypted."
+      },
+      {
+        "type": "added",
+        "text": "Streaming AI responses via Server-Sent Events for a real-time, token-by-token chat experience."
+      },
+      {
+        "type": "added",
+        "text": "AI proposal removal: the AI can propose removing outdated or duplicate threats and mitigations already on the diagram."
+      },
+      {
+        "type": "improved",
+        "text": "Diagram elements now show threat (T) and mitigation (M) count badges directly on the canvas for at-a-glance risk visibility."
+      },
+      {
+        "type": "improved",
+        "text": "Version history now tracks threat and mitigation changes (added, removed, modified) in addition to diagram structure, with dedicated Threats and Mitigations diff tabs in the comparison view."
+      },
+      {
+        "type": "improved",
+        "text": "Overall UI refresh: updated component styles, layout consistency, and visual hierarchy across the diagram editor, settings, and knowledge base pages."
+      },
+      {
+        "type": "improved",
+        "text": "Conversation persistence: AI chat history is stored per diagram and restored across sessions."
+      },
+      {
+        "type": "improved",
+        "text": "Redis-backed knowledge base cache: KB threats and mitigations are cached per framework to reduce database load during AI analysis."
+      }
+    ]
+  },
+  {
     "version": "0.4.0",
     "date": "2026-03-29",
     "tag": "feature",

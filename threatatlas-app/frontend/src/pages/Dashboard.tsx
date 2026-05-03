@@ -298,8 +298,8 @@ export default function Dashboard() {
       value: threats.length,
       description: 'Across all diagrams',
       icon: AlertTriangle,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-500/10',
+      iconColor: 'var(--risk-high)',
+      iconBg: 'var(--risk-high-muted)',
       trend: identifiedCount > 0 ? `${identifiedCount} active` : 'No active threats',
       trendPositive: identifiedCount === 0,
     },
@@ -308,8 +308,8 @@ export default function Dashboard() {
       value: riskStats.critical,
       description: 'Highest priority',
       icon: AlertTriangle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-500/10',
+      iconColor: 'var(--risk-critical)',
+      iconBg: 'var(--risk-critical-muted)',
       trend: riskStats.critical > 0 ? 'Immediate action' : 'None',
       trendPositive: riskStats.critical === 0,
     },
@@ -318,8 +318,8 @@ export default function Dashboard() {
       value: riskStats.high,
       description: 'Requires attention',
       icon: TrendingUp,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-500/10',
+      iconColor: 'var(--risk-high)',
+      iconBg: 'var(--risk-high-muted)',
       trend: riskStats.high > 0 ? 'Priority action' : 'None',
       trendPositive: riskStats.high === 0,
     },
@@ -328,8 +328,8 @@ export default function Dashboard() {
       value: mitigatedCount,
       description: 'Threats addressed',
       icon: CheckCircle2,
-      color: 'text-green-600',
-      bgColor: 'bg-green-500/10',
+      iconColor: 'var(--risk-low)',
+      iconBg: 'var(--risk-low-muted)',
       trend: `${coveragePercent}% coverage`,
       trendPositive: true,
       showProgress: true,
@@ -359,26 +359,26 @@ export default function Dashboard() {
   return (
     <div className="flex-1 space-y-6 mx-auto p-4">
       {/* Stats Cards */}
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => (
           <Card
             key={stat.title}
-            className="animate-fadeInUp hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl border-border/60 group cursor-default"
+            className="animate-fadeInUp hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl border-border/60 group cursor-default py-0"
             style={{ animationDelay: `${index * 80}ms` }}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2.5 pb-1.5">
               <CardTitle className="text-xs font-bold text-muted-foreground tracking-wider">{stat.title.toUpperCase()}</CardTitle>
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.bgColor} shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:scale-110`}>
-                <stat.icon className={`h-5 w-5 ${stat.color} transition-transform duration-300 group-hover:rotate-12`} />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:scale-105" style={{ backgroundColor: stat.iconBg }}>
+                <stat.icon className="h-4 w-4 transition-transform duration-300 group-hover:rotate-12" style={{ color: stat.iconColor }} />
               </div>
             </CardHeader>
-            <CardContent className="pb-3">
-              <div className="text-3xl font-bold tracking-tight mb-0.5">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mb-1 font-medium">{stat.description}</p>
+            <CardContent className="pb-2.5 pt-0">
+              <div className="text-2xl font-bold tracking-tight leading-none mb-0.5">{stat.value}</div>
+              <p className="text-[11px] text-muted-foreground mb-1 font-medium">{stat.description}</p>
               {'showProgress' in stat && stat.showProgress && (
-                <Progress value={stat.progressValue} className="h-1.5 mb-2" />
+                <Progress value={stat.progressValue} className="h-1.5 mb-1.5" />
               )}
-              <div role="status" className={`text-xs font-semibold ${stat.trendPositive ? 'text-green-600' : 'text-orange-600'} flex items-center gap-1`}>
+              <div role="status" className="text-[11px] font-semibold flex items-center gap-1 leading-tight" style={{ color: stat.trendPositive ? 'var(--risk-low)' : 'var(--risk-high)' }}>
                 {stat.trend}
               </div>
             </CardContent>
@@ -413,23 +413,21 @@ export default function Dashboard() {
         </Select>
         <div className="flex gap-1.5 flex-wrap">
           {([
-            { key: 'all' as const, label: 'All', dot: '', active: 'bg-foreground text-background border-foreground', hover: '' },
-            { key: 'critical' as const, label: `Critical (${riskStats.critical})`, dot: 'bg-red-500', active: 'bg-red-100 border-red-400 text-red-800 dark:bg-red-900/40 dark:border-red-600 dark:text-red-300', hover: 'hover:bg-red-50 hover:border-red-300 hover:text-red-700 dark:hover:bg-red-900/20 dark:hover:border-red-700 dark:hover:text-red-400' },
-            { key: 'high' as const, label: `High (${riskStats.high})`, dot: 'bg-orange-500', active: 'bg-orange-100 border-orange-400 text-orange-800 dark:bg-orange-900/40 dark:border-orange-600 dark:text-orange-300', hover: 'hover:bg-orange-50 hover:border-orange-300 hover:text-orange-700 dark:hover:bg-orange-900/20 dark:hover:border-orange-700 dark:hover:text-orange-400' },
-            { key: 'medium' as const, label: `Medium (${riskStats.medium})`, dot: 'bg-amber-400', active: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/40 dark:border-amber-600 dark:text-amber-300', hover: 'hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 dark:hover:bg-amber-900/20 dark:hover:border-amber-700 dark:hover:text-amber-400' },
-            { key: 'low' as const, label: `Low (${riskStats.low})`, dot: 'bg-green-500', active: 'bg-green-100 border-green-400 text-green-800 dark:bg-green-900/40 dark:border-green-600 dark:text-green-300', hover: 'hover:bg-green-50 hover:border-green-300 hover:text-green-700 dark:hover:bg-green-900/20 dark:hover:border-green-700 dark:hover:text-green-400' },
+            { key: 'all' as const, label: 'All', dotColor: '', activeStyle: { backgroundColor: 'var(--foreground)', color: 'var(--background)', borderColor: 'var(--foreground)' }, hoverStyle: {} },
+            { key: 'critical' as const, label: `Critical (${riskStats.critical})`, dotColor: 'var(--risk-critical)', activeStyle: { backgroundColor: 'var(--risk-critical-muted)', borderColor: 'color-mix(in srgb, var(--pomegranate-600) 40%, transparent)', color: 'var(--risk-critical)' }, hoverStyle: { backgroundColor: 'var(--risk-critical-muted)' } },
+            { key: 'high' as const, label: `High (${riskStats.high})`, dotColor: 'var(--risk-high)', activeStyle: { backgroundColor: 'var(--risk-high-muted)', borderColor: 'color-mix(in srgb, var(--pomegranate-400) 40%, transparent)', color: 'var(--risk-high)' }, hoverStyle: { backgroundColor: 'var(--risk-high-muted)' } },
+            { key: 'medium' as const, label: `Medium (${riskStats.medium})`, dotColor: 'var(--risk-medium)', activeStyle: { backgroundColor: 'var(--risk-medium-muted)', borderColor: 'color-mix(in srgb, var(--lemon-500) 40%, transparent)', color: 'var(--risk-medium)' }, hoverStyle: { backgroundColor: 'var(--risk-medium-muted)' } },
+            { key: 'low' as const, label: `Low (${riskStats.low})`, dotColor: 'var(--risk-low)', activeStyle: { backgroundColor: 'var(--risk-low-muted)', borderColor: 'color-mix(in srgb, var(--matcha-600) 35%, transparent)', color: 'var(--risk-low)' }, hoverStyle: { backgroundColor: 'var(--risk-low-muted)' } },
           ]).map((sev) => (
             <Button
               key={sev.key}
               variant="outline"
               size="sm"
               onClick={() => setSeverityFilter(sev.key)}
-              className={cn(
-                "h-8 px-2.5 rounded-lg transition-all shadow-sm hover:shadow gap-1.5 text-xs",
-                severityFilter === sev.key ? sev.active : sev.hover
-              )}
+              className="h-8 px-2.5 rounded-lg transition-all shadow-sm hover:shadow gap-1.5 text-xs"
+              style={severityFilter === sev.key ? sev.activeStyle : {}}
             >
-              {sev.dot && <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", sev.dot)} />}
+              {sev.dotColor && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: sev.dotColor }} />}
               {sev.label}
             </Button>
           ))}
@@ -439,8 +437,8 @@ export default function Dashboard() {
       {/* Threats List */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold flex items-center gap-2.5">
-            <AlertTriangle className="h-5 w-5 text-orange-600" />
+          <h2 className="text-base font-medium flex items-center gap-2.5">
+            <AlertTriangle className="h-5 w-5" style={{ color: 'var(--risk-high)' }} />
             Threats & Mitigations ({filteredThreats.length})
           </h2>
           {filteredThreats.length > 0 && (
@@ -454,10 +452,10 @@ export default function Dashboard() {
           {filteredThreats.length === 0 ? (
             <Card className="border-dashed border-2 rounded-xl">
               <CardContent className="flex flex-col items-center justify-center p-12">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 mb-3 shadow-sm">
-                  <AlertTriangle className="h-8 w-8 text-orange-600" />
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-3 shadow-sm" style={{ background: 'var(--risk-high-muted)' }}>
+                  <AlertTriangle className="h-8 w-8" style={{ color: 'var(--risk-high)' }} />
                 </div>
-                <h3 className="text-lg font-bold mb-1.5">No threats found</h3>
+                <h3 className="text-lg font-medium mb-1.5">No threats found</h3>
                 <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
                   Start by creating diagrams and attaching threats to elements.
                 </p>
@@ -491,7 +489,7 @@ export default function Dashboard() {
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-2">
-                  <p className="text-sm text-muted-foreground font-medium">
+                  <p className="text-sm text-muted-foreground font-medium whitespace-nowrap">
                     Page {currentPage} of {totalPages}
                   </p>
                   <Pagination>
