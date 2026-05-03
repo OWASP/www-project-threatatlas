@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models import User as UserModel
 from app.schemas.auth import Token, LoginRequest
 from app.schemas.user import UserCreate, User
-from app.auth.password import verify_password, get_password_hash
+from app.auth.password import verify_password
 from app.auth.jwt import create_access_token
 from app.auth.dependencies import get_current_user
 from app.config import settings

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DOMParser as XmlDOMParser } from 'linkedom';
 import { Upload, FileWarning, Cpu, Database, Users, Box, ArrowRight, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -79,14 +80,28 @@ function NodeTypeIcon({ type, className }: { type: NodeType; className?: string 
  * "<b>S3</b><br>Context analyzer" — we want just "S3".
  */
 function stripHtml(s: string): string {
+  // `&amp;` last avoids double-unescape (CodeQL js/double-escaping).
   const decoded = s
-    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
-    .replace(/&nbsp;/g, ' ').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
-  const firstLine = decoded
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+
+  // `textContent` after parse does not reliably insert line breaks for `<br>` or
+  // block-level tags; normalize those to `\n` first (line boundaries only).
+  const withLineBreaks = decoded
     .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/?(p|div|h[1-6]|li)[^>]*>/gi, '\n')
-    .replace(/<[^>]*>/g, '')
-    .split('\n').map(l => l.trim()).filter(Boolean)[0] ?? '';
+    .replace(/<\/?(p|div|h[1-6]|li)\b[^>]*>/gi, '\n');
+
+  const doc = new DOMParser().parseFromString(withLineBreaks, 'text/html');
+  const text = doc.body?.textContent ?? '';
+  const firstLine =
+    text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)[0] ?? '';
   return firstLine;
 }
 
@@ -98,40 +113,104 @@ function styleVal(style: string, key: string): number | null {
 
 // ── Shape detection ────────────────────────────────────────────────────────
 
+/** Word-boundary label match (ASCII labels from stripHtml). */
+function labelHas(re: RegExp, label: string): boolean {
+  return re.test(label.toLowerCase());
+}
+
 /**
- * Map a draw.io cell style + label to one of our four DFD node types.
+ * Map a draw.io cell style + label (+ size) to one of our four DFD node types.
  * Covers standard draw.io shapes, mxgraph extras, BPMN, AWS, Azure, GCP,
  * flowchart shapes, and label-based heuristics.
  */
-function detectNodeType(style: string, label: string): NodeType {
+function detectNodeType(style: string, label: string, width = 0, height = 0): NodeType {
   const s = style.toLowerCase();
   const l = label.toLowerCase();
+  const area = Math.max(0, width) * Math.max(0, height);
 
   // ── Skip classes (handled in extractCells, but guard here too) ──
   if (s.startsWith('edgelabel') || s.startsWith('text;') || s === 'text') return 'external';
 
-  // ── Trust Boundary ──
-  // Priority: check boundaries BEFORE process/external to catch
-  // rounded+dashed containers (common security zone pattern in draw.io).
+  // ── Trust boundary: explicit label first (common in DFD zone titles) ──
+  if (
+    labelHas(
+      /\b(trust\s*zone|trust\s*boundary|security\s*zone|network\s*zone|network\s*boundary|attack\s*surface|demilitarized|dmz|perimeter|isolation\s*boundary|vpc\s*boundary|subnet\s*group)\b/i,
+      l,
+    )
+  ) {
+    return 'boundary';
+  }
+
+  // ── Trust boundary: structured styles (avoid classifying every dashed box as a zone) ──
   if (
     s.includes('swimlane') ||
     s.includes('shape=mxgraph.dfd.boundary') ||
     s.includes('shape=mxgraph.dfd.trustboundary') ||
-    // Rounded dashed rectangle = security zone / network boundary
     (s.includes('dashed=1') && s.includes('dashpattern')) ||
-    (s.includes('dashed=1') && (
-      s.includes('fillcolor=none') ||
-      s.includes('fillcolor=#ffffff00') ||
-      s.includes('opacity=0') ||
-      s.includes('nofill=1') ||
-      !s.includes('fillcolor=')
-    )) ||
-    (s.includes('container=1') && !s.includes('shape=') && !s.includes('ellipse'))
-  ) return 'boundary';
+    (s.includes('dashed=1') &&
+      (s.includes('fillcolor=none') ||
+        s.includes('fillcolor=#ffffff00') ||
+        s.includes('fillcolor=#fff0') ||
+        s.includes('opacity=0') ||
+        s.includes('nofill=1'))) ||
+    // Large dashed rounded frame — typical “security zone” wrapper (not small dashed connectors)
+    (s.includes('dashed=1') && s.includes('rounded=1') && area >= 55_000) ||
+    // Group-style container used as a zone (must look like a frame, not an icon group)
+    (s.includes('container=1') && s.includes('dashed=1') && !s.includes('shape=') && !s.includes('ellipse'))
+  ) {
+    return 'boundary';
+  }
+
+  // ── Data store: label before generic shapes (e.g. “Postgres” in a rectangle) ──
+  if (
+    labelHas(
+      /\b(db|database|datastore|data\s*store|filestore|file\s*store|object\s*store|blob\s*store|data\s*warehouse|lakehouse|iceberg|delta\s*lake|cache|message\s*queue|queue|topic|partition|s3\s*bucket|blob\s*storage|key\s*value|kv\s*store|redis|mongo|postgres|postgresql|mysql|mariadb|sqlite|cassandra|cockroach|kafka|sqs|sns|kinesis|event\s*hubs|service\s*bus|vector\s*store|embedding|pinecone|chroma|weaviate|opensearch|elasticsearch|hdfs|dynamodb|cosmos|bigquery|snowflake|redshift|aurora)\b/i,
+      l,
+    )
+  ) {
+    return 'datastore';
+  }
+
+  // ── Process: label hints before “external” so “User API”, “Client service” stay process ──
+  if (
+    labelHas(
+      /\b(api|rest|graphql|grpc|microservice|microservices|service|web\s*server|app\s*server|application|backend|frontend|bff|orchestrator|scheduler|cron|worker|job\s*runner|lambda|function|container|pod|kubernetes|k8s|docker|ecs|fargate|vm|instance|compute|ingress|api\s*gateway|gateway|load\s*balancer|lb|reverse\s*proxy|proxy|cdn|waf|ids|ips|siem|soc|scanner|ci\s*[\/-]?\s*cd|pipeline|build|deploy|iac|terraform|helm|service\s*mesh|istio|linkerd)\b/i,
+      l,
+    )
+  ) {
+    return 'process';
+  }
+
+  // ── External entity: actor / human / client language ──
+  if (
+    labelHas(
+      /\b(user|users|human|actor|person|people|customer|client|browser|mobile\s*app|mobile|admin|administrator|operator|third[-\s]?party|external\s*(system|entity|service)?|vendor|partner|stakeholder|attacker|hacker|penetration|pentester|internet|public\s*web)\b/i,
+      l,
+    )
+  ) {
+    return 'external';
+  }
+
+  // ── External: UML actor / user icons (before ellipse — actors are often ellipses) ──
+  if (
+    s.includes('umlactor') ||
+    s.includes('shape=uml.actor') ||
+    s.includes('mxgraph.uml.actor') ||
+    s.includes('shape=mxgraph.uml.actor') ||
+    s.includes('shape=actor') ||
+    s.includes('shape=mxgraph.general.user') ||
+    s.includes('shape=mxgraph.office.users')
+  ) {
+    return 'external';
+  }
 
   // ── Process ── (circle / ellipse / cloud services / apps)
   if (
     s.includes('ellipse') ||
+    s.includes('doubleellipse') ||
+    s.includes('rhombus') ||
+    s.includes('shape=hexagon') ||
+    s.includes('shape=mxgraph.flowchart.hexagon') ||
     s.includes('shape=mxgraph.dfd.process') ||
     s.includes('shape=process') ||
     s.includes('shape=mxgraph.bpmn.task') ||
@@ -142,35 +221,51 @@ function detectNodeType(style: string, label: string): NodeType {
     s.includes('shape=mxgraph.flowchart.process') ||
     s.includes('shape=mxgraph.cisco.computers_and_peripherals') ||
     s.includes('shape=mxgraph.cisco.servers') ||
+    s.includes('shape=mxgraph.kubernetes') ||
+    s.includes('shape=mxgraph.networks.kubernetes') ||
+    s.includes('shape=mxgraph.devicons.docker') ||
+    s.includes('shape=mxgraph.devicons.github') ||
+    s.includes('shape=mxgraph.azure.kubernetes') ||
     // AWS — compute / integration services
     s.includes('shape=mxgraph.aws4.lambda') ||
     s.includes('shape=mxgraph.aws3.lambda') ||
-    s.includes('shape=mxgraph.aws4.resourceicon') ||  // generic AWS resource icon
+    s.includes('shape=mxgraph.aws4.resourceicon') ||
     s.includes('resicon=mxgraph.aws4.lambda') ||
     s.includes('resicon=mxgraph.aws4.api_gateway') ||
     s.includes('resicon=mxgraph.aws4.eventbridge') ||
     s.includes('resicon=mxgraph.aws4.fargate') ||
     s.includes('resicon=mxgraph.aws4.ecs') ||
     s.includes('resicon=mxgraph.aws4.ec2') ||
+    s.includes('resicon=mxgraph.aws4.eks') ||
     s.includes('shape=mxgraph.aws4.application') ||
     s.includes('shape=mxgraph.aws4.general') ||
     s.includes('shape=mxgraph.aws3.lambda_function') ||
     s.includes('shape=mxgraph.aws3.application') ||
     // GCP / Azure compute
     s.includes('shape=mxgraph.gcp2.function') ||
+    s.includes('shape=mxgraph.gcp2.kubernetes') ||
     s.includes('shape=mxgraph.azure.function') ||
     s.includes('shape=mxgraph.azure.app_service') ||
-    // Rounded rectangle (non-dashed) — common process shape
-    (s.includes('rounded=1') && !s.includes('dashed') && !s.includes('shape='))
-  ) return 'process';
+    s.includes('shape=mxgraph.azure.kubernetes') ||
+    // UML / generic “subsystem” rounded rect (still often a process in DFDs)
+    (s.includes('shape=uml') && (s.includes('lollipop') || s.includes('component'))) ||
+    // Rounded rectangle with no other strong shape — common process / subprocess box
+    (s.includes('rounded=1') && !s.includes('dashed') && !s.includes('shape=')) ||
+    (s.includes('rounded=1') && !s.includes('dashed') && /\bshape=rectangle\b/.test(s)) ||
+    s.includes('hexagon')
+  ) {
+    return 'process';
+  }
 
   // ── Data Store ── (cylinder / database / storage / queue / messaging)
   if (
-    s.includes('cylinder') ||                     // catches cylinder, cylinder3, shape=cylinder…
+    s.includes('cylinder') ||
     s.includes('shape=mxgraph.dfd.datastore') ||
     s.includes('shape=database') ||
     s.includes('shape=mxgraph.flowchart.stored_data') ||
     s.includes('shape=mxgraph.flowchart.database') ||
+    s.includes('shape=mxgraph.flowchart.data') ||
+    s.includes('shape=mxgraph.flowchart.tape') ||
     s.includes('shape=mxgraph.cisco.storage') ||
     s.includes('shape=offpageconnector') ||
     s.includes('shape=parallelogram') ||
@@ -183,6 +278,8 @@ function detectNodeType(style: string, label: string): NodeType {
     s.includes('resicon=mxgraph.aws4.kinesis') ||
     s.includes('resicon=mxgraph.aws4.elasticache') ||
     s.includes('resicon=mxgraph.aws4.aurora') ||
+    s.includes('resicon=mxgraph.aws4.efs') ||
+    s.includes('resicon=mxgraph.aws4.documentdb') ||
     s.includes('shape=mxgraph.aws4.s3') ||
     s.includes('shape=mxgraph.aws4.dynamo_db') ||
     s.includes('shape=mxgraph.aws4.rds') ||
@@ -197,11 +294,12 @@ function detectNodeType(style: string, label: string): NodeType {
     s.includes('shape=mxgraph.azure.sql') ||
     s.includes('shape=mxgraph.azure.blob') ||
     s.includes('shape=mxgraph.azure.queue') ||
-    // Label-based heuristics
-    /\b(db|database|datastore|data store|filestore|file store|cache|queue|message queue|topic|s3 bucket|blob storage|redis|mongo|postgres|mysql|sqlite|kafka|sqs|sns|vector store|embedding store|pinecone|chroma|weaviate|opensearch|elasticsearch)\b/.test(l)
-  ) return 'datastore';
+    s.includes('shape=mxgraph.azure.cosmos_db')
+  ) {
+    return 'datastore';
+  }
 
-  // ── External Entity ── (default: rectangles, actors, users)
+  // ── External Entity ── (default: plain rectangles, unclassified boxes)
   return 'external';
 }
 
@@ -311,11 +409,14 @@ async function maybeDecompress(text: string): Promise<string> {
  * For multi-page files we merge all pages into one flat cell list.
  */
 async function resolveDoc(xmlStr: string): Promise<Document> {
-  const parser = new DOMParser();
+  // linkedom parses non-HTML MIME types as XML only (no HTML reinterpretation);
+  // avoids CodeQL js/dom-text-reinterpreted-as-html on the browser DOMParser sink.
+  const parser = new XmlDOMParser();
   const parse = (s: string): Document => {
-    const d = parser.parseFromString(s, 'application/xml');
+    const d = parser.parseFromString(s, 'text/xml');
     if (d.querySelector('parsererror')) throw new Error('XML parse error — file may be corrupt or not a draw.io export.');
-    return d;
+    if (!d.documentElement) throw new Error('XML parse error — file may be corrupt or not a draw.io export.');
+    return d as unknown as Document;
   };
 
   let doc = parse(xmlStr);
@@ -487,7 +588,7 @@ async function parseDrawioXml(xmlStr: string): Promise<{ nodes: ParsedNode[]; ed
     if (!cell.vertex) continue;
 
     const { ax, ay } = absPos.get(cell.id) ?? { ax: cell.x, ay: cell.y };
-    const t = detectNodeType(cell.style, cell.label);
+    const t = detectNodeType(cell.style, cell.label, cell.width, cell.height);
     const node: ParsedNode = {
       id:            `drawio-${cell.id}`,
       label:         cell.label || `Element ${cell.id}`,

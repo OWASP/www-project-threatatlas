@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from typing import Optional
 
 from app.models import (
@@ -7,8 +6,6 @@ from app.models import (
     DiagramVersion,
     DiagramThreatVersion,
     DiagramMitigationVersion,
-    DiagramThreat,
-    DiagramMitigation
 )
 from app.schemas.diagram_version import (
     DiagramVersionSummary,
@@ -308,7 +305,6 @@ class VersionService:
                 ))
             else:
                 threat_from = from_threats[key]
-                threat_from_snapshot = DiagramThreatVersionSnapshot.model_validate(threat_from)
 
                 # Check if anything changed
                 if (threat_from.status != threat_to.status or

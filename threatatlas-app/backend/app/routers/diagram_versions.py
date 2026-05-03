@@ -11,8 +11,7 @@ from app.schemas.diagram_version import (
 )
 from app.services import VersionService
 from app.auth.dependencies import get_current_user
-from app.auth.permissions import can_access_product, can_edit_product, PermissionDenied
-from app.models.enums import UserRole
+from app.auth.permissions import can_access_product, PermissionDenied
 
 router = APIRouter(prefix="/diagram-versions", tags=["diagram-versions"])
 
@@ -38,7 +37,7 @@ def list_versions(
 ):
     """List all versions for a diagram."""
     # Verify diagram exists and user has access
-    diagram = check_diagram_access(diagram_id, current_user, db)
+    check_diagram_access(diagram_id, current_user, db)
 
     # Get all versions, ordered by version number descending (newest first)
     versions = db.query(DiagramVersionModel).filter(
@@ -85,7 +84,7 @@ def compare_versions(
 ):
     """Compare two versions and return differences."""
     # Verify diagram exists and user has access
-    diagram = check_diagram_access(diagram_id, current_user, db)
+    check_diagram_access(diagram_id, current_user, db)
 
     try:
         comparison = VersionService.compare_versions(

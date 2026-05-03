@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -545,21 +544,7 @@ export default function UserManagement() {
           <CardDescription>Users with active accounts in the system</CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="space-y-3 py-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-4 px-2">
-                  <Skeleton className="h-4 w-4 rounded-full" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-40" />
-                  <Skeleton className="h-4 w-28" />
-                  <Skeleton className="h-5 w-16 rounded-full" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-16 ml-auto rounded-lg" />
-                </div>
-              ))}
-            </div>
-          ) : users.length === 0 ? (
+          {users.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/60 mb-3">
                 <UserPlus className="h-7 w-7 text-muted-foreground" />
@@ -645,19 +630,7 @@ export default function UserManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="space-y-3 py-4">
-              {[1, 2].map((i) => (
-                <div key={i} className="flex items-center gap-4 px-2">
-                  <Skeleton className="h-4 w-40" />
-                  <Skeleton className="h-5 w-16 rounded-full" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-24 ml-auto rounded-lg" />
-                </div>
-              ))}
-            </div>
-          ) : invitations.length === 0 ? (
+          {invitations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/60 mb-3">
                 <Mail className="h-7 w-7 text-muted-foreground" />

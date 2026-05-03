@@ -594,24 +594,22 @@ export function DiagramsContent() {
 
         {/* Right Section: Analysis, Tools & Actions */}
         <div className="flex items-center gap-1">
-          {selectedDiagram && (
-            <div className="shrink-0">
-              <ModelSelector
-                diagramId={selectedDiagram}
-                selectedModelId={activeModelId}
-                onModelChange={(modelId, model) => {
-                  setActiveModelId(modelId);
-                  setActiveModel(model);
-                }}
-                externalCreateOpen={isCreatingModel}
-                onExternalCreateClose={() => setIsCreatingModel(false)}
-                externalEditOpen={isEditingModel}
-                onExternalEditClose={() => setIsEditingModel(false)}
-                externalDeleteOpen={isDeletingModel}
-                onExternalDeleteClose={() => setIsDeletingModel(false)}
-              />
-            </div>
-          )}
+          <div className="shrink-0">
+            <ModelSelector
+              diagramId={selectedDiagram}
+              selectedModelId={activeModelId}
+              onModelChange={(modelId, model) => {
+                setActiveModelId(modelId);
+                setActiveModel(model);
+              }}
+              externalCreateOpen={isCreatingModel}
+              onExternalCreateClose={() => setIsCreatingModel(false)}
+              externalEditOpen={isEditingModel}
+              onExternalEditClose={() => setIsEditingModel(false)}
+              externalDeleteOpen={isDeletingModel}
+              onExternalDeleteClose={() => setIsDeletingModel(false)}
+            />
+          </div>
 
           <div className="h-8 w-px bg-border/40 mx-0.5 shrink-0" />
 
@@ -716,22 +714,20 @@ export function DiagramsContent() {
                   <div className="mx-0.5 h-4 w-px bg-border/60" />
 
                   {/* AI Analysis */}
-                  {canWrite && selectedDiagram && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant={aiChatOpen ? "secondary" : "ghost"}
-                          size="icon"
-                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                          aria-label="AI threat analysis"
-                          onClick={() => setAiChatOpen(!aiChatOpen)}
-                        >
-                          <Sparkles className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>AI Threat Analysis</TooltipContent>
-                    </Tooltip>
-                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={aiChatOpen ? "secondary" : "ghost"}
+                        size="icon"
+                        className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                        aria-label="AI threat analysis"
+                        onClick={() => setAiChatOpen(!aiChatOpen)}
+                      >
+                        <Sparkles className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>AI Threat Analysis</TooltipContent>
+                  </Tooltip>
 
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1013,20 +1009,18 @@ export function DiagramsContent() {
       )}
 
       {/* AI Chat Sheet */}
-      {selectedDiagram && (
-        <AIChatSheet
-          open={aiChatOpen}
-          onOpenChange={setAiChatOpen}
-          diagramId={selectedDiagram}
-          activeModelId={activeModelId}
-          frameworkId={activeModel?.framework_id ?? null}
-          portalContainer={containerRef.current}
-          onModelCreated={(modelId, model) => {
-            setActiveModelId(modelId);
-            setActiveModel(model);
-          }}
-        />
-      )}
+      <AIChatSheet
+        open={aiChatOpen}
+        onOpenChange={setAiChatOpen}
+        diagramId={selectedDiagram}
+        activeModelId={activeModelId}
+        frameworkId={activeModel?.framework_id ?? null}
+        portalContainer={containerRef.current}
+        onModelCreated={(modelId, model) => {
+          setActiveModelId(modelId);
+          setActiveModel(model);
+        }}
+      />
     </div>
   );
 }

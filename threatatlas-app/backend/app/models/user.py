@@ -4,7 +4,6 @@ from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import ENUM
 
 from app.database import Base
-from app.models.enums import UserRole
 
 
 class User(Base):

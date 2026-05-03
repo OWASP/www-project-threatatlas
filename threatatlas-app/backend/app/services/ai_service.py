@@ -84,8 +84,9 @@ async def stream_chat(
 
     try:
         from app.ai.agent import build_agent, AgentDeps
-    except RuntimeError as exc:
-        yield f'data: {json.dumps({"error": str(exc)})}\n\n'
+    except RuntimeError:
+        logger.exception("stream_chat: AI agent failed to load")
+        yield f'data: {json.dumps({"error": "AI runtime is not available. Ask an admin to check server configuration."})}\n\n'
         return
 
     # Save the user message first
@@ -150,8 +151,8 @@ async def stream_chat(
                 usage = result.usage()
                 input_tokens = usage.request_tokens
                 output_tokens = usage.response_tokens
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Token usage unavailable from agent result: %s", e)
 
             # Persist assistant message + proposals
             assistant_msg = AIMessage(
@@ -193,8 +194,7 @@ async def stream_chat(
     if last_exc and _is_rate_limit_error(last_exc):
         yield f'data: {json.dumps({"error": "AI provider is temporarily rate-limited. Please retry in a few seconds."})}\n\n'
     else:
-        err_text = str(last_exc) if last_exc else "unknown error"
-        yield f'data: {json.dumps({"error": f"AI error: {err_text}"})}\n\n'
+        yield f'data: {json.dumps({"error": "AI request failed. Please try again later."})}\n\n'
 
 
 def approve_proposal(
@@ -486,8 +486,11 @@ def approve_all_proposals(
                     created_mitigations += 1
                 elif t == "create_model":
                     created_models.append(result)
-            except Exception as exc:
-                errors.append(f"{proposal['id']}: {str(exc)}")
+            except ValueError as exc:
+                errors.append(f"{proposal['id']}: {exc}")
+            except Exception:
+                logger.exception("approve_all_proposals: failed for proposal %s", proposal["id"])
+                errors.append(f"{proposal['id']}: approval failed")
 
     db.commit()
     return {
