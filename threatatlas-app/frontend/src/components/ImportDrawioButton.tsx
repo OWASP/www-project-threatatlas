@@ -89,14 +89,13 @@ function stripHtml(s: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&');
 
-  // `textContent` after parse does not reliably insert line breaks for `<br>` or
-  // block-level tags; normalize those to `\n` first (line boundaries only).
+  // Normalize known line-boundary tags to '\n', then strip angle brackets.
+  // Use single-character sanitization to avoid incomplete multi-character removal.
   const withLineBreaks = decoded
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/?(p|div|h[1-6]|li)\b[^>]*>/gi, '\n');
+  const text = withLineBreaks.replace(/[<>]/g, '');
 
-  const doc = new DOMParser().parseFromString(withLineBreaks, 'text/html');
-  const text = doc.body?.textContent ?? '';
   const firstLine =
     text
       .split(/\r?\n/)
