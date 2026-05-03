@@ -6,6 +6,12 @@ import {
   Cpu,
   Users,
   Box as BoxIcon,
+  Cloud,
+  Router,
+  MessagesSquare,
+  User,
+  Smartphone,
+  Radio,
 } from 'lucide-react';
 
 function NodeCountBadges({ t, m }: { t: number; m: number }) {
@@ -42,6 +48,23 @@ interface NodeStyle {
 }
 
 const getNodeStyles = (type: string): NodeStyle => {
+  // Helper for the extended node types - uses plain hex colors since the
+  // CSS-variable theme doesn't yet define entries for cloud/queue/etc.
+  const fixed = (
+    icon: React.ComponentType<any>,
+    color: string,
+    shape: NodeStyle['shape'],
+  ): NodeStyle => ({
+    icon,
+    bg: { backgroundColor: `color-mix(in srgb, ${color} 8%, transparent)` },
+    border: '',
+    borderColor: color,
+    lineColor: color,
+    iconColor: { color },
+    textColor: { color: 'var(--foreground)' },
+    shape,
+  });
+
   const baseStyle: Record<string, NodeStyle> = {
     process: {
       icon: Cpu,
@@ -83,6 +106,13 @@ const getNodeStyles = (type: string): NodeStyle => {
       textColor: { color: 'var(--clay-text-tertiary)' },
       shape: 'dashed',
     },
+    // Extended node types
+    cloud:      fixed(Cloud,           '#0ea5e9', 'rectangle'),
+    apigateway: fixed(Router,          '#6366f1', 'rectangle'),
+    queue:      fixed(MessagesSquare,  '#a855f7', 'parallel'),
+    actor:      fixed(User,            '#f43f5e', 'circle'),
+    mobile:     fixed(Smartphone,      '#10b981', 'rectangle'),
+    iot:        fixed(Radio,           '#f97316', 'rectangle'),
   };
   return baseStyle[type] || baseStyle.process;
 };

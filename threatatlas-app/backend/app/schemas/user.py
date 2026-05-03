@@ -99,6 +99,7 @@ class User(UserBase):
     id: int
     is_active: bool
     role: Literal['admin', 'standard', 'read_only']
+    effective_role: Literal['admin', 'standard', 'read_only']
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -6,6 +6,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -45,11 +47,18 @@ const NODE_TYPES = [
 interface ElementPropertiesSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedElement: { id: string; type: 'node' | 'edge'; label: string; nodeType?: string } | null;
+  selectedElement: {
+    id: string;
+    type: 'node' | 'edge';
+    label: string;
+    nodeType?: string;
+    description?: string;
+  } | null;
   diagramId: number | null;
   activeModelId: number | null;
   activeModelFrameworkId: number | null;
   onRename: (name: string) => void;
+  onDescriptionChange?: (description: string) => void;
   onChangeType?: (newType: string) => void;
   onDelete: () => void;
   portalContainer?: HTMLElement | null;
@@ -91,17 +100,20 @@ export default function ElementPropertiesSheet({
   activeModelId,
   activeModelFrameworkId,
   onRename,
+  onDescriptionChange,
   onChangeType,
   onDelete,
   portalContainer,
 }: ElementPropertiesSheetProps) {
   const [elementName, setElementName] = useState('');
+  const [elementDescription, setElementDescription] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('properties');
 
   useEffect(() => {
     if (selectedElement) {
       setElementName(selectedElement.label);
+      setElementDescription(selectedElement.description ?? '');
     }
   }, [selectedElement]);
 
@@ -114,6 +126,12 @@ export default function ElementPropertiesSheet({
 
   const NodeIcon = getNodeIcon(selectedElement?.nodeType);
   const nodeColorStyle = getNodeColorStyle(selectedElement?.nodeType);
+
+  const handleDescriptionBlur = () => {
+    if (onDescriptionChange && elementDescription !== (selectedElement?.description ?? '')) {
+      onDescriptionChange(elementDescription);
+    }
+  };
 
   return (
     <>
@@ -186,6 +204,21 @@ export default function ElementPropertiesSheet({
                     onKeyDown={(e) => e.key === 'Enter' && onRename(elementName)}
                     placeholder="Enter element name"
                     className="h-9 rounded-lg"
+                  />
+                </div>
+
+                {/* Description (free-form notes — persisted in node.data.description) */}
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <Tag className="h-3 w-3" /> DESCRIPTION
+                  </p>
+                  <Textarea
+                    value={elementDescription}
+                    onChange={(e) => setElementDescription(e.target.value)}
+                    onBlur={handleDescriptionBlur}
+                    placeholder="Describe this element: its role, trust level, data handled, owners, etc."
+                    rows={3}
+                    className="rounded-lg resize-y"
                   />
                 </div>
 

@@ -9,6 +9,9 @@ from app.models.mitigation import Mitigation, DiagramMitigation
 from app.models.diagram_version import DiagramVersion, DiagramThreatVersion, DiagramMitigationVersion
 from app.models.invitation import Invitation
 from app.models.product_collaborator import ProductCollaborator
+from app.models.oidc_provider import OIDCProviderConfig
+from app.models.group import Group, user_groups
+from app.models.scim_token import ScimToken
 from app.models.enums import UserRole, CollaboratorRole
 
 __all__ = [
@@ -27,6 +30,10 @@ __all__ = [
     "DiagramMitigationVersion",
     "Invitation",
     "ProductCollaborator",
+    "OIDCProviderConfig",
+    "Group",
+    "user_groups",
+    "ScimToken",
     "UserRole",
     "CollaboratorRole",
     "AIConfig",

@@ -26,7 +26,7 @@ def require_admin(user: User) -> User:
     Raises:
         PermissionDenied: If user does not have admin role
     """
-    if user.role != UserRole.ADMIN.value:
+    if user.effective_role != UserRole.ADMIN.value:
         raise PermissionDenied("Admin role required for this action")
     return user
 
@@ -44,7 +44,7 @@ def require_standard_or_admin(user: User) -> User:
     Raises:
         PermissionDenied: If user has read-only role
     """
-    if user.role == UserRole.READ_ONLY.value:
+    if user.effective_role == UserRole.READ_ONLY.value:
         raise PermissionDenied("Write access required for this action")
     return user
 
@@ -64,9 +64,9 @@ def can_modify_resource(user: User, resource_owner_id: int) -> bool:
     Returns:
         True if user can modify the resource, False otherwise
     """
-    if user.role == UserRole.READ_ONLY.value:
+    if user.effective_role == UserRole.READ_ONLY.value:
         return False
-    if user.role == UserRole.ADMIN.value:
+    if user.effective_role == UserRole.ADMIN.value:
         return True
     return resource_owner_id == user.id
 
@@ -102,7 +102,7 @@ def can_access_product(user: User, product: Product) -> bool:
         True if user can access, False otherwise
     """
     # Admins can access all products
-    if user.role == UserRole.ADMIN.value:
+    if user.effective_role == UserRole.ADMIN.value:
         return True
 
     # Public products accessible to all authenticated users
@@ -145,11 +145,11 @@ def can_edit_product(user: User, product: Product) -> bool:
         True if user can edit, False otherwise
     """
     # Read-only users cannot edit
-    if user.role == UserRole.READ_ONLY.value:
+    if user.effective_role == UserRole.READ_ONLY.value:
         return False
 
     # Admins can edit all products
-    if user.role == UserRole.ADMIN.value:
+    if user.effective_role == UserRole.ADMIN.value:
         return True
 
     # Product owner can edit

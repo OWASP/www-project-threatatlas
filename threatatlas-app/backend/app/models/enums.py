@@ -11,6 +11,16 @@ class UserRole(str, enum.Enum):
     READ_ONLY = "read_only"   # View-only access to all resources
 
 
+class ProductStatus(str, enum.Enum):
+    """Project lifecycle stage of a product."""
+
+    DESIGN = "design"
+    DEVELOPMENT = "development"
+    TESTING = "testing"
+    DEPLOYMENT = "deployment"
+    PRODUCTION = "production"
+
+
 class CollaboratorRole(str, enum.Enum):
     """Collaborator role enumeration for product sharing."""
 
