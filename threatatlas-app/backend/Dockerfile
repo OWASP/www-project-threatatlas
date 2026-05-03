@@ -30,5 +30,5 @@ RUN useradd -m -u 1000 appuser && \
 
 USER appuser
 
-# Run migrations and start server
-CMD pdm run alembic upgrade head && pdm run uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Run migrations, seed knowledge base, then start server
+CMD pdm run alembic upgrade head && pdm run python scripts/seed_knowledge_base.py && pdm run uvicorn app.main:app --host 0.0.0.0 --port 8000

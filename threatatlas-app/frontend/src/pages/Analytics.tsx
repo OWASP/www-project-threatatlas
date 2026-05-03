@@ -87,25 +87,25 @@ export default function Analytics() {
 
   // ====== CHART DATA ======
   const threatStatusData = useMemo(() => [
-    { status: 'identified', count: threats.filter(t => t.status === 'identified').length, fill: 'var(--chart-1)' },
-    { status: 'mitigated', count: threats.filter(t => t.status === 'mitigated').length, fill: 'var(--chart-2)' },
-    { status: 'accepted', count: threats.filter(t => t.status === 'accepted').length, fill: 'var(--chart-3)' },
+    { status: 'identified', count: threats.filter(t => t.status === 'identified').length, fill: 'var(--destructive)' },
+    { status: 'mitigated', count: threats.filter(t => t.status === 'mitigated').length, fill: 'var(--risk-low)' },
+    { status: 'accepted', count: threats.filter(t => t.status === 'accepted').length, fill: 'var(--muted-foreground)' },
   ], [threats]);
 
   const mitigationStatusData = useMemo(() => {
     const data = [
-      { status: 'proposed', count: mitigations.filter(m => m.status === 'proposed').length, fill: 'var(--chart-1)' },
-      { status: 'implemented', count: mitigations.filter(m => m.status === 'implemented').length, fill: 'var(--chart-2)' },
-      { status: 'verified', count: mitigations.filter(m => m.status === 'verified').length, fill: 'var(--chart-3)' },
+      { status: 'proposed', count: mitigations.filter(m => m.status === 'proposed').length, fill: 'var(--chart-4)' },
+      { status: 'implemented', count: mitigations.filter(m => m.status === 'implemented').length, fill: 'var(--chart-3)' },
+      { status: 'verified', count: mitigations.filter(m => m.status === 'verified').length, fill: 'var(--risk-low)' },
     ];
     return data.some(d => d.count > 0) ? data : [];
   }, [mitigations]);
 
   const severityData = useMemo(() => [
-    { severity: 'critical', count: threats.filter(t => t.severity === 'critical').length, fill: 'var(--chart-1)' },
-    { severity: 'high', count: threats.filter(t => t.severity === 'high').length, fill: 'var(--chart-2)' },
-    { severity: 'medium', count: threats.filter(t => t.severity === 'medium').length, fill: 'var(--chart-3)' },
-    { severity: 'low', count: threats.filter(t => t.severity === 'low').length, fill: 'var(--chart-4)' },
+    { severity: 'critical', count: threats.filter(t => t.severity === 'critical').length, fill: 'var(--risk-critical)' },
+    { severity: 'high', count: threats.filter(t => t.severity === 'high').length, fill: 'var(--risk-high)' },
+    { severity: 'medium', count: threats.filter(t => t.severity === 'medium').length, fill: 'var(--risk-medium)' },
+    { severity: 'low', count: threats.filter(t => t.severity === 'low').length, fill: 'var(--risk-low)' },
   ], [threats]);
 
   const categoryData = useMemo(() => {
@@ -115,42 +115,42 @@ export default function Analytics() {
       cats[c] = (cats[c] || 0) + 1;
     });
     return Object.entries(cats)
+      .sort(([, countA], [, countB]) => countB - countA)
+      .slice(0, 5)
       .map(([category, count], idx) => ({
         category,
         count,
         fill: `var(--chart-${(idx % 5) + 1})`
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+      }));
   }, [threats]);
 
   // ====== CONFIGURATIONS ======
   const threatStatusConfig = {
-    identified: { label: "Identified", color: "hsl(var(--destructive))" },
-    mitigated: { label: "Mitigated", color: "hsl(var(--primary))" },
-    accepted: { label: "Accepted", color: "hsl(var(--muted-foreground))" },
+    identified: { label: "Identified", color: "var(--destructive)" },
+    mitigated: { label: "Mitigated", color: "var(--risk-low)" },
+    accepted: { label: "Accepted", color: "var(--muted-foreground)" },
   } satisfies ChartConfig;
 
   const mitigationStatusConfig = {
-    proposed: { label: "Proposed", color: "hsl(var(--chart-4))" },
-    implemented: { label: "Implemented", color: "hsl(var(--chart-3))" },
-    verified: { label: "Verified", color: "hsl(var(--chart-2))" },
+    proposed: { label: "Proposed", color: "var(--chart-4)" },
+    implemented: { label: "Implemented", color: "var(--chart-3)" },
+    verified: { label: "Verified", color: "var(--risk-low)" },
   } satisfies ChartConfig;
 
   const severityConfig = {
-    critical: { label: "Critical", color: "hsl(var(--destructive))" },
-    high: { label: "High", color: "hsl(var(--chart-1))" },
-    medium: { label: "Medium", color: "hsl(var(--chart-5))" },
-    low: { label: "Low", color: "hsl(var(--chart-2))" },
+    critical: { label: "Critical", color: "var(--risk-critical)" },
+    high: { label: "High", color: "var(--risk-high)" },
+    medium: { label: "Medium", color: "var(--risk-medium)" },
+    low: { label: "Low", color: "var(--risk-low)" },
   } satisfies ChartConfig;
 
   const categoryConfig = {
     count: { label: "Threats" },
-    "chart-1": { label: "Chart 1", color: "hsl(var(--chart-1))" },
-    "chart-2": { label: "Chart 2", color: "hsl(var(--chart-2))" },
-    "chart-3": { label: "Chart 3", color: "hsl(var(--chart-3))" },
-    "chart-4": { label: "Chart 4", color: "hsl(var(--chart-4))" },
-    "chart-5": { label: "Chart 5", color: "hsl(var(--chart-5))" },
+    "chart-1": { label: "Chart 1", color: "var(--chart-1)" },
+    "chart-2": { label: "Chart 2", color: "var(--chart-2)" },
+    "chart-3": { label: "Chart 3", color: "var(--chart-3)" },
+    "chart-4": { label: "Chart 4", color: "var(--chart-4)" },
+    "chart-5": { label: "Chart 5", color: "var(--chart-5)" },
   } satisfies ChartConfig;
 
   if (loading) return <AnalyticsSkeleton />;
@@ -190,8 +190,8 @@ export default function Analytics() {
         <Card className="animate-fadeInUp shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50" style={{ animationDelay: '120ms' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Critical Assets at Risk</CardTitle>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10">
-              <Target className="h-4 w-4 text-orange-500" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
+              <Target className="h-4 w-4" style={{ color: 'var(--risk-high)' }} />
             </div>
           </CardHeader>
           <CardContent>
@@ -203,8 +203,8 @@ export default function Analytics() {
         <Card className="animate-fadeInUp shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50" style={{ animationDelay: '180ms' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active Mitigations</CardTitle>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-              <Shield className="h-4 w-4 text-emerald-500" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
+              <Shield className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
             </div>
           </CardHeader>
           <CardContent>
@@ -221,7 +221,7 @@ export default function Analytics() {
         <Card className="shadow-sm border-border/60 lg:col-span-4 flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Activity className="h-4 w-4 text-rose-500" />
+              <Activity className="h-4 w-4" style={{ color: 'var(--risk-critical)' }} />
               Risk Severities
             </CardTitle>
             <CardDescription className="text-sm">Identified threats by risk tier across all models</CardDescription>
@@ -245,7 +245,7 @@ export default function Analytics() {
         <Card className="shadow-sm border-border/60 lg:col-span-3 flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Shield className="h-4 w-4 text-emerald-500" />
+              <Shield className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
               Mitigation Trajectory
             </CardTitle>
             <CardDescription className="text-sm">Tracking organizational mitigation implementations</CardDescription>
@@ -256,7 +256,7 @@ export default function Analytics() {
                 <ChartContainer config={mitigationStatusConfig} className="h-full w-full pb-0 [&_.recharts-pie-label-text]:fill-foreground">
                   <PieChart>
                     <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                    <Pie data={mitigationStatusData} dataKey="count" nameKey="status" innerRadius={65} outerRadius={90} strokeWidth={3} stroke="hsl(var(--background))">
+                    <Pie data={mitigationStatusData} dataKey="count" nameKey="status" innerRadius={65} outerRadius={90} strokeWidth={3} stroke="var(--background)">
                       <Label
                         content={({ viewBox }) => {
                           if (viewBox && "cx" in viewBox && "cy" in viewBox) {
@@ -293,7 +293,7 @@ export default function Analytics() {
         <Card className="shadow-sm border-border/60 lg:col-span-4 flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Layers className="h-4 w-4 text-blue-500" />
+              <Layers className="h-4 w-4 text-primary" />
               Top Threat Taxonomies
             </CardTitle>
             <CardDescription className="text-sm">Most frequent categorizations observed system-wide</CardDescription>
@@ -317,7 +317,7 @@ export default function Analytics() {
         <Card className="shadow-sm border-border/60 lg:col-span-3 flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <AlertTriangle className="h-4 w-4" style={{ color: 'var(--risk-high)' }} />
               Resolution Posture
             </CardTitle>
             <CardDescription className="text-sm">Status mapping of all modeled threats</CardDescription>

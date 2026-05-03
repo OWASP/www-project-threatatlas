@@ -24,6 +24,7 @@ from app.routers import (
     invitations,
     collaborators,
 )
+from app.routers import ai_config, ai_conversations
 
 
 @asynccontextmanager
@@ -64,6 +65,8 @@ app.include_router(diagram_mitigations.router, prefix="/api")
 app.include_router(diagram_versions.router, prefix="/api")
 app.include_router(invitations.router, prefix="/api")
 app.include_router(collaborators.router, prefix="/api")
+app.include_router(ai_config.router, prefix="/api")
+app.include_router(ai_conversations.router, prefix="/api")
 
 
 @app.get("/")

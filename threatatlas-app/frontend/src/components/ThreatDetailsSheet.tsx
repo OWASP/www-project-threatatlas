@@ -42,11 +42,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { AlertTriangle, Shield, ExternalLink, Plus, Trash2, Search, X, MessageSquare, Target } from 'lucide-react';
 import { RiskSelector } from '@/components/RiskSelector';
 import { diagramMitigationsApi, mitigationsApi, frameworksApi } from '@/lib/api';
-import { getSeverityClasses, getStatusClasses } from '@/lib/risk';
+import { getSeverity, getSeverityClasses, getSeverityVariant, getStatusClasses } from '@/lib/risk';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { CommentSection } from '@/components/CommentSection';
 import { toast } from 'sonner';
+import { getMitigationStatusColor } from '@/lib/designSystem';
 
 interface DiagramMitigation {
   id: number;
@@ -117,10 +118,14 @@ export default function ThreatDetailsSheet({
   const [loadingKb, setLoadingKb] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DiagramMitigation | null>(null);
   const [activeTab, setActiveTab] = useState('details');
+  const [localLikelihood, setLocalLikelihood] = useState<number | null>(null);
+  const [localImpact, setLocalImpact] = useState<number | null>(null);
 
   useEffect(() => {
     if (selectedItem) {
       setLocalMitigations(selectedItem.linkedMitigations || []);
+      setLocalLikelihood(selectedItem.likelihood ?? null);
+      setLocalImpact(selectedItem.impact ?? null);
     }
   }, [selectedItem]);
 
@@ -135,12 +140,14 @@ export default function ThreatDetailsSheet({
   }, [open]);
 
   const handleLikelihoodChange = (value: number) => {
+    setLocalLikelihood(value);
     if (onUpdateRisk && selectedItem?.id) {
       onUpdateRisk(selectedItem.id, { likelihood: value });
     }
   };
 
   const handleImpactChange = (value: number) => {
+    setLocalImpact(value);
     if (onUpdateRisk && selectedItem?.id) {
       onUpdateRisk(selectedItem.id, { impact: value });
     }
@@ -271,55 +278,78 @@ export default function ThreatDetailsSheet({
     ? Math.round(localMitigations.filter(m => m.status === 'implemented' || m.status === 'verified').length / localMitigations.length * 100)
     : 0;
 
+  function getStatusStyle(status: string, type: 'threat' | 'mitigation'): React.CSSProperties {
+    const threatMap: Record<string, React.CSSProperties> = {
+      identified: { color: 'var(--risk-high)',        backgroundColor: 'color-mix(in srgb, var(--risk-high) 10%, transparent)',        border: '1px solid color-mix(in srgb, var(--risk-high) 25%, transparent)' },
+      mitigated:  { color: 'var(--risk-low)',         backgroundColor: 'color-mix(in srgb, var(--risk-low) 10%, transparent)',         border: '1px solid color-mix(in srgb, var(--risk-low) 25%, transparent)' },
+      accepted:   { color: 'var(--muted-foreground)', backgroundColor: 'color-mix(in srgb, var(--muted-foreground) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--muted-foreground) 20%, transparent)' },
+    };
+    const mitMap: Record<string, React.CSSProperties> = {
+      proposed:    { color: 'var(--risk-medium)',        backgroundColor: 'color-mix(in srgb, var(--risk-medium) 10%, transparent)',        border: '1px solid color-mix(in srgb, var(--risk-medium) 25%, transparent)' },
+      implemented: { color: 'var(--element-mitigation)', backgroundColor: 'color-mix(in srgb, var(--element-mitigation) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--element-mitigation) 25%, transparent)' },
+      verified:    { color: 'var(--risk-low)',            backgroundColor: 'color-mix(in srgb, var(--risk-low) 10%, transparent)',           border: '1px solid color-mix(in srgb, var(--risk-low) 25%, transparent)' },
+    };
+    return (type === 'threat' ? threatMap[status] : mitMap[status]) ?? {};
+  }
+
+  const currentRiskScore =
+    itemType === 'threat' && localLikelihood != null && localImpact != null
+      ? localLikelihood * localImpact
+      : selectedItem?.risk_score ?? null;
+  const currentSeverity = currentRiskScore != null ? getSeverity(currentRiskScore) : selectedItem?.severity ?? null;
+  const severityColor = currentSeverity
+    ? ({ critical: 'var(--risk-critical)', high: 'var(--risk-high)', medium: 'var(--risk-medium)', low: 'var(--risk-low)' }[currentSeverity as string] ?? 'var(--border)')
+    : 'var(--border)';
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="!w-full sm:!max-w-[720px] p-0 overflow-hidden flex flex-col">
+        <SheetContent className="!w-full sm:!max-w-[680px] p-0 overflow-hidden flex flex-col">
+
           {/* ── Header ── */}
-          <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+          <SheetHeader className="px-5 pt-5 pb-4 border-b shrink-0">
+            {/* Severity bar across the top */}
+            {itemType === 'threat' && currentSeverity && (
+              <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-lg" style={{ backgroundColor: severityColor }} />
+            )}
             <div className="flex items-start gap-3">
-              <div className={cn(
-                'flex h-10 w-10 items-center justify-center rounded-xl shrink-0',
-                itemType === 'threat' ? 'bg-orange-500/10' : 'bg-green-500/10'
-              )}>
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0"
+                style={{ backgroundColor: itemType === 'threat' ? `color-mix(in srgb, ${severityColor} 12%, transparent)` : 'color-mix(in srgb, var(--element-mitigation) 10%, transparent)' }}
+              >
                 {itemType === 'threat'
-                  ? <AlertTriangle className="h-5 w-5 text-orange-600" />
-                  : <Shield className="h-5 w-5 text-green-600" />
+                  ? <AlertTriangle className="h-5 w-5" style={{ color: severityColor }} />
+                  : <Shield className="h-5 w-5" style={{ color: 'var(--element-mitigation)' }} />
                 }
               </div>
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-base font-bold leading-snug mb-1.5">
+                <SheetTitle className="text-base font-bold leading-snug mb-1.5 pr-6">
                   {itemType === 'threat' ? selectedItem?.threat?.name : selectedItem?.mitigation?.name}
                 </SheetTitle>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {selectedItem && (
-                    <Badge variant="outline" className={cn('text-[11px] capitalize', getStatusClasses(selectedItem.status))}>
-                      {selectedItem.status}
-                    </Badge>
-                  )}
-                  {itemType === 'threat' && selectedItem?.severity && (
-                    <Badge variant="outline" className={cn('text-[11px] capitalize', getSeverityClasses(selectedItem.severity))}>
-                      {selectedItem.severity}
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-[11px]">
+                  <Badge variant="outline" className="text-[10px] h-5 px-2">
                     {itemType === 'threat' ? selectedItem?.threat?.category : selectedItem?.mitigation?.category}
                   </Badge>
-                  {itemType === 'threat' && selectedItem?.risk_score !== null && selectedItem?.risk_score !== undefined && (
-                    <Badge variant="secondary" className="text-[11px] font-mono">
-                      Risk {selectedItem.risk_score}
+                  {selectedItem && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize" style={getStatusStyle(selectedItem.status, itemType ?? 'threat')}>
+                      {selectedItem.status}
+                    </span>
+                  )}
+                  {itemType === 'threat' && currentSeverity && (
+                    <Badge variant="outline" className={cn('text-[10px] h-5 px-2 capitalize', getSeverityClasses(currentSeverity))}>
+                      {currentSeverity}
                     </Badge>
+                  )}
+                  {itemType === 'threat' && currentRiskScore != null && (
+                    <span className="flex items-center gap-1 text-[11px] font-mono font-bold" style={{ color: severityColor }}>
+                      <Target className="h-3 w-3" />{currentRiskScore}
+                    </span>
                   )}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-[11px] gap-1 ml-auto"
-                        onClick={() => selectedItem && onNavigateToDiagram(selectedItem)}
-                      >
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] gap-1 ml-auto text-muted-foreground hover:text-foreground" onClick={() => selectedItem && onNavigateToDiagram(selectedItem)}>
                         <ExternalLink className="h-3 w-3" />
-                        Diagram
+                        View in diagram
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>Open in diagram editor</TooltipContent>
@@ -331,48 +361,40 @@ export default function ThreatDetailsSheet({
 
           {selectedItem && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-              <div className="px-6 pt-2 border-b shrink-0">
+              <div className="px-5 pt-2 border-b shrink-0">
                 <TabsList variant="line">
-                  <TabsTrigger value="details">
-                    Details
-                  </TabsTrigger>
+                  <TabsTrigger value="details">Details</TabsTrigger>
                   {itemType === 'threat' && (
                     <TabsTrigger value="mitigations" className="gap-1.5">
                       Mitigations
-                      <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{localMitigations.length}</Badge>
+                      {localMitigations.length > 0 && (
+                        <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[9px] font-bold bg-muted text-muted-foreground tabular-nums">
+                          {localMitigations.length}
+                        </span>
+                      )}
                     </TabsTrigger>
                   )}
-                  <TabsTrigger value="comments">
-                    Comments
-                  </TabsTrigger>
+                  <TabsTrigger value="comments">Comments</TabsTrigger>
                 </TabsList>
               </div>
 
               {/* ── Details Tab ── */}
-              <TabsContent value="details" className="flex-1 overflow-y-auto mt-0 px-6 py-5 space-y-5">
+              <TabsContent value="details" className="flex-1 overflow-y-auto mt-0 px-5 py-5 space-y-5">
+
                 {/* Description */}
-                <div>
-                  <p className="text-xs font-bold text-muted-foreground tracking-wider mb-1.5">DESCRIPTION</p>
-                  <p className="text-sm leading-relaxed">
+                <div className="rounded-xl bg-muted/30 px-4 py-3.5">
+                  <p className="text-sm leading-relaxed text-foreground/90">
                     {itemType === 'threat' ? selectedItem.threat?.description : selectedItem.mitigation?.description}
                   </p>
                 </div>
 
-                <Separator />
-
-                {/* Element & Status */}
-                <div className="grid gap-4 grid-cols-2">
+                {/* Status + Severity/Risk */}
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs font-bold text-muted-foreground tracking-wider mb-1.5">ELEMENT</p>
-                    <code className="text-sm bg-muted px-2.5 py-1 rounded-lg border inline-block">
-                      {selectedItem.element_id}
-                    </code>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-muted-foreground tracking-wider mb-1.5">STATUS</p>
+                    <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">STATUS</p>
                     {canWrite ? (
                       <Select value={selectedItem.status} onValueChange={onUpdateStatus}>
-                        <SelectTrigger className="h-9 text-sm rounded-lg w-full">
+                        <SelectTrigger className="h-9 text-sm rounded-lg w-48">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -397,125 +419,129 @@ export default function ThreatDetailsSheet({
                       </Badge>
                     )}
                   </div>
+
+                  {itemType === 'threat' && (currentRiskScore !== null || currentSeverity) && (
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">SEVERITY / RISK</p>
+                      <div className="flex items-center gap-2 h-9">
+                        {currentSeverity && (
+                          <Badge variant={getSeverityVariant(currentSeverity)} className="capitalize text-[10px]">
+                            {currentSeverity}
+                          </Badge>
+                        )}
+                        {currentRiskScore !== null && (
+                          <span className="text-sm font-bold tabular-nums" style={{ color: severityColor }}>
+                            {currentRiskScore}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Risk Assessment — threats only */}
                 {itemType === 'threat' && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-xs font-bold text-muted-foreground tracking-wider mb-2">RISK ASSESSMENT</p>
-                      <RiskSelector
-                        likelihood={selectedItem.likelihood}
-                        impact={selectedItem.impact}
-                        onLikelihoodChange={handleLikelihoodChange}
-                        onImpactChange={handleImpactChange}
-                      />
-                    </div>
-                  </>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">RISK ASSESSMENT</p>
+                    <RiskSelector
+                      likelihood={localLikelihood}
+                      impact={localImpact}
+                      onLikelihoodChange={handleLikelihoodChange}
+                      onImpactChange={handleImpactChange}
+                    />
+                  </div>
                 )}
 
-                {/* Mitigation summary for threats */}
+                {/* Mitigation coverage bar — threats with mitigations */}
                 {itemType === 'threat' && localMitigations.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-xs font-bold text-muted-foreground tracking-wider mb-2">MITIGATION COVERAGE</p>
-                      <div className="flex items-center gap-3">
-                        <Progress value={mitigationProgress} className="h-2 flex-1" />
-                        <span className="text-sm font-semibold tabular-nums">{mitigationProgress}%</span>
+                  <div className="rounded-xl border px-4 py-3.5 space-y-2" style={{ borderColor: 'color-mix(in srgb, var(--element-mitigation) 20%, transparent)', backgroundColor: 'color-mix(in srgb, var(--element-mitigation) 4%, transparent)' }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Shield className="h-3.5 w-3.5" style={{ color: 'var(--element-mitigation)' }} />
+                        <span className="text-xs font-semibold" style={{ color: 'var(--element-mitigation)' }}>Mitigation Coverage</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {localMitigations.filter(m => m.status === 'implemented' || m.status === 'verified').length} of {localMitigations.length} mitigations active
-                      </p>
+                      <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--element-mitigation)' }}>{mitigationProgress}%</span>
                     </div>
-                  </>
+                    <Progress value={mitigationProgress} className="h-1.5" />
+                    <p className="text-[11px] text-muted-foreground">
+                      {localMitigations.filter(m => m.status === 'implemented' || m.status === 'verified').length} of {localMitigations.length} implemented or verified
+                    </p>
+                  </div>
                 )}
               </TabsContent>
 
               {/* ── Mitigations Tab ── */}
               {itemType === 'threat' && (
-                <TabsContent value="mitigations" className="flex-1 overflow-y-auto mt-0 px-6 py-5 space-y-4">
-                  {/* Header */}
+                <TabsContent value="mitigations" className="flex-1 overflow-y-auto mt-0 px-5 py-5 space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-muted-foreground tracking-wider">
-                      LINKED MITIGATIONS ({localMitigations.length})
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-3.5 w-3.5" style={{ color: 'var(--element-mitigation)' }} />
+                      <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Mitigations</span>
+                      {localMitigations.length > 0 && (
+                        <span className="text-[10px] font-semibold text-muted-foreground">({localMitigations.length})</span>
+                      )}
+                    </div>
                     {canWrite && (
-                      <Button size="sm" onClick={handleOpenAddDialog} className="h-8 gap-1.5">
-                        <Plus className="h-3.5 w-3.5" />
-                        Add
+                      <Button size="sm" variant="outline" onClick={handleOpenAddDialog} className="h-7 gap-1.5 text-xs">
+                        <Plus className="h-3 w-3" /> Add
                       </Button>
                     )}
                   </div>
 
                   {localMitigations.length === 0 ? (
-                    <Card className="border-dashed border-2 rounded-xl">
-                      <CardContent className="flex flex-col items-center justify-center py-10">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-500/10 mb-3">
-                          <Shield className="h-6 w-6 text-green-600" />
-                        </div>
-                        <p className="text-sm font-semibold mb-1">No mitigations linked</p>
-                        <p className="text-xs text-muted-foreground text-center max-w-xs">
-                          {canWrite ? 'Add mitigations from the knowledge base.' : 'No mitigations linked yet.'}
-                        </p>
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-10 text-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: 'color-mix(in srgb, var(--element-mitigation) 8%, transparent)' }}>
+                        <Shield className="h-5 w-5" style={{ color: 'var(--element-mitigation)' }} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold mb-0.5">No mitigations linked</p>
+                        <p className="text-xs text-muted-foreground">{canWrite ? 'Add mitigations from the knowledge base.' : 'No mitigations linked yet.'}</p>
                         {canWrite && (
-                          <Button size="sm" variant="outline" onClick={handleOpenAddDialog} className="mt-3 gap-1.5">
-                            <Plus className="h-3.5 w-3.5" />
-                            Add Mitigation
+                          <Button size="sm" variant="outline" onClick={handleOpenAddDialog} className="mt-2 gap-1.5 h-7 text-xs">
+                            <Plus className="h-3 w-3" /> Add Mitigation
                           </Button>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {localMitigations.map((dm) => (
-                        <Card key={dm.id} className="rounded-xl hover:shadow-sm transition-all">
-                          <CardContent className="p-4 space-y-3">
-                            {/* Mitigation header */}
-                            <div className="flex items-start gap-3">
-                              <Shield className={cn(
-                                'h-4 w-4 shrink-0 mt-0.5',
-                                dm.status === 'verified' ? 'text-green-600' :
-                                dm.status === 'implemented' ? 'text-emerald-500' :
-                                'text-muted-foreground'
-                              )} />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold">{dm.mitigation.name}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
-                                  {dm.mitigation.description}
-                                </p>
-                              </div>
-                              {canWrite && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive shrink-0"
-                                      aria-label="Remove mitigation"
-                                      onClick={() => setDeleteTarget(dm)}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Remove mitigation</TooltipContent>
-                                </Tooltip>
-                              )}
+                        <div
+                          key={dm.id}
+                          className="rounded-xl border overflow-hidden"
+                          style={{ borderColor: 'color-mix(in srgb, var(--element-mitigation) 20%, transparent)' }}
+                        >
+                          {/* Mitigation header */}
+                          <div
+                            className="flex items-start gap-3 px-4 py-3"
+                            style={{ backgroundColor: 'color-mix(in srgb, var(--element-mitigation) 4%, transparent)' }}
+                          >
+                            <Shield
+                              className="h-4 w-4 shrink-0 mt-0.5"
+                              style={{ color: dm.status === 'verified' || dm.status === 'implemented' ? 'var(--element-mitigation)' : 'var(--muted-foreground)' }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold leading-snug">{dm.mitigation.name}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{dm.mitigation.description}</p>
                             </div>
-
-                            {/* Category + Status */}
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="outline" className="text-[11px]">{dm.mitigation.category}</Badge>
+                            {canWrite && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive shrink-0" onClick={() => setDeleteTarget(dm)}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Remove</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                          {/* Status + comments */}
+                          <div className="px-4 py-3 space-y-3 border-t" style={{ borderColor: 'color-mix(in srgb, var(--element-mitigation) 12%, transparent)' }}>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px] h-5 px-2">{dm.mitigation.category}</Badge>
                               {canWrite ? (
-                                <Select
-                                  value={dm.status}
-                                  onValueChange={(val) => handleUpdateMitigationStatus(dm, val)}
-                                >
-                                  <SelectTrigger className={cn(
-                                    'h-6 text-[11px] w-auto px-2 rounded-md border gap-1',
-                                    getStatusClasses(dm.status)
-                                  )}>
+                                <Select value={dm.status} onValueChange={(val) => handleUpdateMitigationStatus(dm, val)}>
+                                  <SelectTrigger className={cn('h-6 text-[10px] w-auto px-2 rounded-lg border gap-1', getStatusClasses(dm.status))}>
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -525,21 +551,19 @@ export default function ThreatDetailsSheet({
                                   </SelectContent>
                                 </Select>
                               ) : (
-                                <Badge variant="outline" className={cn('text-[11px] capitalize', getStatusClasses(dm.status))}>
+                                <Badge variant="outline" className={cn('text-[10px] capitalize h-5 px-2', getStatusClasses(dm.status))}>
                                   {dm.status}
                                 </Badge>
                               )}
                             </div>
-
-                            {/* Comments */}
                             <CommentSection
                               comments={dm.comments}
                               canWrite={canWrite}
                               authorName={authorName}
-                              onSave={(newComments) => handleSaveMitigationNotes(dm, newComments)}
+                              onSave={(c) => handleSaveMitigationNotes(dm, c)}
                             />
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -547,7 +571,7 @@ export default function ThreatDetailsSheet({
               )}
 
               {/* ── Comments Tab ── */}
-              <TabsContent value="comments" className="flex-1 overflow-y-auto mt-0 px-6 py-5">
+              <TabsContent value="comments" className="flex-1 overflow-y-auto mt-0 px-5 py-5">
                 <CommentSection
                   comments={selectedItem.comments || ''}
                   canWrite={canWrite}
@@ -562,9 +586,12 @@ export default function ThreatDetailsSheet({
 
       {/* Add Mitigation Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="!max-w-4xl w-full">
+        <DialogContent className="!max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Add Mitigation</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-4 w-4" style={{ color: 'var(--element-mitigation)' }} />
+              Add Mitigation
+            </DialogTitle>
             <DialogDescription>
               Select a mitigation from the knowledge base to link to this threat.
             </DialogDescription>
@@ -662,37 +689,26 @@ export default function ThreatDetailsSheet({
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                  {filteredKbMitigations.map((mitigation) => (
-                    <Card
-                      key={mitigation.id}
-                      className="cursor-pointer hover:bg-muted/50 hover:border-primary/20 hover:shadow-sm transition-all rounded-xl"
-                      onClick={() => handleAttachMitigation(mitigation)}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                            <Shield className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                                <p className="text-sm font-semibold">{mitigation.name}</p>
-                                <Badge variant="outline" className="text-[11px]">{mitigation.category}</Badge>
-                                {mitigation.is_custom && (
-                                  <Badge variant="secondary" className="text-[11px]">Custom</Badge>
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                                {mitigation.description}
-                              </p>
+                  <div className="space-y-1.5">
+                    {filteredKbMitigations.map((mitigation) => (
+                      <button
+                        key={mitigation.id}
+                        className="w-full text-left rounded-lg px-3.5 py-3 border border-transparent hover:border-border hover:bg-muted/40 transition-all group"
+                        onClick={() => handleAttachMitigation(mitigation)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                              <span className="text-sm font-semibold group-hover:text-primary transition-colors">{mitigation.name}</span>
+                              <Badge variant="outline" className="text-[10px] h-4 px-1.5">{mitigation.category}</Badge>
+                              {mitigation.is_custom && <Badge variant="secondary" className="text-[10px] h-4 px-1.5">Custom</Badge>}
                             </div>
+                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{mitigation.description}</p>
                           </div>
-                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
-                            <Plus className="h-4 w-4" />
-                          </div>
+                          <Plus className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-primary shrink-0 mt-1 transition-colors" />
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>

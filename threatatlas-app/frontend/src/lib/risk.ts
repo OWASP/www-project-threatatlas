@@ -23,15 +23,15 @@ export function getSeverityVariant(severity: string | null): 'destructive' | 'de
 export function getSeverityColor(severity: string | null): string {
   switch (severity) {
     case 'critical':
-      return 'hsl(0 84.2% 60.2%)';
+      return 'var(--risk-critical)';
     case 'high':
-      return 'hsl(24.6 95% 53.1%)';
+      return 'var(--risk-high)';
     case 'medium':
-      return 'hsl(47.9 95.8% 53.1%)';
+      return 'var(--risk-medium)';
     case 'low':
-      return 'hsl(142.1 76.2% 36.3%)';
+      return 'var(--risk-low)';
     default:
-      return 'hsl(240 5.9% 90%)';
+      return 'var(--border)';
   }
 }
 
@@ -47,10 +47,10 @@ export function getSeverityClasses(severity: string | null): string {
 
 export function getSeverityStripeClass(severity: string | null): string {
   switch (severity) {
-    case 'critical': return 'bg-red-500';
-    case 'high': return 'bg-orange-500';
-    case 'medium': return 'bg-amber-400';
-    case 'low': return 'bg-green-500';
+    case 'critical': return 'severity-stripe-critical';
+    case 'high': return 'severity-stripe-high';
+    case 'medium': return 'severity-stripe-medium';
+    case 'low': return 'severity-stripe-low';
     default: return 'bg-border';
   }
 }

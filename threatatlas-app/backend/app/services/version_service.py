@@ -15,7 +15,9 @@ from app.schemas.diagram_version import (
     DiagramVersionComparison,
     ElementChange,
     ThreatChange,
-    DiagramThreatVersionSnapshot
+    MitigationChange,
+    DiagramThreatVersionSnapshot,
+    DiagramMitigationVersionSnapshot,
 )
 
 
@@ -348,6 +350,53 @@ class VersionService:
                     risk_score_delta=-(threat_from.risk_score or 0)
                 ))
 
+        # Compare mitigations
+        from_mits = {
+            (m.element_id, m.mitigation_id): m
+            for m in v_from.mitigation_versions
+        }
+        to_mits = {
+            (m.element_id, m.mitigation_id): m
+            for m in v_to.mitigation_versions
+        }
+
+        for key, mit_to in to_mits.items():
+            snap_to = DiagramMitigationVersionSnapshot.model_validate(mit_to)
+            snap_to.mitigation_name = mit_to.mitigation.name if mit_to.mitigation else None
+            snap_to.node_label = to_label_map.get(mit_to.element_id, mit_to.element_id)
+            if key not in from_mits:
+                comparison.mitigations_added.append(MitigationChange(
+                    element_id=mit_to.element_id,
+                    mitigation_id=mit_to.mitigation_id,
+                    change_type='added',
+                    after=snap_to,
+                ))
+            else:
+                mit_from = from_mits[key]
+                if mit_from.status != mit_to.status or mit_from.comments != mit_to.comments:
+                    snap_from = DiagramMitigationVersionSnapshot.model_validate(mit_from)
+                    snap_from.mitigation_name = mit_from.mitigation.name if mit_from.mitigation else None
+                    snap_from.node_label = from_label_map.get(mit_from.element_id, mit_from.element_id)
+                    comparison.mitigations_modified.append(MitigationChange(
+                        element_id=mit_to.element_id,
+                        mitigation_id=mit_to.mitigation_id,
+                        change_type='modified',
+                        before=snap_from,
+                        after=snap_to,
+                    ))
+
+        for key, mit_from in from_mits.items():
+            if key not in to_mits:
+                snap_from = DiagramMitigationVersionSnapshot.model_validate(mit_from)
+                snap_from.mitigation_name = mit_from.mitigation.name if mit_from.mitigation else None
+                snap_from.node_label = from_label_map.get(mit_from.element_id, mit_from.element_id)
+                comparison.mitigations_removed.append(MitigationChange(
+                    element_id=mit_from.element_id,
+                    mitigation_id=mit_from.mitigation_id,
+                    change_type='removed',
+                    before=snap_from,
+                ))
+
         return comparison
 
     @staticmethod
@@ -370,6 +419,7 @@ class VersionService:
         node_count = len(diagram_data.get('nodes', []))
         edge_count = len(diagram_data.get('edges', []))
         threat_count = len(version.threat_versions)
+        mitigation_count = len(version.mitigation_versions)
         total_risk_score = sum(
             t.risk_score or 0 for t in version.threat_versions
         )
@@ -384,5 +434,6 @@ class VersionService:
             node_count=node_count,
             edge_count=edge_count,
             threat_count=threat_count,
+            mitigation_count=mitigation_count,
             total_risk_score=total_risk_score
         )

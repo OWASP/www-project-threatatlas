@@ -1,5 +1,6 @@
 from app.models.user import User
 from app.models.framework import Framework
+from app.models.ai import AIConfig, AIConversation, AIMessage
 from app.models.product import Product
 from app.models.diagram import Diagram
 from app.models.model import Model, ModelStatus
@@ -28,4 +29,7 @@ __all__ = [
     "ProductCollaborator",
     "UserRole",
     "CollaboratorRole",
+    "AIConfig",
+    "AIConversation",
+    "AIMessage",
 ]

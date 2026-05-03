@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertTriangle, Shield, ExternalLink, MessageSquare, ChevronRight, Target } from 'lucide-react';
+import { AlertTriangle, Shield, ExternalLink, MessageSquare, Target } from 'lucide-react';
 import { getSeverityClasses, getSeverityStripeClass, getStatusClasses } from '@/lib/risk';
 import { cn } from '@/lib/utils';
 
@@ -63,23 +63,16 @@ export default function ThreatCard({
   const mitigationProgress = getMitigationProgress(linkedMitigations);
   const hasComments = threat.comments && threat.comments !== '[]';
 
-  const iconColor = () => {
-    if (threat.status === 'mitigated') return 'text-green-600';
-    if (threat.status === 'accepted') return 'text-slate-500';
-    if (linkedMitigations.length === 0) return 'text-red-600';
-    return 'text-amber-600';
-  };
-
-  const iconBg = () => {
-    if (threat.status === 'mitigated') return 'bg-green-500/10';
-    if (threat.status === 'accepted') return 'bg-slate-500/10';
-    if (linkedMitigations.length === 0) return 'bg-red-500/10';
-    return 'bg-amber-500/10';
+  const getIconColor = () => {
+    if (threat.status === 'mitigated') return 'var(--element-mitigation)';
+    if (threat.status === 'accepted') return 'var(--ds-stone-gray)';
+    if (linkedMitigations.length === 0) return 'var(--element-threat)';
+    return 'var(--element-removal)';
   };
 
   return (
     <Card
-      className="animate-fadeInUp hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl relative overflow-hidden"
+      className="animate-fadeInUp hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl relative overflow-hidden py-0"
       style={{ animationDelay: `${index * 40}ms` }}
     >
       {/* Severity stripe */}
@@ -87,13 +80,13 @@ export default function ThreatCard({
 
       <CardContent className="p-0">
         {/* ── Threat section ── */}
-        <div className="px-5 pl-6 py-1 cursor-pointer group/threat" onClick={onOpen}>
+        <div className="px-5 pl-6 pt-2 pb-1 cursor-pointer group/threat" onClick={onOpen}>
           {/* Top bar: icon + name + badges + action */}
           <div className="flex items-center gap-3 mb-2">
-            <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg shrink-0', iconBg())}>
-              <AlertTriangle className={cn('h-4 w-4', iconColor())} />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${getIconColor()} 10%, transparent)` }}>
+              <AlertTriangle className="h-4 w-4" style={{ color: getIconColor() }} />
             </div>
-            <h3 className="font-bold text-sm leading-snug group-hover/threat:text-primary transition-colors flex-1 min-w-0 truncate">
+            <h3 className="font-medium text-sm leading-snug group-hover/threat:text-primary transition-colors flex-1 min-w-0 truncate">
               {threat.threat.name}
             </h3>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -117,7 +110,7 @@ export default function ThreatCard({
                 </Tooltip>
               )}
               {hasComments && (
-                <MessageSquare className="h-3 w-3 text-blue-500/70" />
+                <MessageSquare className="h-3 w-3 text-muted-foreground/50" />
               )}
               {onNavigateToDiagram && (
                 <Tooltip>
@@ -158,6 +151,19 @@ export default function ThreatCard({
                 ))}
               </>
             )}
+            {linkedMitigations.length > 0 && (
+              <>
+                <span className="text-border/60">&middot;</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Shield className="h-3 w-3" style={{ color: 'var(--risk-low)' }} />
+                  <span className="font-medium">{linkedMitigations.length} Mitigation{linkedMitigations.length > 1 ? 's' : ''}</span>
+                </span>
+                <div className="inline-flex items-center gap-2">
+                  <Progress value={mitigationProgress} className="h-1 w-16" />
+                  <span className="tabular-nums">{mitigationProgress}%</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -166,19 +172,6 @@ export default function ThreatCard({
           <>
             <Separator className="opacity-50" />
             <div className="bg-muted/15 px-5 pl-6 py-3 cursor-pointer" onClick={onOpen}>
-              {/* Mitigation header */}
-              <div className="flex items-center gap-3 mb-2">
-                <div className="flex items-center gap-1.5">
-                  <Shield className="h-3.5 w-3.5 text-green-600" />
-                  <span className="text-xs font-semibold">{linkedMitigations.length} Mitigation{linkedMitigations.length > 1 ? 's' : ''}</span>
-                </div>
-                <div className="flex items-center gap-2 flex-1">
-                  <Progress value={mitigationProgress} className="h-1 max-w-24" />
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{mitigationProgress}%</span>
-                </div>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-              </div>
-
               {/* Mitigation chips - showing name, category, and status */}
               <div className="flex flex-wrap gap-2">
                 {linkedMitigations.map((mit) => (
@@ -186,12 +179,10 @@ export default function ThreatCard({
                     key={mit.id}
                     className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-background/60 hover:bg-background hover:shadow-sm transition-all text-xs"
                   >
-                    <Shield className={cn(
-                      'h-3.5 w-3.5 shrink-0',
-                      mit.status === 'verified' ? 'text-green-600' :
-                      mit.status === 'implemented' ? 'text-emerald-500' :
-                      'text-muted-foreground/60'
-                    )} />
+                    <Shield
+                      className="h-3.5 w-3.5 shrink-0"
+                      style={{ color: mit.status === 'verified' ? 'var(--risk-low)' : mit.status === 'implemented' ? 'var(--matcha-300)' : undefined }}
+                    />
                     <div className="flex flex-col min-w-0 max-w-[180px]">
                       <span className="font-medium truncate leading-tight">{mit.mitigation.name}</span>
                       {mit.mitigation.category && (
@@ -202,7 +193,7 @@ export default function ThreatCard({
                       {mit.status}
                     </Badge>
                     {mit.comments && mit.comments !== '[]' && (
-                      <MessageSquare className="h-3 w-3 text-blue-500/70 shrink-0" />
+                      <MessageSquare className="h-3 w-3 text-muted-foreground/50 shrink-0" />
                     )}
                   </div>
                 ))}

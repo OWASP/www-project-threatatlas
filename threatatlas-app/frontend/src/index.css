@@ -1,132 +1,245 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/roboto";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource/space-mono";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: hsl(48 33.3333% 97.0588%);
-  --foreground: hsl(48 19.6078% 20%);
-  --card: hsl(48 33.3333% 97.0588%);
-  --card-foreground: hsl(60 2.5641% 7.6471%);
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(50.7692 19.4030% 13.1373%);
-  --primary: hsl(15.1111 55.5556% 52.3529%);
-  --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(46.1538 22.8070% 88.8235%);
-  --secondary-foreground: hsl(50.7692 8.4967% 30.0000%);
-  --muted: hsl(44.0000 29.4118% 90%);
-  --muted-foreground: hsl(50.0000 2.3622% 50.1961%);
-  --accent: hsl(46.1538 22.8070% 88.8235%);
-  --accent-foreground: hsl(50.7692 19.4030% 13.1373%);
-  --destructive: hsl(0 84.2% 58%);
-  --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(50 7.5000% 84.3137%);
-  --input: hsl(50.7692 7.9755% 68.0392%);
-  --ring: hsl(15.1111 55.5556% 52.3529%);
-  --chart-1: hsl(18.2813 57.1429% 43.9216%);
-  --chart-2: hsl(251.4545 84.6154% 74.5098%);
-  --chart-3: hsl(46.1538 28.2609% 81.9608%);
-  --chart-4: hsl(256.5517 49.1525% 88.4314%);
-  --chart-5: hsl(17.7778 60% 44.1176%);
-  --risk-low: hsl(142 60% 40%);
-  --risk-low-muted: hsl(142 60% 40% / 0.12);
-  --risk-medium: hsl(45 92% 44%);
-  --risk-medium-muted: hsl(45 92% 44% / 0.12);
-  --risk-high: hsl(25 90% 50%);
-  --risk-high-muted: hsl(25 90% 50% / 0.12);
-  --risk-critical: hsl(0 84% 56%);
-  --risk-critical-muted: hsl(0 84% 56% / 0.12);
-  --sidebar: hsl(51.4286 25.9259% 94.7059%);
-  --sidebar-foreground: hsl(60 2.5210% 23.3333%);
-  --sidebar-primary: hsl(15.1111 55.5556% 52.3529%);
-  --sidebar-primary-foreground: hsl(0 0% 98.4314%);
-  --sidebar-accent: hsl(46.1538 22.8070% 88.8235%);
-  --sidebar-accent-foreground: hsl(0 0% 20.3922%);
-  --sidebar-border: hsl(0 0% 92.1569%);
-  --sidebar-ring: hsl(0 0% 70.9804%);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --radius: 0.5rem;
+  /* ============================================================
+     CLAY DESIGN SYSTEM — Core Palette
+     ============================================================ */
+
+  /* Base */
+  --clay-cream: #faf9f7;
+  --clay-black: #000000;
+  --clay-white: #ffffff;
+
+  /* Oat Borders */
+  --oat-border: #dad4c8;
+  --oat-light: #eee9df;
+  --cool-border: #e6e8ec;
+  --dark-border: #525a69;
+
+  /* Swatch — Matcha (Green) */
+  --matcha-300: #84e7a5;
+  --matcha-600: #078a52;
+  --matcha-800: #02492a;
+
+  /* Swatch — Slushie (Cyan) */
+  --slushie-500: #3bd3fd;
+  --slushie-800: #0089ad;
+
+  /* Swatch — Lemon (Gold) */
+  --lemon-400: #f8cc65;
+  --lemon-500: #fbbd41;
+  --lemon-700: #d08a11;
+  --lemon-800: #9d6a09;
+
+  /* Swatch — Ube (Purple) */
+  --ube-300: #c1b0ff;
+  --ube-800: #43089f;
+  --ube-900: #32037d;
+
+  /* Swatch — Pomegranate (Pink/Red) */
+  --pomegranate-400: #fc7981;
+  --pomegranate-600: #e84c56;
+  --pomegranate-800: #c02228;
+
+  /* Swatch — Blueberry (Navy) */
+  --blueberry-800: #01418d;
+
+  /* Swatch — Dragonfruit (Magenta) */
+  --dragonfruit-500: #e91e8c;
+
+  /* Text Scale */
+  --clay-text-primary: #000000;
+  --clay-text-secondary: #9f9b93;
+  --clay-text-tertiary: #55534e;
+  --clay-text-link: #333333;
+
+  /* ============================================================
+     CLAY DESIGN SYSTEM — Semantic Tokens (Shadcn/Tailwind bridge)
+     ============================================================ */
+  --background: #faf9f7;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #01418d;
+  --primary-foreground: #ffffff;
+  --secondary: #eee9df;
+  --secondary-foreground: #55534e;
+  --muted: #eee9df;
+  --muted-foreground: #9f9b93;
+  --accent: #f8cc65;
+  --accent-foreground: #000000;
+  --destructive: #e84c56;
+  --destructive-foreground: #ffffff;
+  --border: #dad4c8;
+  --input: #dad4c8;
+  --ring: #01418d;
+  --focus-ring: rgb(20, 110, 245);
+
+  /* Risk / Severity (Clay swatch mapped) */
+  --risk-low: #078a52;
+  --risk-low-muted: color-mix(in srgb, #078a52 15%, transparent);
+  --risk-medium: #d08a11;
+  --risk-medium-muted: color-mix(in srgb, #fbbd41 25%, transparent);
+  --risk-high: #e84c56;
+  --risk-high-muted: color-mix(in srgb, #fc7981 20%, transparent);
+  --risk-critical: #9f0a1a;
+  --risk-critical-muted: color-mix(in srgb, #9f0a1a 20%, transparent);
+
+  /* Sidebar */
+  --sidebar: #faf9f7;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #01418d;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eee9df;
+  --sidebar-accent-foreground: #55534e;
+  --sidebar-border: #dad4c8;
+  --sidebar-ring: #dad4c8;
+
+  /* Charts (Clay swatch mapped) */
+  --chart-1: #01418d;
+  --chart-2: #43089f;
+  --chart-3: #fbbd41;
+  --chart-4: #0089ad;
+  --chart-5: #fc7981;
+
+  /* DFD Element Colors */
+  --element-process: #078a52;
+  --element-datastore: #d08a11;
+  --element-external: #43089f;
+  --element-boundary: #9f9b93;
+  --element-threat: #e84c56;
+  --element-mitigation: #078a52;
+  --element-removal: #d08a11;
+
+  /* ============================================================
+     CLAY DESIGN SYSTEM — Typography
+     ============================================================ */
+  --font-sans: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+  --font-serif: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, Arial, sans-serif;
+
+  /* ============================================================
+     CLAY DESIGN SYSTEM — Spacing & Radius
+     ============================================================ */
+  --radius: 0.2rem;        /* 12px — standard card */
+  --radius-sm: 0.15rem;     /* 4px  — inputs, ghost buttons */
+  --radius-md: 0.2rem;     /* 12px — standard buttons, cards */
+  --radius-lg: 0.375rem;      /* 24px — feature cards, images */
+  --radius-xl: 0.75rem;      /* 40px — sections, footer */
+  --radius-pill: 99rem;     /* pill — CTA buttons */
+  --spacing: 0.25rem;
+
+  /* ============================================================
+     CLAY DESIGN SYSTEM — Shadow System
+     ============================================================ */
+  --clay-shadow: rgba(0,0,0,0.1) 0px 1px 1px, rgba(0,0,0,0.04) 0px -1px 1px inset, rgba(0,0,0,0.05) 0px -0.5px 1px;
+  --clay-shadow-hover: rgb(0,0,0) -7px 7px;
+  --shadow-2xs: var(--clay-shadow);
+  --shadow-xs: var(--clay-shadow);
+  --shadow-sm: var(--clay-shadow);
+  --shadow: var(--clay-shadow);
+  --shadow-md: var(--clay-shadow);
+  --shadow-lg: rgba(0,0,0,0.12) 0px 2px 4px, rgba(0,0,0,0.06) 0px -1px 2px inset, rgba(0,0,0,0.06) 0px -0.5px 1px;
+  --shadow-xl: rgba(0,0,0,0.15) 0px 4px 8px, rgba(0,0,0,0.06) 0px -1px 2px inset;
+  --shadow-2xl: rgba(0,0,0,0.18) 0px 8px 16px, rgba(0,0,0,0.06) 0px -1px 2px inset;
+  --shadow-ring: 0px 0px 0px 1px;
+
   --shadow-x: 0;
   --shadow-y: 1px;
   --shadow-blur: 3px;
   --shadow-spread: 0px;
   --shadow-opacity: 0.1;
   --shadow-color: oklch(0 0 0);
-  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
-  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 2px 4px -1px hsl(0 0% 0% / 0.10);
-  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);
-  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
   --tracking-normal: 0em;
-  --spacing: 0.25rem;
 }
 
 .dark {
-  --background: hsl(60 2.7027% 14.5098%);
-  --foreground: hsl(46.1538 9.7744% 73.9216%);
-  --card: hsl(60 2.7027% 14.5098%);
-  --card-foreground: hsl(48 33.3333% 97.0588%);
-  --popover: hsl(60 2.1277% 18.4314%);
-  --popover-foreground: hsl(60 5.4545% 89.2157%);
-  --primary: hsl(14.7692 63.1068% 59.6078%);
-  --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(48 33.3333% 97.0588%);
-  --secondary-foreground: hsl(60 2.1277% 18.4314%);
-  --muted: hsl(60 3.8462% 10.1961%);
-  --muted-foreground: hsl(51.4286 8.8608% 69.0196%);
-  --accent: hsl(48 10.6383% 9.2157%);
-  --accent-foreground: hsl(51.4286 25.9259% 94.7059%);
-  --destructive: hsl(0 84.2365% 60.1961%);
-  --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(60 5.0847% 23.1373%);
-  --input: hsl(52.5000 5.1282% 30.5882%);
-  --ring: hsl(14.7692 63.1068% 59.6078%);
-  --chart-1: hsl(18.2813 57.1429% 43.9216%);
-  --chart-2: hsl(251.4545 84.6154% 74.5098%);
-  --chart-3: hsl(48 10.6383% 9.2157%);
-  --chart-4: hsl(248.2759 25.2174% 22.5490%);
-  --chart-5: hsl(17.7778 60% 44.1176%);
-  --risk-low: hsl(142 55% 48%);
-  --risk-low-muted: hsl(142 55% 48% / 0.15);
-  --risk-medium: hsl(45 88% 52%);
-  --risk-medium-muted: hsl(45 88% 52% / 0.15);
-  --risk-high: hsl(25 85% 55%);
-  --risk-high-muted: hsl(25 85% 55% / 0.15);
-  --risk-critical: hsl(0 80% 60%);
-  --risk-critical-muted: hsl(0 80% 60% / 0.15);
-  --sidebar: hsl(30 3.3333% 11.7647%);
-  --sidebar-foreground: hsl(46.1538 9.7744% 73.9216%);
-  --sidebar-primary: hsl(0 0% 20.3922%);
-  --sidebar-primary-foreground: hsl(0 0% 98.4314%);
-  --sidebar-accent: hsl(60 3.4483% 5.6863%);
-  --sidebar-accent-foreground: hsl(46.1538 9.7744% 73.9216%);
-  --sidebar-border: hsl(0 0% 92.1569%);
-  --sidebar-ring: hsl(0 0% 70.9804%);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --radius: 0.5rem;
-  --shadow-x: 0;
-  --shadow-y: 1px;
-  --shadow-blur: 3px;
-  --shadow-spread: 0px;
-  --shadow-opacity: 0.1;
-  --shadow-color: oklch(0 0 0);
-  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
-  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 2px 4px -1px hsl(0 0% 0% / 0.10);
-  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);
-  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+  --background: #1a1916;
+  --foreground: #faf9f7;
+  --card: #242320;
+  --card-foreground: #faf9f7;
+  --popover: #2a2926;
+  --popover-foreground: #eee9df;
+  --primary: #3bd3fd;
+  --primary-foreground: #000000;
+  --secondary: #2f2d2a;
+  --secondary-foreground: #dad4c8;
+  --muted: #1f1e1b;
+  --muted-foreground: #9f9b93;
+  --accent: #9d6a09;
+  --accent-foreground: #faf9f7;
+  --destructive: #fc7981;
+  --destructive-foreground: #000000;
+  --border: #3a3835;
+  --input: #3a3835;
+  --ring: #3bd3fd;
+  --focus-ring: rgb(20, 110, 245);
+
+  /* Risk (dark) */
+  --risk-low: #84e7a5;
+  --risk-low-muted: color-mix(in srgb, #84e7a5 20%, transparent);
+  --risk-medium: #fbbd41;
+  --risk-medium-muted: color-mix(in srgb, #fbbd41 20%, transparent);
+  --risk-high: #fc7981;
+  --risk-high-muted: color-mix(in srgb, #fc7981 20%, transparent);
+  --risk-critical: #ff3f52;
+  --risk-critical-muted: color-mix(in srgb, #ff3f52 25%, transparent);
+
+  --sidebar: #141412;
+  --sidebar-foreground: #dad4c8;
+  --sidebar-primary: #3bd3fd;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #1f1e1b;
+  --sidebar-accent-foreground: #dad4c8;
+  --sidebar-border: #2a2926;
+  --sidebar-ring: #3a3835;
+
+  /* Charts (dark) */
+  --chart-1: #3bd3fd;
+  --chart-2: #c1b0ff;
+  --chart-3: #fbbd41;
+  --chart-4: #3bd3fd;
+  --chart-5: #fc7981;
+
+  /* DFD Element Colors (dark) */
+  --element-process: #84e7a5;
+  --element-datastore: #fbbd41;
+  --element-external: #c1b0ff;
+  --element-boundary: #9f9b93;
+  --element-threat: #fc7981;
+  --element-mitigation: #84e7a5;
+  --element-removal: #fbbd41;
+
+  --font-sans: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+  --font-serif: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, Arial, sans-serif;
+
+  --radius: 0.2rem;        /* 12px — standard card */
+  --radius-sm: 0.15rem;     /* 4px  — inputs, ghost buttons */
+  --radius-md: 0.2rem;     /* 12px — standard buttons, cards */
+  --radius-lg: 0.375rem;      /* 24px — feature cards, images */
+  --radius-xl: 0.75rem;      /* 40px — sections, footer */
+  --radius-pill: 99rem;     /* pill — CTA buttons */
+  --spacing: 0.25rem;
+
+  --clay-shadow: rgba(0,0,0,0.3) 0px 1px 2px, rgba(0,0,0,0.15) 0px -1px 1px inset, rgba(0,0,0,0.1) 0px -0.5px 1px;
+  --clay-shadow-hover: rgb(0,0,0) -7px 7px;
+  --shadow-2xs: var(--clay-shadow);
+  --shadow-xs: var(--clay-shadow);
+  --shadow-sm: var(--clay-shadow);
+  --shadow: var(--clay-shadow);
+  --shadow-md: var(--clay-shadow);
+  --shadow-lg: rgba(0,0,0,0.4) 0px 2px 6px, rgba(0,0,0,0.2) 0px -1px 2px inset;
+  --shadow-xl: rgba(0,0,0,0.5) 0px 4px 12px, rgba(0,0,0,0.2) 0px -1px 2px inset;
+  --shadow-2xl: rgba(0,0,0,0.6) 0px 8px 20px, rgba(0,0,0,0.2) 0px -1px 2px inset;
 }
 
 @theme inline {
@@ -149,6 +262,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-focus-ring: var(--focus-ring);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -167,10 +281,10 @@
   --font-mono: var(--font-mono);
   --font-serif: var(--font-serif);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
 
   --shadow-2xs: var(--shadow-2xs);
   --shadow-xs: var(--shadow-xs);
@@ -185,117 +299,256 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+  }
   body {
-    @apply font-sans bg-background text-foreground antialiased;
-    }
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    font-feature-settings: "ss03", "ss10", "ss11", "ss12";
+    line-height: 1.6;
+  }
   html {
-    @apply font-sans scroll-smooth;
-    }
+    font-family: var(--font-sans);
+    @apply scroll-smooth;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "ss03", "ss10", "ss11", "ss12";
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  code, pre, kbd, samp {
+    font-family: var(--font-mono);
+  }
 }
 
 @layer utilities {
-  /* Severity badge colors */
+  /* ============================================================
+     Clay Color Utilities
+     ============================================================ */
+  .text-clay-primary   { color: var(--clay-black); }
+  .text-clay-secondary { color: var(--clay-text-secondary); }
+  .text-clay-tertiary  { color: var(--clay-text-tertiary); }
+  .bg-clay-cream       { background-color: var(--clay-cream); }
+  .bg-clay-white       { background-color: var(--clay-white); }
+  .border-oat          { border-color: var(--oat-border); }
+  .border-oat-light    { border-color: var(--oat-light); }
+
+  /* Swatch utilities */
+  .bg-matcha   { background-color: var(--matcha-600); color: #ffffff; }
+  .bg-slushie  { background-color: var(--slushie-500); color: #000000; }
+  .bg-lemon    { background-color: var(--lemon-500); color: #000000; }
+  .bg-ube      { background-color: var(--ube-800); color: #ffffff; }
+  .bg-pomegranate { background-color: var(--pomegranate-400); color: #000000; }
+  .bg-blueberry   { background-color: var(--blueberry-800); color: #ffffff; }
+
+  /* ============================================================
+     Clay Shadow Utilities
+     ============================================================ */
+  .shadow-clay {
+    box-shadow: var(--clay-shadow);
+  }
+  .shadow-clay-hover {
+    box-shadow: var(--clay-shadow-hover);
+  }
+  .shadow-whisper {
+    box-shadow: rgba(0,0,0,0.06) 0px 4px 24px;
+  }
+
+  /* ============================================================
+     Clay Button Hover Animation
+     ============================================================ */
+  .btn-clay {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+    transform-origin: center;
+  }
+  .btn-clay:hover {
+    transform: rotateZ(-8deg) translateY(-4px);
+    box-shadow: var(--clay-shadow-hover);
+  }
+
+  /* ============================================================
+     DFD Element Color Utilities
+     ============================================================ */
+  .element-threat      { color: var(--element-threat); }
+  .element-threat-bg   { background-color: var(--element-threat); }
+  .element-mitigation  { color: var(--element-mitigation); }
+  .element-mitigation-bg { background-color: var(--element-mitigation); }
+  .element-removal     { color: var(--element-removal); }
+  .element-removal-bg  { background-color: var(--element-removal); }
+
+  /* ============================================================
+     Severity Badges (Clay swatch mapped)
+     ============================================================ */
   .severity-critical {
-    @apply bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700/60;
+    background-color: color-mix(in srgb, var(--pomegranate-800) 12%, transparent);
+    color: var(--pomegranate-800);
+    border-color: color-mix(in srgb, var(--pomegranate-600) 40%, transparent);
+  }
+  .dark .severity-critical {
+    background-color: color-mix(in srgb, var(--pomegranate-400) 20%, transparent);
+    color: var(--pomegranate-400);
+    border-color: color-mix(in srgb, var(--pomegranate-400) 40%, transparent);
   }
   .severity-high {
-    @apply bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700/60;
+    background-color: color-mix(in srgb, var(--pomegranate-400) 15%, transparent);
+    color: var(--pomegranate-600);
+    border-color: color-mix(in srgb, var(--pomegranate-400) 40%, transparent);
+  }
+  .dark .severity-high {
+    background-color: color-mix(in srgb, var(--pomegranate-400) 20%, transparent);
+    color: var(--pomegranate-400);
+    border-color: color-mix(in srgb, var(--pomegranate-400) 40%, transparent);
   }
   .severity-medium {
-    @apply bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700/60;
+    background-color: color-mix(in srgb, var(--lemon-500) 15%, transparent);
+    color: var(--lemon-800);
+    border-color: color-mix(in srgb, var(--lemon-500) 40%, transparent);
+  }
+  .dark .severity-medium {
+    background-color: color-mix(in srgb, var(--lemon-500) 20%, transparent);
+    color: var(--lemon-500);
+    border-color: color-mix(in srgb, var(--lemon-500) 40%, transparent);
   }
   .severity-low {
-    @apply bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/60;
+    background-color: color-mix(in srgb, var(--matcha-600) 12%, transparent);
+    color: var(--matcha-800);
+    border-color: color-mix(in srgb, var(--matcha-600) 35%, transparent);
+  }
+  .dark .severity-low {
+    background-color: color-mix(in srgb, var(--matcha-300) 20%, transparent);
+    color: var(--matcha-300);
+    border-color: color-mix(in srgb, var(--matcha-300) 40%, transparent);
   }
 
-  /* Status badge colors */
+  .severity-stripe-critical { background-color: var(--risk-critical); }
+  .severity-stripe-high { background-color: var(--risk-high); }
+  .severity-stripe-medium { background-color: var(--risk-medium); }
+  .severity-stripe-low { background-color: var(--risk-low); }
+
+  /* ============================================================
+     Status Badges (Clay swatch mapped)
+     ============================================================ */
   .status-identified {
-    @apply bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700/60;
+    background-color: color-mix(in srgb, var(--pomegranate-600) 12%, transparent);
+    color: var(--pomegranate-800);
+    border-color: color-mix(in srgb, var(--pomegranate-600) 40%, transparent);
+  }
+  .dark .status-identified {
+    background-color: color-mix(in srgb, var(--pomegranate-400) 20%, transparent);
+    color: var(--pomegranate-400);
+    border-color: color-mix(in srgb, var(--pomegranate-400) 40%, transparent);
   }
   .status-mitigated {
-    @apply bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/60;
+    background-color: color-mix(in srgb, var(--matcha-600) 12%, transparent);
+    color: var(--matcha-800);
+    border-color: color-mix(in srgb, var(--matcha-600) 35%, transparent);
+  }
+  .dark .status-mitigated {
+    background-color: color-mix(in srgb, var(--matcha-300) 20%, transparent);
+    color: var(--matcha-300);
+    border-color: color-mix(in srgb, var(--matcha-300) 40%, transparent);
   }
   .status-accepted {
-    @apply bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-600/60;
+    background-color: color-mix(in srgb, var(--oat-border) 30%, transparent);
+    color: var(--clay-text-tertiary);
+    border-color: var(--oat-border);
+  }
+  .dark .status-accepted {
+    background-color: color-mix(in srgb, var(--oat-border) 15%, transparent);
+    color: var(--clay-text-secondary);
+    border-color: color-mix(in srgb, var(--oat-border) 40%, transparent);
   }
   .status-proposed {
-    @apply bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/60;
+    background-color: color-mix(in srgb, var(--ube-800) 12%, transparent);
+    color: var(--ube-800);
+    border-color: color-mix(in srgb, var(--ube-800) 35%, transparent);
+  }
+  .dark .status-proposed {
+    background-color: color-mix(in srgb, var(--ube-300) 20%, transparent);
+    color: var(--ube-300);
+    border-color: color-mix(in srgb, var(--ube-300) 40%, transparent);
   }
   .status-implemented {
-    @apply bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-700/60;
+    background-color: color-mix(in srgb, var(--slushie-800) 12%, transparent);
+    color: var(--slushie-800);
+    border-color: color-mix(in srgb, var(--slushie-500) 35%, transparent);
+  }
+  .dark .status-implemented {
+    background-color: color-mix(in srgb, var(--slushie-500) 20%, transparent);
+    color: var(--slushie-500);
+    border-color: color-mix(in srgb, var(--slushie-500) 40%, transparent);
   }
   .status-verified {
-    @apply bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/60;
+    background-color: color-mix(in srgb, var(--matcha-600) 15%, transparent);
+    color: var(--matcha-600);
+    border-color: color-mix(in srgb, var(--matcha-600) 35%, transparent);
+  }
+  .dark .status-verified {
+    background-color: color-mix(in srgb, var(--matcha-300) 20%, transparent);
+    color: var(--matcha-300);
+    border-color: color-mix(in srgb, var(--matcha-300) 40%, transparent);
   }
 
-  /* Smooth animations */
+  /* ============================================================
+     Legacy DS aliases (for backward compat with designSystem.ts)
+     ============================================================ */
+  --ds-parchment: var(--clay-cream);
+  --ds-ivory: var(--clay-white);
+  --ds-white: var(--clay-white);
+  --ds-terracotta: var(--matcha-600);
+  --ds-coral: var(--pomegranate-400);
+  --ds-error-crimson: var(--pomegranate-600);
+  --ds-focus-blue: var(--focus-ring);
+  --ds-near-black: var(--clay-black);
+  --ds-charcoal-warm: var(--clay-text-tertiary);
+  --ds-olive-gray: var(--clay-text-secondary);
+  --ds-stone-gray: var(--element-boundary);
+  --ds-border-cream: var(--oat-border);
+  --ds-border-warm: var(--oat-light);
+
+  /* ============================================================
+     Animation Utilities
+     ============================================================ */
   .animate-fadeIn {
     animation: fadeIn 0.4s ease-out;
   }
-
   .animate-slideUp {
     animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   }
-
   .animate-scaleIn {
     animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
-
   .animate-fadeInUp {
     animation: fadeInUp 0.5s ease-out both;
   }
 
   /* Glass effect */
   .glass {
-    background: rgba(255, 255, 255, 0.7);
+    background: rgba(250, 249, 247, 0.8);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
   }
-
   .dark .glass {
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(26, 25, 22, 0.8);
   }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }

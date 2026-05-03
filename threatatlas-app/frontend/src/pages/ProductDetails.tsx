@@ -134,27 +134,27 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
   }, [threats]);
 
   const severityConfig = {
-    Critical: { label: "Critical", color: "hsl(var(--destructive))" },
-    High: { label: "High", color: "hsl(var(--chart-1))" },
-    Medium: { label: "Medium", color: "hsl(var(--chart-5))" },
-    Low: { label: "Low", color: "hsl(var(--chart-2))" },
+    Critical: { label: "Critical", color: "var(--risk-critical)" },
+    High: { label: "High", color: "var(--risk-high)" },
+    Medium: { label: "Medium", color: "var(--risk-medium)" },
+    Low: { label: "Low", color: "var(--risk-low)" },
   } satisfies ChartConfig;
 
   const threatStatusConfig = {
-    Identified: { label: "Identified", color: "hsl(var(--destructive))" },
-    Mitigated: { label: "Mitigated", color: "hsl(var(--primary))" },
-    Accepted: { label: "Accepted", color: "hsl(var(--muted-foreground))" },
+    Identified: { label: "Identified", color: "var(--destructive)" },
+    Mitigated: { label: "Mitigated", color: "var(--risk-low)" },
+    Accepted: { label: "Accepted", color: "var(--muted-foreground)" },
   } satisfies ChartConfig;
 
   const mitigationStatusConfig = {
-    Proposed: { label: "Proposed", color: "hsl(var(--chart-1))" },
-    Implemented: { label: "Implemented", color: "hsl(var(--chart-2))" },
-    Verified: { label: "Verified", color: "hsl(var(--chart-3))" },
+    Proposed: { label: "Proposed", color: "var(--chart-1)" },
+    Implemented: { label: "Implemented", color: "var(--chart-2)" },
+    Verified: { label: "Verified", color: "var(--risk-low)" },
   } satisfies ChartConfig;
 
   const categoryConfig = {
     count: { label: "Threats" },
-    ...Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`chart-${i + 1}`, { label: `Chart ${i + 1}`, color: `hsl(var(--chart-${i + 1}))` }])),
+    ...Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`chart-${i + 1}`, { label: `Chart ${i + 1}`, color: `var(--chart-${i + 1})` }])),
   } satisfies ChartConfig;
 
   const totalMitigations = mitigations.length;
@@ -166,7 +166,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/60 mb-3">
             <BarChart3 className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-bold mb-1.5">No data yet</h3>
+          <h3 className="text-lg font-medium mb-1.5">No data yet</h3>
           <p className="text-sm text-muted-foreground text-center max-w-sm">
             Analytics will appear once threats and mitigations are added to this product's diagrams.
           </p>
@@ -211,7 +211,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
       <Card className="rounded-xl border-border/60 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Activity className="h-4 w-4 text-rose-500" />
+            <Activity className="h-4 w-4" style={{ color: 'var(--risk-critical)' }} />
             Risk Severity
           </CardTitle>
           <CardDescription className="text-xs">Threats by severity level</CardDescription>
@@ -235,7 +235,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
       <Card className="rounded-xl border-border/60 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            <AlertTriangle className="h-4 w-4" style={{ color: 'var(--risk-high)' }} />
             Threat Status
           </CardTitle>
           <CardDescription className="text-xs">Resolution status of all threats</CardDescription>
@@ -245,7 +245,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
             <ChartContainer config={threatStatusConfig} className="h-full w-full [&_.recharts-pie-label-text]:fill-foreground">
               <PieChart>
                 <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                <Pie data={threatStatusData} dataKey="count" nameKey="status" innerRadius={55} outerRadius={80} strokeWidth={3} stroke="hsl(var(--background))">
+                <Pie data={threatStatusData} dataKey="count" nameKey="status" innerRadius={55} outerRadius={80} strokeWidth={3} stroke="var(--background)">
                   <RechartsLabel
                     content={({ viewBox }) => {
                       if (viewBox && "cx" in viewBox && "cy" in viewBox) {
@@ -276,7 +276,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
       <Card className="rounded-xl border-border/60 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Shield className="h-4 w-4 text-emerald-500" />
+            <Shield className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
             Mitigation Status
           </CardTitle>
           <CardDescription className="text-xs">Implementation progress of controls</CardDescription>
@@ -287,7 +287,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
               <ChartContainer config={mitigationStatusConfig} className="h-full w-full [&_.recharts-pie-label-text]:fill-foreground">
                 <PieChart>
                   <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                  <Pie data={mitigationStatusData} dataKey="count" nameKey="status" innerRadius={55} outerRadius={80} strokeWidth={3} stroke="hsl(var(--background))">
+                  <Pie data={mitigationStatusData} dataKey="count" nameKey="status" innerRadius={55} outerRadius={80} strokeWidth={3} stroke="var(--background)">
                     <RechartsLabel
                       content={({ viewBox }) => {
                         if (viewBox && "cx" in viewBox && "cy" in viewBox) {
@@ -324,7 +324,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
       <Card className="rounded-xl border-border/60 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Layers className="h-4 w-4 text-blue-500" />
+            <Layers className="h-4 w-4 text-primary" />
             Threat Categories
           </CardTitle>
           <CardDescription className="text-xs">Most frequent threat categories</CardDescription>
@@ -769,7 +769,7 @@ export default function ProductDetails() {
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/60 to-muted/40 mb-4 shadow-sm">
               <Box className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="text-xl font-bold mb-2">Product not found</h3>
+            <h3 className="text-xl font-medium mb-2">Product not found</h3>
             <p className="text-sm text-muted-foreground mb-6">
               The requested product could not be found.
             </p>
@@ -786,10 +786,10 @@ export default function ProductDetails() {
   return (
     <div className="flex-1 space-y-5 mx-auto p-4">
       {/* Product Info & Stats */}
-      <div className="grid gap-4 lg:grid-cols-3 animate-fadeInUp" style={{ animationDelay: '50ms' }}>
+      <div className="grid gap-3 lg:grid-cols-3 animate-fadeInUp" style={{ animationDelay: '50ms' }}>
         {/* Left: Product Information */}
-        <Card className="lg:col-span-2 rounded-xl border-border/60 shadow-sm">
-          <CardHeader>
+        <Card className="lg:col-span-2 rounded-xl border-border/60 shadow-sm py-0">
+          <CardHeader className="py-3">
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm shrink-0">
                 <Box className="h-6 w-6 text-primary" />
@@ -819,7 +819,7 @@ export default function ProductDetails() {
               </Empty>
             </CardContent>
           )}
-          <CardFooter className="border-t flex items-center justify-end">
+          <CardFooter className="border-t flex items-center justify-end py-2.5 px-4 mt-auto">
             <div className="flex items-center gap-6 text-xs text-muted-foreground flex-wrap">
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
@@ -842,31 +842,31 @@ export default function ProductDetails() {
         </Card>
 
         {/* Right: Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group">
-            <CardContent className="p-4">
+        <div className="grid grid-cols-2 gap-2.5">
+          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group py-0">
+            <CardContent className="p-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-bold text-muted-foreground tracking-wider">DIAGRAMS</p>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 group-hover:scale-110 transition-transform">
-                  <Grid3x3 className="h-4 w-4 text-blue-600" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 group-hover:scale-110 transition-transform">
+                  <Grid3x3 className="h-4 w-4 text-primary" />
                 </div>
               </div>
               <p className="text-2xl font-bold">{diagrams.length}</p>
             </CardContent>
           </Card>
 
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group">
-            <CardContent className="p-4">
+          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group py-0">
+            <CardContent className="p-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-bold text-muted-foreground tracking-wider">THREATS</p>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10 group-hover:scale-110 transition-transform">
-                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
+                  <AlertTriangle className="h-4 w-4" style={{ color: 'var(--risk-high)' }} />
                 </div>
               </div>
               <p className="text-2xl font-bold">{threats.length}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {criticalThreats + highThreats > 0 ? (
-                  <span className="text-orange-600 font-medium">{criticalThreats + highThreats} critical/high</span>
+                  <span className="font-medium" style={{ color: 'var(--risk-high)' }}>{criticalThreats + highThreats} critical/high</span>
                 ) : (
                   'No high-risk threats'
                 )}
@@ -874,12 +874,12 @@ export default function ProductDetails() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group">
-            <CardContent className="p-4">
+          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group py-0">
+            <CardContent className="p-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-bold text-muted-foreground tracking-wider">MITIGATIONS</p>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10 group-hover:scale-110 transition-transform">
-                  <Shield className="h-4 w-4 text-green-600" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
+                  <Shield className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
                 </div>
               </div>
               <p className="text-2xl font-bold">{mitigations.length}</p>
@@ -889,11 +889,11 @@ export default function ProductDetails() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group">
-            <CardContent className="p-4">
+          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group py-0">
+            <CardContent className="p-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-bold text-muted-foreground tracking-wider">COVERAGE</p>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 group-hover:scale-110 transition-transform">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 group-hover:scale-110 transition-transform">
                   <Layers className="h-4 w-4 text-primary" />
                 </div>
               </div>
@@ -987,7 +987,7 @@ export default function ProductDetails() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span className="flex items-center gap-1">
-                                      <AlertTriangle className="h-3 w-3 text-orange-600" />
+                                      <AlertTriangle className="h-3 w-3" style={{ color: 'var(--risk-high)' }} />
                                       {diagramThreats.length}
                                     </span>
                                   </TooltipTrigger>
@@ -996,7 +996,7 @@ export default function ProductDetails() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span className="flex items-center gap-1">
-                                      <Shield className="h-3 w-3 text-green-600" />
+                                      <Shield className="h-3 w-3" style={{ color: 'var(--risk-low)' }} />
                                       {diagramMitigations.length}
                                     </span>
                                   </TooltipTrigger>
@@ -1017,8 +1017,8 @@ export default function ProductDetails() {
           {/* Threats & Mitigations */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold flex items-center gap-2.5">
-                <AlertTriangle className="h-5 w-5 text-orange-600" />
+              <h2 className="text-base font-medium flex items-center gap-2.5">
+                <AlertTriangle className="h-5 w-5" style={{ color: 'var(--risk-high)' }} />
                 Threats & Mitigations ({threats.length})
               </h2>
             </div>
@@ -1027,10 +1027,10 @@ export default function ProductDetails() {
               {threats.length === 0 ? (
                 <Card className="border-dashed border-2 rounded-xl">
                   <CardContent className="flex flex-col items-center justify-center p-12">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 mb-3 shadow-sm">
-                      <AlertTriangle className="h-8 w-8 text-orange-600" />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-3 shadow-sm" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
+                      <AlertTriangle className="h-8 w-8" style={{ color: 'var(--risk-high)' }} />
                     </div>
-                    <h3 className="text-lg font-bold mb-1.5">No threats found</h3>
+                    <h3 className="text-lg font-medium mb-1.5">No threats found</h3>
                     <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
                       Start by creating diagrams and attaching threats to elements.
                     </p>
