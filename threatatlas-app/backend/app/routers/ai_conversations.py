@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import AsyncGenerator
 
@@ -140,14 +139,18 @@ async def send_message(
     from app.services.ai_service import stream_chat
 
     async def generator() -> AsyncGenerator[str, None]:
-        async for event in stream_chat(
-            db=db,
-            conversation=conv,
-            user_message=user_message,
-            active_model_id=active_model_id,
-            framework_id=framework_id,
-        ):
-            yield event
+        try:
+            async for event in stream_chat(
+                db=db,
+                conversation=conv,
+                user_message=user_message,
+                active_model_id=active_model_id,
+                framework_id=framework_id,
+            ):
+                yield event
+        except Exception:
+            logger.exception("send_message: stream failed")
+            yield f'data: {json.dumps({"error": "Request failed. Please try again later."})}\n\n'
 
     return StreamingResponse(
         generator(),
@@ -284,4 +287,7 @@ async def classify_elements(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         logger.exception("classify_elements endpoint error")
-        raise HTTPException(status_code=500, detail=f"AI classification failed: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail="AI classification failed. Please try again later.",
+        ) from exc

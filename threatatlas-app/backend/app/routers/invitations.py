@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 from app.database import get_db
 from app.models import User as UserModel, Invitation as InvitationModel
-from app.models.enums import UserRole
 from app.schemas.invitation import (
     InvitationCreate,
     InvitationAccept,

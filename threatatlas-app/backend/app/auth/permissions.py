@@ -2,7 +2,7 @@
 
 from fastapi import HTTPException, status
 
-from app.models import User, Product, ProductCollaborator
+from app.models import User, Product
 from app.models.enums import UserRole, CollaboratorRole
 
 

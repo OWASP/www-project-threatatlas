@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 from sqlalchemy import (
     Boolean, Column, DateTime, Float, ForeignKey,
     Integer, JSON, LargeBinary, String, Text, func,

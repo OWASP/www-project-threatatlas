@@ -1,7 +1,7 @@
 """JWT token generation and validation."""
 
 from datetime import datetime, timedelta
-from jose import JWTError, jwt
+from jose import jwt
 
 from app.config import settings
 
@@ -40,6 +40,6 @@ def decode_access_token(token: str) -> dict:
         The decoded token payload
 
     Raises:
-        JWTError: If the token is invalid or expired
+        JWTError: From python-jose if the token is invalid or expired
     """
     return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])

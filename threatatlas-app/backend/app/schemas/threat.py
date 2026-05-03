@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, field_validator, computed_field
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class ThreatBase(BaseModel):
