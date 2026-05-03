@@ -89,12 +89,12 @@ function stripHtml(s: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&');
 
-  // Normalize known line-boundary tags to '\n', then remove any remaining tags.
-  // Avoid parsing tainted input as HTML.
+  // Normalize known line-boundary tags to '\n', then strip angle brackets.
+  // Use single-character sanitization to avoid incomplete multi-character removal.
   const withLineBreaks = decoded
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/?(p|div|h[1-6]|li)\b[^>]*>/gi, '\n');
-  const text = withLineBreaks.replace(/<[^>]*>/g, '');
+  const text = withLineBreaks.replace(/[<>]/g, '');
 
   const firstLine =
     text
