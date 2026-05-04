@@ -74,6 +74,10 @@
       },
       {
         "type": "added",
+        "text": "Optional TLS overlay (docker-compose.tls.yml) — adds a Caddy 2 reverse proxy that terminates HTTPS on :443 with HTTP→HTTPS redirect on :80. Single Caddyfile supports three modes via the TLS_DIRECTIVE env var: self-signed (Caddy local CA — dev), mounted (drop your corporate-CA cert + key into ./certs/ — production), and Let's Encrypt (auto ACME — public deployments). Backend overrides set --proxy-headers and HTTPS-aware FRONTEND_URL/CORS_ORIGINS so OIDC, invitations and secure cookies behave correctly behind the proxy. Full walkthrough including how to import a corporate CA-signed certificate is in docs/tls.md."
+      },
+      {
+        "type": "added",
         "text": "Seven new threat-modeling frameworks seeded: DREAD (5/5), VAST (8/8), OCTAVE (6/6), Trike (6/6), Attack Trees (8/8), Kill Chain (7/7), and MITRE ATT&CK (30 techniques across all 14 Enterprise tactics, 13 mitigations). Seeding is idempotent — existing installs pick up the new frameworks on restart."
       },
       {

@@ -1,0 +1,65 @@
+# TLS overlay: terminates HTTPS on :443 via Caddy, proxies plain HTTP to
+# backend (8000) and frontend (8080) on the internal Docker network.
+#
+# Usage (from threatatlas-app/):
+#   # Mode 1 — self-signed (dev/test):
+#   TLS_DIRECTIVE='tls internal' \
+#     docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d
+#
+#   # Mode 2 — your own cert (production with corporate CA):
+#   #   Drop cert + key into ./certs/cert.pem and ./certs/key.pem first
+#   TLS_DIRECTIVE='tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem' \
+#   THREATATLAS_HOSTNAME=threatatlas.corp.example \
+#     docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d
+#
+#   # Mode 3 — Let's Encrypt (public hostname required):
+#   TLS_DIRECTIVE='tls admin@example.com' \
+#   THREATATLAS_HOSTNAME=threatatlas.example.com \
+#     docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d
+#
+# See docs/tls.md for the full walkthrough including how to import a
+# corporate CA-signed certificate.
+
+services:
+  caddy:
+    image: caddy:2
+    container_name: threatatlas-caddy
+    restart: unless-stopped
+    ports:
+      - "${TLS_HTTPS_PORT:-443}:443"
+      - "${TLS_HTTP_PORT:-80}:80"
+    environment:
+      THREATATLAS_HOSTNAME: ${THREATATLAS_HOSTNAME:-localhost}
+      # Default to self-signed so `up` works out of the box.
+      TLS_DIRECTIVE: ${TLS_DIRECTIVE:-tls internal}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/caddy/certs:ro
+      - caddy_data:/data         # ACME state, locally generated CA
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - threatatlas-network
+
+  # Trust the Forwarded headers from Caddy so SessionMiddleware sees the
+  # original https scheme and the secure cookie flag works correctly.
+  backend:
+    command:
+      - sh
+      - -c
+      - |
+        pdm run alembic upgrade head &&
+        pdm run python scripts/seed_knowledge_base.py &&
+        pdm run uvicorn app.main:app --host 0.0.0.0 --port 8000 \
+          --proxy-headers --forwarded-allow-ips='*'
+    environment:
+      # FastAPI redirects + invitation links should use the public HTTPS URL.
+      FRONTEND_URL: https://${THREATATLAS_HOSTNAME:-localhost}
+      # pydantic-settings parses list[str] env vars as JSON.
+      CORS_ORIGINS: '["https://${THREATATLAS_HOSTNAME:-localhost}"]'
+
+volumes:
+  caddy_data:
+  caddy_config:
