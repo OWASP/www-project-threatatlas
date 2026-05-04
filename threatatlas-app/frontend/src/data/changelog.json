@@ -66,11 +66,11 @@
       },
       {
         "type": "added",
-        "text": "Six new diagram tools under an \"Extended\" section: Cloud Service, API Gateway, Message Queue, Actor, Mobile Client, IoT Device — each with its own color and icon, reusing the existing DFD shape renderers."
+        "text": "Description field on the Element Information panel — free-form notes per node (role, trust level, data handled, owners). Persisted with the diagram."
       },
       {
-        "type": "added",
-        "text": "Description field on the Element Information panel — free-form notes per node (role, trust level, data handled, owners). Persisted with the diagram."
+        "type": "improved",
+        "text": "Diagram editor: replaced the share-style icon on the per-diagram JSON export with a proper Download icon and tooltip (\"Download (JSON)\") for clarity."
       },
       {
         "type": "added",

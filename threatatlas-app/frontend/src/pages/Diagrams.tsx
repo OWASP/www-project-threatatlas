@@ -48,18 +48,12 @@ import {
   Database,
   Users,
   Box as BoxIcon,
-  Cloud,
-  Router,
-  MessagesSquare,
-  User,
-  Smartphone,
-  Radio,
   Trash2,
   Grid3x3,
   History,
   Package,
   ChevronRight,
-  Share2,
+  Download,
   MessageSquare,
   Pencil,
   Maximize,
@@ -694,13 +688,13 @@ export function DiagramsContent() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        aria-label="Export diagram"
+                        aria-label="Download diagram as JSON"
                         onClick={handleExportJson}
                       >
-                        <Share2 className="h-4 w-4" />
+                        <Download className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Export</TooltipContent>
+                    <TooltipContent>Download (JSON)</TooltipContent>
                   </Tooltip>
 
                   <Tooltip>
@@ -873,58 +867,6 @@ export function DiagramsContent() {
                   <BoxIcon className="h-5 w-5 group-hover:scale-110 transition-transform" style={{ color: 'var(--element-boundary)' }} />
                   <span className="text-sm font-medium">Trust Boundary</span>
                 </Button>
-
-                <div className="px-2 pt-2 pb-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  Extended
-                </div>
-                <Button
-                  variant="ghost"
-                  onClick={() => addNode('cloud')}
-                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-sky-500/10 hover:text-sky-600 transition-all rounded-lg group"
-                >
-                  <Cloud className="h-4 w-4 text-sky-500 group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-medium">Cloud Service</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => addNode('apigateway')}
-                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-indigo-500/10 hover:text-indigo-600 transition-all rounded-lg group"
-                >
-                  <Router className="h-4 w-4 text-indigo-500 group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-medium">API Gateway</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => addNode('queue')}
-                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-purple-500/10 hover:text-purple-600 transition-all rounded-lg group"
-                >
-                  <MessagesSquare className="h-4 w-4 text-purple-500 group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-medium">Message Queue</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => addNode('actor')}
-                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-rose-500/10 hover:text-rose-600 transition-all rounded-lg group"
-                >
-                  <User className="h-4 w-4 text-rose-500 group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-medium">Actor</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => addNode('mobile')}
-                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-emerald-500/10 hover:text-emerald-600 transition-all rounded-lg group"
-                >
-                  <Smartphone className="h-4 w-4 text-emerald-500 group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-medium">Mobile Client</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => addNode('iot')}
-                  className="w-full justify-start gap-3 h-9 px-3 hover:bg-orange-500/10 hover:text-orange-600 transition-all rounded-lg group"
-                >
-                  <Radio className="h-4 w-4 text-orange-500 group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-medium">IoT Device</span>
-                </Button>
               </div>
             </Card>
           </Panel>
@@ -937,12 +879,6 @@ export function DiagramsContent() {
               if (type === 'process') return 'var(--primary)';
               if (type === 'datastore') return 'var(--element-datastore)';
               if (type === 'external') return 'var(--element-external)';
-              if (type === 'cloud') return '#0ea5e9';
-              if (type === 'apigateway') return '#6366f1';
-              if (type === 'queue') return '#a855f7';
-              if (type === 'actor') return '#f43f5e';
-              if (type === 'mobile') return '#10b981';
-              if (type === 'iot') return '#f97316';
               return 'var(--element-boundary)';
             }}
             maskColor="rgba(0, 0, 0, 0.05)"
