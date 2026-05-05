@@ -1,5 +1,100 @@
 [
   {
+    "version": "0.6.0",
+    "date": "2026-04-29",
+    "tag": "feature",
+    "entries": [
+      {
+        "type": "added",
+        "text": "Single Sign-On via generic OIDC: works with Microsoft Entra ID, Okta, PingFederate, Keycloak / Red Hat SSO, Auth0, Google, and any OIDC-compliant provider."
+      },
+      {
+        "type": "added",
+        "text": "SSO providers are managed at runtime via User Management → SSO Providers — no redeploys or env-var edits needed. Client secrets are encrypted at rest (Fernet) using the app SECRET_KEY."
+      },
+      {
+        "type": "added",
+        "text": "Login screen auto-renders a button per enabled SSO provider; callback page finalizes the JWT handoff."
+      },
+      {
+        "type": "added",
+        "text": "Optional Discovery URL override per provider — enables split DNS setups (e.g. docker-net internal hostname for backchannel vs. public hostname in the issuer claim)."
+      },
+      {
+        "type": "added",
+        "text": "Groups with role grants: create named groups that grant admin / standard / read_only, assign users, and a user's effective role is automatically the most permissive between their direct role and any group membership."
+      },
+      {
+        "type": "added",
+        "text": "Full SCIM 2.0 server at /scim/v2 (RFC 7643 / 7644): Users and Groups CRUD, discovery endpoints (ServiceProviderConfig, ResourceTypes, Schemas), filter parsing (eq), PATCH with add / replace / remove including member path filters (members[value eq \"id\"])."
+      },
+      {
+        "type": "added",
+        "text": "SCIM bearer tokens: admin-generated, SHA-256 hashed at rest, shown in plaintext exactly once. Full inbound provisioning from Keycloak (via the scim-for-keycloak extension), Okta, Entra ID, JumpCloud, Authentik, etc."
+      },
+      {
+        "type": "added",
+        "text": "Ready-to-run Keycloak 25 dev environment: pre-imported realm with a confidential client, two test users, OIDC correctly configured for the Docker network, and a pre-registered OIDC provider in ThreatAtlas."
+      },
+      {
+        "type": "added",
+        "text": "Documentation: docs/scim-keycloak.md walks through token generation, scim-for-keycloak setup, SCIM client configuration, and role-mapping workflow."
+      },
+      {
+        "type": "improved",
+        "text": "User model: users.hashed_password is now nullable to support SSO-only accounts, and users.scim_external_id ties records back to the upstream IdP."
+      },
+      {
+        "type": "improved",
+        "text": "RBAC permission checks (require_admin, require_standard_or_admin, resource access) now evaluate effective_role, so group-granted roles are honored everywhere."
+      },
+      {
+        "type": "improved",
+        "text": "/auth/me now returns effective_role alongside the direct role, so the UI can reflect group-based elevation."
+      },
+      {
+        "type": "improved",
+        "text": "SessionMiddleware wired into the app: required by Authlib for OIDC state/nonce and previously missing — OIDC flows now actually work end-to-end."
+      },
+      {
+        "type": "added",
+        "text": "Product optional metadata: project status (Design / Development / Testing / Deployment / Production), repository URL, Confluence URL, application URL, business area, owner name and email. Surfaced in the New Product wizard (collapsible \"Additional details\"), the Edit dialog, and the product details page with clickable links."
+      },
+      {
+        "type": "added",
+        "text": "Product downloads from the details page: Diagrams (JSON, re-importable), Threats & Mitigations (CSV), full Report (standalone print-friendly HTML), and an All-files ZIP bundle with a README."
+      },
+      {
+        "type": "added",
+        "text": "Description field on the Element Information panel — free-form notes per node (role, trust level, data handled, owners). Persisted with the diagram."
+      },
+      {
+        "type": "improved",
+        "text": "Diagram editor: replaced the share-style icon on the per-diagram JSON export with a proper Download icon and tooltip (\"Download (JSON)\") for clarity."
+      },
+      {
+        "type": "added",
+        "text": "Optional TLS overlay (docker-compose.tls.yml) — adds a Caddy 2 reverse proxy that terminates HTTPS on :443 with HTTP→HTTPS redirect on :80. Single Caddyfile supports three modes via the TLS_DIRECTIVE env var: self-signed (Caddy local CA — dev), mounted (drop your corporate-CA cert + key into ./certs/ — production), and Let's Encrypt (auto ACME — public deployments). Backend overrides set --proxy-headers and HTTPS-aware FRONTEND_URL/CORS_ORIGINS so OIDC, invitations and secure cookies behave correctly behind the proxy. Full walkthrough including how to import a corporate CA-signed certificate is in docs/tls.md."
+      },
+      {
+        "type": "added",
+        "text": "Seven new threat-modeling frameworks seeded: DREAD (5/5), VAST (8/8), OCTAVE (6/6), Trike (6/6), Attack Trees (8/8), Kill Chain (7/7), and MITRE ATT&CK (30 techniques across all 14 Enterprise tactics, 13 mitigations). Seeding is idempotent — existing installs pick up the new frameworks on restart."
+      },
+      {
+        "type": "fixed",
+        "text": "Product downloads were saving with a generic \"download\" filename (interpreted by the OS as .txt). CORS middleware now exposes Content-Disposition so the browser hands the server-sent filename (e.g. Payment_Service-report.html) through to JS."
+      },
+      {
+        "type": "improved",
+        "text": "New Product wizard — \"Select Frameworks\" step is now scrollable (max-height) and includes a Select-all / Deselect-all toggle with a \"{n} of {total} selected\" counter. Needed since the default seed now has 11 frameworks."
+      },
+      {
+        "type": "improved",
+        "text": "Product cards on the Products page show the project status (Design / Development / Testing / Deployment / Production) as a colored badge plus the business area as a neutral badge, matching the palette used on the product details page."
+      }
+    ]
+  },
+  {
     "version": "0.5.0",
     "date": "2026-04-28",
     "tag": "feature",

@@ -16,3 +16,10 @@ class LoginRequest(BaseModel):
     """Login request schema."""
     email: EmailStr
     password: str
+
+
+class OIDCProviderInfo(BaseModel):
+    """Public-facing information about a configured OIDC provider."""
+    name: str
+    display_name: str
+    login_url: str

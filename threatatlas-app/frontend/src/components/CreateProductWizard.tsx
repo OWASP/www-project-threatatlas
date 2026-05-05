@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { productsApi, diagramsApi, frameworksApi, modelsApi } from '@/lib/api';
+import { productsApi, diagramsApi, frameworksApi, modelsApi, type ProductStatus } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +13,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   ArrowRight,
   ArrowLeft,
   Loader2,
@@ -21,6 +28,8 @@ import {
   Globe,
   Lock,
   FileText,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Field, FieldLabel, FieldDescription, FieldError } from '@/components/ui/field';
 import { toast } from 'sonner';
@@ -51,6 +60,14 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
   const [productDescription, setProductDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [productError, setProductError] = useState('');
+  const [showMore, setShowMore] = useState(false);
+  const [status, setStatus] = useState<ProductStatus | ''>('');
+  const [repositoryUrl, setRepositoryUrl] = useState('');
+  const [confluenceUrl, setConfluenceUrl] = useState('');
+  const [applicationUrl, setApplicationUrl] = useState('');
+  const [businessArea, setBusinessArea] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
 
   // Step 2
   const [diagramName, setDiagramName] = useState('Main Architecture');
@@ -68,6 +85,14 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
     setProductDescription('');
     setIsPublic(false);
     setProductError('');
+    setShowMore(false);
+    setStatus('');
+    setRepositoryUrl('');
+    setConfluenceUrl('');
+    setApplicationUrl('');
+    setBusinessArea('');
+    setOwnerName('');
+    setOwnerEmail('');
     setDiagramName('Main Architecture');
     setDiagramError('');
     setSelectedFrameworks([]);
@@ -118,8 +143,15 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
     try {
       const productRes = await productsApi.create({
         name: productName.trim(),
-        description: productDescription.trim() || undefined,
+        description: productDescription.trim() || null,
         is_public: isPublic,
+        status: status || null,
+        repository_url: repositoryUrl.trim() || null,
+        confluence_url: confluenceUrl.trim() || null,
+        application_url: applicationUrl.trim() || null,
+        business_area: businessArea.trim() || null,
+        owner_name: ownerName.trim() || null,
+        owner_email: ownerEmail.trim() || null,
       });
       const productId: number = productRes.data.id;
 
@@ -287,6 +319,98 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                   </button>
                 </div>
               </Field>
+
+              <button
+                type="button"
+                onClick={() => setShowMore((s) => !s)}
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showMore ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                {showMore ? 'Hide additional details' : 'Show additional details (optional)'}
+              </button>
+
+              {showMore && (
+                <div className="space-y-3 pt-2 border-t border-border/40">
+                  <Field>
+                    <FieldLabel htmlFor="wiz-status">Project status</FieldLabel>
+                    <Select value={status || 'none'} onValueChange={(v) => setStatus(v === 'none' ? '' : (v as ProductStatus))}>
+                      <SelectTrigger id="wiz-status">
+                        <SelectValue placeholder="Not specified" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Not specified</SelectItem>
+                        <SelectItem value="design">Design</SelectItem>
+                        <SelectItem value="development">Development</SelectItem>
+                        <SelectItem value="testing">Testing</SelectItem>
+                        <SelectItem value="deployment">Deployment</SelectItem>
+                        <SelectItem value="production">Production</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="wiz-business-area">Business area</FieldLabel>
+                    <Input
+                      id="wiz-business-area"
+                      placeholder="e.g. Payments, Identity, Marketing"
+                      value={businessArea}
+                      onChange={(e) => setBusinessArea(e.target.value)}
+                    />
+                  </Field>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field>
+                      <FieldLabel htmlFor="wiz-owner-name">Owner name</FieldLabel>
+                      <Input
+                        id="wiz-owner-name"
+                        placeholder="Jane Doe"
+                        value={ownerName}
+                        onChange={(e) => setOwnerName(e.target.value)}
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="wiz-owner-email">Owner email</FieldLabel>
+                      <Input
+                        id="wiz-owner-email"
+                        type="email"
+                        placeholder="jane@example.com"
+                        value={ownerEmail}
+                        onChange={(e) => setOwnerEmail(e.target.value)}
+                      />
+                    </Field>
+                  </div>
+
+                  <Field>
+                    <FieldLabel htmlFor="wiz-repo-url">Repository URL</FieldLabel>
+                    <Input
+                      id="wiz-repo-url"
+                      placeholder="https://github.com/org/repo"
+                      value={repositoryUrl}
+                      onChange={(e) => setRepositoryUrl(e.target.value)}
+                    />
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="wiz-confluence-url">Confluence URL</FieldLabel>
+                    <Input
+                      id="wiz-confluence-url"
+                      placeholder="https://company.atlassian.net/wiki/..."
+                      value={confluenceUrl}
+                      onChange={(e) => setConfluenceUrl(e.target.value)}
+                    />
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="wiz-app-url">Application URL</FieldLabel>
+                    <Input
+                      id="wiz-app-url"
+                      placeholder="https://app.example.com"
+                      value={applicationUrl}
+                      onChange={(e) => setApplicationUrl(e.target.value)}
+                    />
+                  </Field>
+                </div>
+              )}
             </div>
           )}
 
@@ -325,41 +449,62 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <div className="grid gap-2">
-                  {frameworks.map((fw) => {
-                    const selected = selectedFrameworks.includes(fw.id);
-                    return (
-                      <div
-                        key={fw.id}
-                        onClick={() => toggleFramework(fw.id)}
-                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors select-none ${
-                          selected
-                            ? 'border-primary/50 bg-primary/5'
-                            : 'border-border hover:border-border/80 hover:bg-muted/40'
-                        }`}
+                <>
+                  {frameworks.length > 0 && (
+                    <div className="flex items-center justify-between px-1 pb-2">
+                      <span className="text-xs text-muted-foreground">
+                        {selectedFrameworks.length} of {frameworks.length} selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFrameworkError('');
+                          setSelectedFrameworks((prev) =>
+                            prev.length === frameworks.length ? [] : frameworks.map((f) => f.id)
+                          );
+                        }}
+                        className="text-xs font-semibold text-primary hover:underline"
                       >
-                        {/* Custom checkbox */}
+                        {selectedFrameworks.length === frameworks.length ? 'Deselect all' : 'Select all'}
+                      </button>
+                    </div>
+                  )}
+                  <div className="grid gap-2 max-h-[340px] overflow-y-auto pr-1 border border-border/40 rounded-lg p-2 bg-muted/10">
+                    {frameworks.map((fw) => {
+                      const selected = selectedFrameworks.includes(fw.id);
+                      return (
                         <div
-                          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                          key={fw.id}
+                          onClick={() => toggleFramework(fw.id)}
+                          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors select-none ${
                             selected
-                              ? 'bg-primary border-primary'
-                              : 'border-muted-foreground/40 bg-background'
+                              ? 'border-primary/50 bg-primary/5'
+                              : 'border-border bg-background hover:border-border/80 hover:bg-muted/40'
                           }`}
                         >
-                          {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                          {/* Custom checkbox */}
+                          <div
+                            className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                              selected
+                                ? 'bg-primary border-primary'
+                                : 'border-muted-foreground/40 bg-background'
+                            }`}
+                          >
+                            {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold leading-tight">{fw.name}</p>
+                            {fw.description && (
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                                {fw.description}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold leading-tight">{fw.name}</p>
-                          {fw.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
-                              {fw.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
               {frameworkError && (
                 <p className="text-xs text-destructive">{frameworkError}</p>

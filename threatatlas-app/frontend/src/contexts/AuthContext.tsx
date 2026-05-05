@@ -15,6 +15,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithToken: (accessToken: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -72,6 +73,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithToken = async (accessToken: string) => {
+    localStorage.setItem('token', accessToken);
+    setToken(accessToken);
+
+    try {
+      const userResponse = await api.get('/auth/me', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setUser(userResponse.data);
+    } catch (error) {
+      localStorage.removeItem('token');
+      setToken(null);
+      throw error;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -86,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       token,
       login,
+      loginWithToken,
       logout,
       isAuthenticated: !!user,
       isLoading,

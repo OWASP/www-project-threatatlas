@@ -1,0 +1,37 @@
+# Development overlay: adds a preconfigured Keycloak identity provider for
+# testing SSO and SCIM locally. Not intended for production.
+#
+# Usage (from threatatlas-app/):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Exposes:
+#   - Keycloak admin console: http://localhost:8080/admin  (admin / admin)
+#   - Realm "threatatlas" with client_id "threatatlas"
+#     secret: threatatlas-dev-secret
+#   - Test users: alice@threatatlas.dev, bob@threatatlas.dev (password: test123)
+#
+# See docs/scim-keycloak.md for the full SSO + SCIM walkthrough.
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: threatatlas-keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Frontchannel URLs (browser) always use http://localhost:8080.
+      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME_STRICT: "false"
+      # Backchannel URLs (token, userinfo) echo the request host, so when the
+      # backend container calls http://keycloak:8080/... Keycloak responds with
+      # token_endpoint pointing at keycloak:8080 — reachable on the docker net.
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    networks:
+      - threatatlas-network

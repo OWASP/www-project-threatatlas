@@ -1,0 +1,56 @@
+# ThreatAtlas — Caddy reverse proxy with TLS termination on :443.
+#
+# The TLS directive is injected via the TLS_DIRECTIVE env var so the same
+# Caddyfile supports three deployment modes:
+#
+#   self-signed   TLS_DIRECTIVE="tls internal"
+#                 (Caddy generates a local CA + cert, dev-only)
+#
+#   mounted       TLS_DIRECTIVE="tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem"
+#                 (your CA cert + key mounted via volume — production)
+#
+#   letsencrypt   TLS_DIRECTIVE="tls admin@example.com"
+#                 (Caddy auto-fetches a Let's Encrypt cert; needs public DNS
+#                 + ports 80/443 reachable from the public internet)
+#
+# THREATATLAS_HOSTNAME defaults to localhost. Set it to your real hostname
+# (threatatlas.corp.example) so cert validation works.
+
+{
+    # Quiet log unless DEBUG_TLS=1
+    auto_https disable_redirects
+}
+
+{$THREATATLAS_HOSTNAME:localhost} {
+    # TLS configuration injected at runtime.
+    {$TLS_DIRECTIVE:tls internal}
+
+    # Standard headers — enforce HTTPS for one year, opt out of MIME sniffing.
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options    nosniff
+        Referrer-Policy           strict-origin-when-cross-origin
+        # Remove server fingerprint
+        -Server
+    }
+
+    # Backend: API + SCIM + health + OpenAPI docs.
+    @backend path /api/* /scim/* /health /docs /docs/* /openapi.json /redoc
+    handle @backend {
+        reverse_proxy backend:8000 {
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-Host {host}
+        }
+    }
+
+    # Everything else is the SPA (frontend's nginx).
+    handle {
+        reverse_proxy frontend:8080
+    }
+}
+
+# Plain HTTP on :80 — redirect to HTTPS. (Also serves Let's Encrypt
+# HTTP-01 challenges automatically when TLS_DIRECTIVE points at ACME.)
+:80 {
+    redir https://{host}{uri} permanent
+}

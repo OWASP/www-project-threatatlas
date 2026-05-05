@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { productsApi, diagramsApi, diagramThreatsApi, diagramMitigationsApi, modelsApi, frameworksApi } from '@/lib/api';
+import { productsApi, diagramsApi, diagramThreatsApi, diagramMitigationsApi, modelsApi, frameworksApi, triggerDownload } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +34,23 @@ import {
   Plus,
   Check,
   Loader2,
+  MessageSquare,
+  Download,
+  FileJson,
+  FileSpreadsheet,
+  FileText as FileReport,
+  Package,
   Activity,
   BarChart3,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 import ThreatDetailsSheet from '@/components/ThreatDetailsSheet';
@@ -46,6 +60,13 @@ interface Product {
   id: number;
   name: string;
   description: string | null;
+  status: 'design' | 'development' | 'testing' | 'deployment' | 'production' | null;
+  repository_url: string | null;
+  confluence_url: string | null;
+  application_url: string | null;
+  business_area: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -785,6 +806,57 @@ export default function ProductDetails() {
 
   return (
     <div className="flex-1 space-y-5 mx-auto p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between animate-fadeIn">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/products')}
+          className="-ml-2 hover:bg-muted/70 rounded-lg cursor-pointer transition-colors"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Products
+        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="shadow-sm">
+              <Download className="mr-2 h-4 w-4" />
+              Download
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel>Export this product</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => triggerDownload(`/api/products/${product.id}/download/diagrams`)}
+            >
+              <FileJson className="mr-2 h-4 w-4" />
+              Diagrams (JSON)
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => triggerDownload(`/api/products/${product.id}/download/threats-mitigations`)}
+            >
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Threats & Mitigations (CSV)
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => triggerDownload(`/api/products/${product.id}/download/report`)}
+            >
+              <FileReport className="mr-2 h-4 w-4" />
+              Full report (HTML)
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => triggerDownload(`/api/products/${product.id}/download/bundle`)}
+            >
+              <Package className="mr-2 h-4 w-4" />
+              All files (ZIP bundle)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       {/* Product Info & Stats */}
       <div className="grid gap-3 lg:grid-cols-3 animate-fadeInUp" style={{ animationDelay: '50ms' }}>
         {/* Left: Product Information */}
@@ -817,6 +889,79 @@ export default function ProductDetails() {
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
+            </CardContent>
+          )}
+          {(product.status ||
+            product.business_area ||
+            product.owner_name ||
+            product.owner_email ||
+            product.repository_url ||
+            product.confluence_url ||
+            product.application_url) && (
+            <CardContent className="pt-0 pb-3">
+              <div className="p-3 border border-border/60 rounded-lg bg-muted/20 space-y-2 text-sm">
+                {product.status && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0">Status</span>
+                    <Badge
+                      variant="outline"
+                      className={`capitalize font-semibold ${
+                        product.status === 'design' ? 'border-sky-500/50 text-sky-700 dark:text-sky-300 bg-sky-500/10' :
+                        product.status === 'development' ? 'border-indigo-500/50 text-indigo-700 dark:text-indigo-300 bg-indigo-500/10' :
+                        product.status === 'testing' ? 'border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-500/10' :
+                        product.status === 'deployment' ? 'border-purple-500/50 text-purple-700 dark:text-purple-300 bg-purple-500/10' :
+                        'border-emerald-500/50 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10'
+                      }`}
+                    >
+                      {product.status}
+                    </Badge>
+                  </div>
+                )}
+                {product.business_area && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Business area</span>
+                    <span>{product.business_area}</span>
+                  </div>
+                )}
+                {(product.owner_name || product.owner_email) && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Owner</span>
+                    <span>
+                      {product.owner_name}
+                      {product.owner_name && product.owner_email && ' · '}
+                      {product.owner_email && (
+                        <a href={`mailto:${product.owner_email}`} className="text-primary hover:underline">
+                          {product.owner_email}
+                        </a>
+                      )}
+                    </span>
+                  </div>
+                )}
+                {product.repository_url && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Repository</span>
+                    <a href={product.repository_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                      {product.repository_url}
+                    </a>
+                  </div>
+                )}
+                {product.confluence_url && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Confluence</span>
+                    <a href={product.confluence_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                      {product.confluence_url}
+                    </a>
+                  </div>
+                )}
+                {product.application_url && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Application</span>
+                    <a href={product.application_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                      {product.application_url}
+                    </a>
+                  </div>
+                )}
+              </div>
             </CardContent>
           )}
           <CardFooter className="border-t flex items-center justify-end py-2.5 px-4 mt-auto">

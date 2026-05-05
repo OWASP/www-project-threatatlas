@@ -62,6 +62,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started   # backend handles Redis unavailability gracefully
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

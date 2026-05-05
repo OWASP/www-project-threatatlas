@@ -53,7 +53,7 @@ import {
   History,
   Package,
   ChevronRight,
-  Share2,
+  Download,
   MessageSquare,
   Pencil,
   Maximize,
@@ -129,7 +129,7 @@ export function DiagramsContent() {
   };
 
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [selectedElement, setSelectedElement] = useState<{ id: string; type: 'node' | 'edge'; label: string; nodeType?: string } | null>(null);
+  const [selectedElement, setSelectedElement] = useState<{ id: string; type: 'node' | 'edge'; label: string; nodeType?: string; description?: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [diagramToDelete, setDiagramToDelete] = useState<Diagram | null>(null);
 
@@ -335,7 +335,8 @@ export function DiagramsContent() {
       id: node.id,
       type: 'node',
       label: node.data.label as string,
-      nodeType: node.data.type as string
+      nodeType: node.data.type as string,
+      description: (node.data.description as string) ?? ''
     });
     setSheetOpen(true);
   };
@@ -687,13 +688,13 @@ export function DiagramsContent() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        aria-label="Export diagram"
+                        aria-label="Download diagram as JSON"
                         onClick={handleExportJson}
                       >
-                        <Share2 className="h-4 w-4" />
+                        <Download className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Export</TooltipContent>
+                    <TooltipContent>Download (JSON)</TooltipContent>
                   </Tooltip>
 
                   <Tooltip>
@@ -823,7 +824,7 @@ export function DiagramsContent() {
         >
           {/* Floating Action Menu for Node Creation */}
           <Panel position="top-left" className="m-4">
-            <Card className="shadow-2xl border bg-background/95 backdrop-blur-md w-48">
+            <Card className="shadow-2xl border bg-background/95 backdrop-blur-md w-52 max-h-[calc(100vh-8rem)] overflow-y-auto">
               <div className="p-2 space-y-1">
                 <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Diagram Tools
@@ -836,19 +837,16 @@ export function DiagramsContent() {
                   <Cpu className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
                   <span className="text-sm font-medium">Process</span>
                 </Button>
-
                 <Button
                   variant="ghost"
                   onClick={() => addNode('datastore')}
                   className="w-full justify-start gap-3 h-10 px-3 transition-all rounded-lg group"
-                  style={{ '--hover-bg': 'color-mix(in srgb, var(--element-datastore) 12%, transparent)' } as React.CSSProperties}
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--element-datastore) 12%, transparent)')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
                 >
                   <Database className="h-5 w-5 group-hover:scale-110 transition-transform" style={{ color: 'var(--element-datastore)' }} />
                   <span className="text-sm font-medium">Data Store</span>
                 </Button>
-
                 <Button
                   variant="ghost"
                   onClick={() => addNode('external')}
@@ -859,7 +857,6 @@ export function DiagramsContent() {
                   <Users className="h-5 w-5 group-hover:scale-110 transition-transform" style={{ color: 'var(--element-external)' }} />
                   <span className="text-sm font-medium">External Entity</span>
                 </Button>
-
                 <Button
                   variant="ghost"
                   onClick={() => addNode('boundary')}
@@ -902,6 +899,17 @@ export function DiagramsContent() {
         diagramId={selectedDiagram}
         activeModelId={activeModelId}
         activeModelFrameworkId={activeModel?.framework_id || null}
+        onDescriptionChange={(description) => {
+          if (!selectedElement || selectedElement.type !== 'node') return;
+          setNodes((nds) =>
+            nds.map((node) =>
+              node.id === selectedElement.id
+                ? { ...node, data: { ...node.data, description } }
+                : node
+            )
+          );
+          setSelectedElement({ ...selectedElement, description });
+        }}
         onRename={(name) => {
           if (!selectedElement) return;
           if (selectedElement.type === 'node') {

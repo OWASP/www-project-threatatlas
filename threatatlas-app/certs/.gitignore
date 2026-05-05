@@ -1,0 +1,21 @@
+# Drop your TLS material here in production:
+#
+#   cert.pem   PEM-encoded leaf certificate; concatenate intermediate /
+#              root CA chain *after* the leaf if your corporate CA isn't
+#              already trusted by clients.
+#   key.pem    Matching unencrypted private key (PKCS#8 or PKCS#1).
+#
+# These files are mounted read-only into the Caddy container at
+# /etc/caddy/certs/ and never copied into the image. They are gitignored
+# below so a key never leaks into git history by accident.
+#
+# Keep root-only / 600 permissions on the host.
+
+cert.pem
+key.pem
+chain.pem
+fullchain.pem
+*.crt
+*.key
+*.pfx
+*.p12
