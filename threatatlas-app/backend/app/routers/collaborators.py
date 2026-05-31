@@ -16,7 +16,8 @@ from app.schemas.collaborator import (
     CollaboratorWithDetails
 )
 from app.auth.dependencies import get_current_user
-from app.models.enums import CollaboratorRole
+from app.models.enums import CollaboratorRole, UserRole
+from app.services.notification_service import notify_invitation
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,60 @@ def can_manage_collaborators(user: UserModel, product: ProductModel) -> bool:
             return True
 
     return False
+
+
+@router.get("/{product_id}/members")
+def list_product_members(
+    product_id: int,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Return users who own or collaborate on this product (for approver selection).
+    """
+    product = db.query(ProductModel).options(
+        joinedload(ProductModel.collaborators)
+    ).filter(ProductModel.id == product_id).first()
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found"
+        )
+
+    # Check if user has access to this product (admins always allowed)
+    has_access = (
+        current_user.role == UserRole.ADMIN.value or
+        product.user_id == current_user.id or
+        any(c.user_id == current_user.id for c in product.collaborators)
+    )
+
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view product members"
+        )
+
+    # Collect owner + all collaborators
+    user_ids = {product.user_id}
+    for c in product.collaborators:
+        user_ids.add(c.user_id)
+
+    # Include all admin users (admins can act as approvers for any product)
+    admin_users = db.query(UserModel).filter(UserModel.role == UserRole.ADMIN.value).all()
+    for admin in admin_users:
+        user_ids.add(admin.id)
+
+    users = db.query(UserModel).filter(UserModel.id.in_(user_ids)).all()
+    return [
+        {
+            "id": u.id,
+            "email": u.email,
+            "full_name": u.full_name,
+            "username": u.username,
+        }
+        for u in users
+    ]
 
 
 @router.get("/{product_id}/collaborators", response_model=list[CollaboratorWithDetails])
@@ -187,6 +242,17 @@ def add_collaborator(
         joinedload(CollaboratorModel.user),
         joinedload(CollaboratorModel.added_by_user)
     ).filter(CollaboratorModel.id == new_collaborator.id).first()
+
+    try:
+        notify_invitation(
+            db,
+            product_name=product.name,
+            invitee_id=collaborator_data.user_id,
+            link=f"/products/{product_id}",
+        )
+        db.commit()
+    except Exception:
+        pass
 
     return CollaboratorWithDetails(
         id=collab.id,

@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { productsApi, diagramsApi, diagramThreatsApi, diagramMitigationsApi, modelsApi, frameworksApi, triggerDownload } from '@/lib/api';
+import { productsApi, diagramsApi, diagramThreatsApi, diagramMitigationsApi, modelsApi, frameworksApi, triggerDownload, jiraApi } from '@/lib/api';
+import { API_BASE_URL } from '@/lib/api';
+import { format, formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +11,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Label as RechartsLabel } from 'recharts';
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import {
@@ -39,10 +48,17 @@ import {
   FileJson,
   FileSpreadsheet,
   FileText as FileReport,
+  FileCode,
   Package,
   Activity,
   BarChart3,
   Upload,
+  Clock,
+  ShieldCheck,
+  ShieldOff,
+  FilePlus,
+  FileX,
+  GitCommit,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -54,9 +70,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
+import { getStatusClasses } from '@/lib/risk';
 import ThreatDetailsSheet from '@/components/ThreatDetailsSheet';
 import ThreatCard from '@/components/ThreatCard';
 import { ImportDrawioButton } from '@/components/ImportDrawioButton';
+import AuditTerminal from '@/components/AuditTerminal';
 
 interface Product {
   id: number;
@@ -69,6 +87,7 @@ interface Product {
   business_area: string | null;
   owner_name: string | null;
   owner_email: string | null;
+  jira_project_key: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -231,7 +250,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
     <div className="space-y-4">
     <div className="grid gap-4 md:grid-cols-2">
       {/* Severity Distribution */}
-      <Card className="rounded-xl border-border/60 shadow-sm">
+      <Card className="rounded-xl border-border/60 shadow-xs">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
             <Activity className="h-4 w-4" style={{ color: 'var(--risk-critical)' }} />
@@ -255,7 +274,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
       </Card>
 
       {/* Threat Status Pie */}
-      <Card className="rounded-xl border-border/60 shadow-sm">
+      <Card className="rounded-xl border-border/60 shadow-xs">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
             <AlertTriangle className="h-4 w-4" style={{ color: 'var(--risk-high)' }} />
@@ -296,7 +315,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
       </Card>
 
       {/* Mitigation Status Pie */}
-      <Card className="rounded-xl border-border/60 shadow-sm">
+      <Card className="rounded-xl border-border/60 shadow-xs">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
             <Shield className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
@@ -344,7 +363,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
       </Card>
 
       {/* Top Threat Categories */}
-      <Card className="rounded-xl border-border/60 shadow-sm">
+      <Card className="rounded-xl border-border/60 shadow-xs">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
             <Layers className="h-4 w-4 text-primary" />
@@ -376,7 +395,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
     </div>
 
     {/* Risk Matrix */}
-    <Card className="rounded-xl border-border/60 shadow-sm">
+    <Card className="rounded-xl border-border/60 shadow-xs">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
           <Grid3x3 className="h-4 w-4 text-primary" />
@@ -485,39 +504,39 @@ function ProductDetailsSkeleton() {
       {/* Back button */}
       <Skeleton className="h-9 w-40 rounded-lg" />
 
-      {/* Product info + stats */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2 rounded-xl border-border/60">
-          <CardHeader className="space-y-3">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-12 w-12 rounded-xl" />
-              <div className="space-y-2 flex-1">
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-4 w-full" />
-              </div>
+      {/* Product info card */}
+      <Card className="rounded-xl border-border/60">
+        <CardHeader className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-12 w-12 rounded-xl" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-full" />
             </div>
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-16 w-full rounded-lg" />
-          </CardContent>
-          <CardFooter>
-            <Skeleton className="h-4 w-64" />
-          </CardFooter>
-        </Card>
-        <div className="grid grid-cols-2 gap-3">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="rounded-xl border-border/60">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-3 w-20" />
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                </div>
-                <Skeleton className="h-7 w-12" />
-                <Skeleton className="h-3 w-24" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-16 w-full rounded-lg" />
+        </CardContent>
+        <CardFooter>
+          <Skeleton className="h-4 w-64" />
+        </CardFooter>
+      </Card>
+
+      {/* Stat strip */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="rounded-xl border-border/60">
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-8 w-8 rounded-lg" />
+              </div>
+              <Skeleton className="h-7 w-12" />
+              <Skeleton className="h-3 w-24" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Diagrams */}
@@ -569,6 +588,158 @@ function ProductDetailsSkeleton() {
   );
 }
 
+// ── Mitigations Tab ──────────────────────────────────────────────────────────
+function MitigationsTab({
+  mitigations,
+  diagrams,
+  threats,
+}: {
+  mitigations: DiagramMitigation[];
+  diagrams: Diagram[];
+  threats: DiagramThreat[];
+}) {
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const filtered = useMemo(() => {
+    if (statusFilter === 'all') return mitigations;
+    return mitigations.filter(m => m.status === statusFilter);
+  }, [mitigations, statusFilter]);
+
+  const getDiagramName = (diagramId: number) =>
+    diagrams.find(d => d.id === diagramId)?.name ?? 'Unknown';
+
+  const getLinkedThreat = (threatId: number | null) => {
+    if (threatId == null) return null;
+    return threats.find(t => t.id === threatId) ?? null;
+  };
+
+  if (mitigations.length === 0) {
+    return (
+      <Card className="border-dashed border-2 rounded-xl">
+        <CardContent className="flex flex-col items-center justify-center p-12">
+          <div
+            className="flex h-16 w-16 items-center justify-center rounded-2xl mb-3"
+            style={{ backgroundColor: 'var(--risk-low-muted)' }}
+          >
+            <Shield className="h-8 w-8" style={{ color: 'var(--risk-low)' }} />
+          </div>
+          <h3 className="text-lg font-medium mb-1.5">No mitigations yet</h3>
+          <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
+            Mitigations are added from within diagram threat models.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Filter strip */}
+      <div className="flex items-center gap-3">
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Filter</p>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="h-8 w-40 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="proposed">Proposed</SelectItem>
+            <SelectItem value="implemented">Implemented</SelectItem>
+            <SelectItem value="verified">Verified</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-muted-foreground">{filtered.length} of {mitigations.length}</span>
+      </div>
+
+      {/* Table */}
+      <Card className="rounded-xl border-border/60 shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="px-4 py-2.5 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  Mitigation
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">
+                  Category
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
+                  Element
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">
+                  Diagram
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
+                  Linked Threat
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/40">
+              {filtered.map((m) => {
+                const linkedThreat = getLinkedThreat(m.threat_id);
+                return (
+                  <tr key={m.id} className="hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Shield
+                          className="h-3.5 w-3.5 shrink-0"
+                          style={{
+                            color: m.status === 'verified'
+                              ? 'var(--risk-low)'
+                              : m.status === 'implemented'
+                              ? 'var(--matcha-300)'
+                              : 'var(--muted-foreground)',
+                          }}
+                        />
+                        <span className="font-medium text-sm truncate max-w-[200px]">
+                          {m.mitigation.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <span className="text-xs text-muted-foreground">{m.mitigation.category || '—'}</span>
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      <span className="text-xs text-muted-foreground font-mono truncate max-w-[120px] block">
+                        {m.element_id || '—'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <span className="text-xs text-muted-foreground truncate max-w-[140px] block">
+                        {getDiagramName(m.diagram_id)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge
+                        variant="outline"
+                        className={cn('text-[10px] px-1.5 py-0 capitalize', getStatusClasses(m.status))}
+                      >
+                        {m.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      {linkedThreat ? (
+                        <span className="text-xs text-muted-foreground truncate max-w-[160px] block">
+                          {linkedThreat.threat.name}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/40">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function ProductDetails() {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
@@ -579,6 +750,8 @@ export default function ProductDetails() {
   const [models, setModels] = useState<any[]>([]);
   const [frameworks, setFrameworks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [jiraConfigured, setJiraConfigured] = useState(false);
+  const [jiraGlobalProjectKey, setJiraGlobalProjectKey] = useState<string | null>(null);
 
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -599,6 +772,13 @@ export default function ProductDetails() {
     if (productId) {
       loadProductData(true);
     }
+    // Check JIRA configuration once on mount — capture global default project key too
+    jiraApi.get()
+      .then(r => {
+        setJiraConfigured(r.data.configured === true);
+        setJiraGlobalProjectKey(r.data.jira_project_key || null);
+      })
+      .catch(() => setJiraConfigured(false));
   }, [productId]);
 
   const loadProductData = async (showLoading = false) => {
@@ -688,13 +868,20 @@ export default function ProductDetails() {
     }
   };
 
-  const handleUpdateStatus = async (status: string) => {
+  const handleUpdateStatus = async (status: string, acceptanceData?: { justification: string; approver_id?: number; review_date?: string }) => {
     if (!selectedItem) return;
     try {
       setSelectedItem((prev: any) => prev ? { ...prev, status } : null);
-      await diagramThreatsApi.update(selectedItem.id, { status });
+      await diagramThreatsApi.update(selectedItem.id, {
+        status,
+        ...(acceptanceData ? {
+          acceptance_justification: acceptanceData.justification,
+          acceptance_approver_id: acceptanceData.approver_id ?? null,
+          acceptance_review_date: acceptanceData.review_date ?? null,
+        } : {}),
+      });
       await loadProductData();
-      toast.success(`Status updated to ${status}`);
+      toast.success(status === 'accepted' ? 'Risk acceptance submitted' : status === 'mitigated' ? 'Threat marked as mitigated' : 'Status updated');
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error('Failed to update status');
@@ -709,6 +896,18 @@ export default function ProductDetails() {
     } catch (error) {
       console.error('Error updating risk:', error);
       toast.error('Failed to update risk assessment');
+    }
+  };
+
+  // Inline status update from ThreatCard expanded view
+  const handleInlineThreatStatusUpdate = async (threat: DiagramThreat, status: string) => {
+    try {
+      await diagramThreatsApi.update(threat.id, { status });
+      await loadProductData();
+      toast.success(status === 'accepted' ? 'Risk acceptance submitted' : status === 'mitigated' ? 'Threat marked as mitigated' : 'Status updated');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
     }
   };
 
@@ -792,7 +991,7 @@ export default function ProductDetails() {
       <div className="flex-1 space-y-6 p-4">
         <Card className="border-dashed border-2 rounded-xl">
           <CardContent className="flex flex-col items-center justify-center p-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/60 to-muted/40 mb-4 shadow-sm">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/60 to-muted/40 mb-4 shadow-xs">
               <Box className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="text-xl font-medium mb-2">Product not found</h3>
@@ -810,14 +1009,14 @@ export default function ProductDetails() {
   }
 
   return (
-    <div className="flex-1 space-y-5 mx-auto p-4">
-      {/* Header */}
+    <div className="flex-1 space-y-4 p-4 md:p-6 lg:p-8 mx-auto">
+      {/* ── Top navigation bar ── */}
       <div className="flex items-center justify-between animate-fadeIn">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate('/products')}
-          className="-ml-2 hover:bg-muted/70 rounded-lg cursor-pointer transition-colors"
+          className="-ml-2 hover:bg-muted/70 rounded-lg cursor-pointer transition-colors h-9"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Products
@@ -825,7 +1024,7 @@ export default function ProductDetails() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="shadow-sm">
+            <Button variant="outline" size="sm" className="shadow-xs h-9">
               <Download className="mr-2 h-4 w-4" />
               Download
             </Button>
@@ -851,6 +1050,18 @@ export default function ProductDetails() {
               <FileReport className="mr-2 h-4 w-4" />
               Full report (HTML)
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => triggerDownload(`/api/products/${product.id}/download/report.md`)}
+            >
+              <FileCode className="mr-2 h-4 w-4" />
+              Threat model report (Markdown)
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => triggerDownload(`/api/products/${product.id}/download/report.docx`)}
+            >
+              <FileReport className="mr-2 h-4 w-4" />
+              Full report (Word .docx)
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => triggerDownload(`/api/products/${product.id}/download/bundle`)}
@@ -862,204 +1073,216 @@ export default function ProductDetails() {
         </DropdownMenu>
       </div>
 
-      {/* Product Info & Stats */}
-      <div className="grid gap-3 lg:grid-cols-3 animate-fadeInUp" style={{ animationDelay: '50ms' }}>
-        {/* Left: Product Information */}
-        <Card className="lg:col-span-2 rounded-xl border-border/60 shadow-sm py-0">
-          <CardHeader className="py-3">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm shrink-0">
-                <Box className="h-6 w-6 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <CardTitle className="text-xl font-bold tracking-tight">{product.name}</CardTitle>
-                {product.description && (
-                  <CardDescription className="mt-1 text-sm leading-relaxed">
-                    {product.description}
-                  </CardDescription>
-                )}
+      {/* ── Product info card (compact) ── */}
+      <Card className="rounded-xl border-border/60 shadow-xs animate-fadeInUp" style={{ animationDelay: '50ms' }}>
+        <CardHeader className="py-3">
+          <div className="flex items-start gap-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-xs shrink-0">
+              <Box className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-lg font-bold tracking-tight">{product.name}</CardTitle>
+              {product.description && (
+                <CardDescription className="mt-0.5 text-sm leading-relaxed line-clamp-2">
+                  {product.description}
+                </CardDescription>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+
+        {!product.description && (
+          <CardContent className="pt-0 pb-3">
+            <Empty className="border rounded-xl py-6">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Box className="h-4 w-4 text-muted-foreground" />
+                </EmptyMedia>
+                <EmptyTitle>No description</EmptyTitle>
+                <EmptyDescription>Edit this product to add a description.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          </CardContent>
+        )}
+
+        {(product.status ||
+          product.business_area ||
+          product.owner_name ||
+          product.owner_email ||
+          product.repository_url ||
+          product.confluence_url ||
+          product.application_url ||
+          product.jira_project_key) && (
+          <CardContent className="pt-0 pb-3">
+            <div className="p-3 border border-border/60 rounded-lg bg-muted/20 space-y-2 text-sm">
+              {product.status && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0">Status</span>
+                  <Badge
+                    variant="outline"
+                    className={`capitalize font-semibold ${
+                      product.status === 'design' ? 'border-sky-500/50 text-sky-700 dark:text-sky-300 bg-sky-500/10' :
+                      product.status === 'development' ? 'border-indigo-500/50 text-indigo-700 dark:text-indigo-300 bg-indigo-500/10' :
+                      product.status === 'testing' ? 'border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-500/10' :
+                      product.status === 'deployment' ? 'border-purple-500/50 text-purple-700 dark:text-purple-300 bg-purple-500/10' :
+                      'border-emerald-500/50 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10'
+                    }`}
+                  >
+                    {product.status}
+                  </Badge>
+                </div>
+              )}
+              {product.business_area && (
+                <div className="flex items-start gap-2">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Business area</span>
+                  <span>{product.business_area}</span>
+                </div>
+              )}
+              {(product.owner_name || product.owner_email) && (
+                <div className="flex items-start gap-2">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Owner</span>
+                  <span>
+                    {product.owner_name}
+                    {product.owner_name && product.owner_email && ' · '}
+                    {product.owner_email && (
+                      <a href={`mailto:${product.owner_email}`} className="text-primary hover:underline">
+                        {product.owner_email}
+                      </a>
+                    )}
+                  </span>
+                </div>
+              )}
+              {product.repository_url && (
+                <div className="flex items-start gap-2">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Repository</span>
+                  <a href={product.repository_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                    {product.repository_url}
+                  </a>
+                </div>
+              )}
+              {product.confluence_url && (
+                <div className="flex items-start gap-2">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Confluence</span>
+                  <a href={product.confluence_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                    {product.confluence_url}
+                  </a>
+                </div>
+              )}
+              {product.application_url && (
+                <div className="flex items-start gap-2">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Application</span>
+                  <a href={product.application_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                    {product.application_url}
+                  </a>
+                </div>
+              )}
+              {product.jira_project_key && (
+                <div className="flex items-start gap-2">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Jira Project</span>
+                  <Badge variant="outline" className="font-mono text-xs">{product.jira_project_key}</Badge>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        )}
+
+        <CardFooter className="border-t flex items-center justify-end py-2 px-4 mt-auto">
+          <div className="flex items-center gap-6 text-xs text-muted-foreground flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="font-medium">
+                Created {new Date(product.created_at).toLocaleDateString('en-US', {
+                  year: 'numeric', month: 'short', day: 'numeric'
+                })}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="font-medium">
+                Updated {new Date(product.updated_at).toLocaleDateString('en-US', {
+                  year: 'numeric', month: 'short', day: 'numeric'
+                })}
+              </span>
+            </div>
+          </div>
+        </CardFooter>
+      </Card>
+
+      {/* ── KPI stat strip ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fadeInUp" style={{ animationDelay: '80ms' }}>
+        <Card className="rounded-xl border-border/60 shadow-xs hover:shadow-md transition-all group py-0">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Threats</p>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
+                <AlertTriangle className="h-4 w-4" style={{ color: 'var(--risk-high)' }} />
               </div>
             </div>
-          </CardHeader>
-          {!product.description && (
-            <CardContent className="pt-0">
-              <Empty className="border rounded-xl py-10">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <Box className="h-4 w-4 text-muted-foreground" />
-                  </EmptyMedia>
-                  <EmptyTitle>No description</EmptyTitle>
-                  <EmptyDescription>
-                    Edit this product to add a description.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            </CardContent>
-          )}
-          {(product.status ||
-            product.business_area ||
-            product.owner_name ||
-            product.owner_email ||
-            product.repository_url ||
-            product.confluence_url ||
-            product.application_url) && (
-            <CardContent className="pt-0 pb-3">
-              <div className="p-3 border border-border/60 rounded-lg bg-muted/20 space-y-2 text-sm">
-                {product.status && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0">Status</span>
-                    <Badge
-                      variant="outline"
-                      className={`capitalize font-semibold ${
-                        product.status === 'design' ? 'border-sky-500/50 text-sky-700 dark:text-sky-300 bg-sky-500/10' :
-                        product.status === 'development' ? 'border-indigo-500/50 text-indigo-700 dark:text-indigo-300 bg-indigo-500/10' :
-                        product.status === 'testing' ? 'border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-500/10' :
-                        product.status === 'deployment' ? 'border-purple-500/50 text-purple-700 dark:text-purple-300 bg-purple-500/10' :
-                        'border-emerald-500/50 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10'
-                      }`}
-                    >
-                      {product.status}
-                    </Badge>
-                  </div>
-                )}
-                {product.business_area && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Business area</span>
-                    <span>{product.business_area}</span>
-                  </div>
-                )}
-                {(product.owner_name || product.owner_email) && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Owner</span>
-                    <span>
-                      {product.owner_name}
-                      {product.owner_name && product.owner_email && ' · '}
-                      {product.owner_email && (
-                        <a href={`mailto:${product.owner_email}`} className="text-primary hover:underline">
-                          {product.owner_email}
-                        </a>
-                      )}
-                    </span>
-                  </div>
-                )}
-                {product.repository_url && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Repository</span>
-                    <a href={product.repository_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
-                      {product.repository_url}
-                    </a>
-                  </div>
-                )}
-                {product.confluence_url && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Confluence</span>
-                    <a href={product.confluence_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
-                      {product.confluence_url}
-                    </a>
-                  </div>
-                )}
-                {product.application_url && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Application</span>
-                    <a href={product.application_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
-                      {product.application_url}
-                    </a>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          )}
-          <CardFooter className="border-t flex items-center justify-end py-2.5 px-4 mt-auto">
-            <div className="flex items-center gap-6 text-xs text-muted-foreground flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                <span className="font-medium">
-                  Created {new Date(product.created_at).toLocaleDateString('en-US', {
-                    year: 'numeric', month: 'short', day: 'numeric'
-                  })}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                <span className="font-medium">
-                  Updated {new Date(product.updated_at).toLocaleDateString('en-US', {
-                    year: 'numeric', month: 'short', day: 'numeric'
-                  })}
-                </span>
-              </div>
-            </div>
-          </CardFooter>
+            <p className="text-2xl font-bold">{threats.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {criticalThreats + highThreats > 0 ? (
+                <span className="font-medium" style={{ color: 'var(--risk-high)' }}>{criticalThreats + highThreats} critical/high</span>
+              ) : (
+                'No high-risk threats'
+              )}
+            </p>
+          </CardContent>
         </Card>
 
-        {/* Right: Stats */}
-        <div className="grid grid-cols-2 gap-2.5">
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group py-0">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-muted-foreground tracking-wider">DIAGRAMS</p>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 group-hover:scale-110 transition-transform">
-                  <Grid3x3 className="h-4 w-4 text-primary" />
-                </div>
+        <Card className="rounded-xl border-border/60 shadow-xs hover:shadow-md transition-all group py-0">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Critical</p>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--risk-critical-muted)' }}>
+                <AlertTriangle className="h-4 w-4" style={{ color: 'var(--risk-critical)' }} />
               </div>
-              <p className="text-2xl font-bold">{diagrams.length}</p>
-            </CardContent>
-          </Card>
+            </div>
+            <p className="text-2xl font-bold">{criticalThreats}</p>
+            <p className="text-xs text-muted-foreground mt-1">Require immediate action</p>
+          </CardContent>
+        </Card>
 
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group py-0">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-muted-foreground tracking-wider">THREATS</p>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
-                  <AlertTriangle className="h-4 w-4" style={{ color: 'var(--risk-high)' }} />
-                </div>
+        <Card className="rounded-xl border-border/60 shadow-xs hover:shadow-md transition-all group py-0">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mitigation Ratio</p>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 group-hover:scale-110 transition-transform">
+                <Layers className="h-4 w-4 text-primary" />
               </div>
-              <p className="text-2xl font-bold">{threats.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {criticalThreats + highThreats > 0 ? (
-                  <span className="font-medium" style={{ color: 'var(--risk-high)' }}>{criticalThreats + highThreats} critical/high</span>
-                ) : (
-                  'No high-risk threats'
-                )}
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+            <p className="text-2xl font-bold">{coveragePercent}%</p>
+            <Progress value={coveragePercent} className="h-1.5 mt-2" />
+          </CardContent>
+        </Card>
 
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group py-0">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-muted-foreground tracking-wider">MITIGATIONS</p>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
-                  <Shield className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
-                </div>
+        <Card className="rounded-xl border-border/60 shadow-xs hover:shadow-md transition-all group py-0">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Mitigations</p>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
+                <Shield className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
               </div>
-              <p className="text-2xl font-bold">{mitigations.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {implementedMitigations} active
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-all group py-0">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-muted-foreground tracking-wider">COVERAGE</p>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 group-hover:scale-110 transition-transform">
-                  <Layers className="h-4 w-4 text-primary" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold">{coveragePercent}%</p>
-              <Progress value={coveragePercent} className="h-1.5 mt-2" />
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+            <p className="text-2xl font-bold">{implementedMitigations}</p>
+            <p className="text-xs text-muted-foreground mt-1">{mitigations.length} total controls</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Tabbed Content */}
+      {/* ── Hub navigation + tab content ── */}
       <Tabs defaultValue="overview" className="animate-fadeInUp" style={{ animationDelay: '120ms' }}>
         <TabsList variant="line" className="mb-4">
           <TabsTrigger value="overview" className="gap-1.5">
             <Grid3x3 className="h-3.5 w-3.5" />
             Overview
+          </TabsTrigger>
+          <TabsTrigger value="threats" className="gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Threats {threats.length > 0 && <span className="ml-0.5 text-[10px] opacity-70">({threats.length})</span>}
+          </TabsTrigger>
+          <TabsTrigger value="mitigations" className="gap-1.5">
+            <Shield className="h-3.5 w-3.5" />
+            Mitigations {mitigations.length > 0 && <span className="ml-0.5 text-[10px] opacity-70">({mitigations.length})</span>}
           </TabsTrigger>
           <TabsTrigger value="analytics" className="gap-1.5">
             <BarChart3 className="h-3.5 w-3.5" />
@@ -1067,10 +1290,9 @@ export default function ProductDetails() {
           </TabsTrigger>
         </TabsList>
 
-        {/* ── Overview Tab ── */}
-        <TabsContent value="overview" className="space-y-5 mt-0">
-          {/* Diagrams List */}
-          <Card className="rounded-xl border-border/60 shadow-sm">
+        {/* ── Overview Tab: diagrams only ── */}
+        <TabsContent value="overview" className="space-y-4 mt-0">
+          <Card className="rounded-xl border-border/60 shadow-xs">
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
                 <div>
@@ -1082,10 +1304,12 @@ export default function ProductDetails() {
                     Data flow diagrams for this product
                   </CardDescription>
                 </div>
-                <Button size="sm" onClick={openNewDiagramDialog}>
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  New Diagram
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" className="h-9" onClick={openNewDiagramDialog}>
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    New Diagram
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="pt-4">
@@ -1096,14 +1320,14 @@ export default function ProductDetails() {
                   </div>
                   <h3 className="text-base font-semibold mb-1">No diagrams yet</h3>
                   <p className="text-sm text-muted-foreground mb-4">Create your first diagram to start threat modeling</p>
-                  <Button size="sm" variant="outline" onClick={openNewDiagramDialog}>
+                  <Button size="sm" variant="outline" className="h-8" onClick={openNewDiagramDialog}>
                     <Plus className="mr-1.5 h-4 w-4" />
                     Create Diagram
                   </Button>
                 </div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {diagrams.map((diagram, index) => {
+                  {diagrams.map((diagram) => {
                     const diagramThreats = threats.filter(t => t.diagram_id === diagram.id);
                     const diagramMitigations = mitigations.filter(m => m.diagram_id === diagram.id);
                     const diagramModels = models.filter(m => m.diagram_id === diagram.id);
@@ -1116,7 +1340,7 @@ export default function ProductDetails() {
                       >
                         <CardContent className="p-4">
                           <div className="flex items-start gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm group-hover:shadow-md transition-all">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-xs group-hover:shadow-md transition-all">
                               <Grid3x3 className="h-5 w-5 text-primary" />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -1163,59 +1387,75 @@ export default function ProductDetails() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Threats & Mitigations */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-medium flex items-center gap-2.5">
-                <AlertTriangle className="h-5 w-5" style={{ color: 'var(--risk-high)' }} />
-                Threats & Mitigations ({threats.length})
-              </h2>
-            </div>
-
-            <div className="space-y-3">
-              {threats.length === 0 ? (
-                <Card className="border-dashed border-2 rounded-xl">
-                  <CardContent className="flex flex-col items-center justify-center p-12">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-3 shadow-sm" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
-                      <AlertTriangle className="h-8 w-8" style={{ color: 'var(--risk-high)' }} />
-                    </div>
-                    <h3 className="text-lg font-medium mb-1.5">No threats found</h3>
-                    <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
-                      Start by creating diagrams and attaching threats to elements.
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                threats.map((threat, index) => {
-                  const linkedMitigations = getMitigationsForThreat(threat);
-                  const { modelName, frameworkName } = getModelInfo(threat);
-
-                  return (
-                    <ThreatCard
-                      key={threat.id}
-                      threat={threat}
-                      linkedMitigations={linkedMitigations}
-                      index={index}
-                      onOpen={() => handleOpenThreat(threat)}
-                      onNavigateToDiagram={() => navigateToDiagram(threat)}
-                      contextItems={[
-                        { icon: <Grid3x3 className="h-3 w-3" />, label: getDiagramName(threat.diagram_id) },
-                        ...(modelName ? [{ icon: <Layers className="h-3 w-3" />, label: modelName }] : []),
-                        { icon: <Layers className="h-3 w-3" />, label: frameworkName },
-                      ]}
-                    />
-                  );
-                })
-              )}
-            </div>
+        {/* ── Threats Tab ── */}
+        <TabsContent value="threats" className="space-y-3 mt-0">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-medium flex items-center gap-2.5">
+              <AlertTriangle className="h-5 w-5" style={{ color: 'var(--risk-high)' }} />
+              Threats ({threats.length})
+            </h2>
           </div>
+
+          {threats.length === 0 ? (
+            <Card className="border-dashed border-2 rounded-xl">
+              <CardContent className="flex flex-col items-center justify-center p-12">
+                <div
+                  className="flex h-16 w-16 items-center justify-center rounded-2xl mb-3 shadow-xs"
+                  style={{ backgroundColor: 'var(--risk-high-muted)' }}
+                >
+                  <AlertTriangle className="h-8 w-8" style={{ color: 'var(--risk-high)' }} />
+                </div>
+                <h3 className="text-lg font-medium mb-1.5">No threats found</h3>
+                <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
+                  Start by creating diagrams and attaching threats to elements.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            threats.map((threat, index) => {
+              const linkedMitigations = getMitigationsForThreat(threat);
+              const { modelName, frameworkName } = getModelInfo(threat);
+
+              return (
+                <ThreatCard
+                  key={threat.id}
+                  threat={threat}
+                  linkedMitigations={linkedMitigations}
+                  index={index}
+                  repoUrl={product.repository_url}
+                  jiraConfigured={jiraConfigured}
+                  jiraProjectKey={product.jira_project_key ?? jiraGlobalProjectKey}
+                  onOpen={() => handleOpenThreat(threat)}
+                  onNavigateToDiagram={() => navigateToDiagram(threat)}
+                  onUpdateStatus={(status) => handleInlineThreatStatusUpdate(threat, status)}
+                  contextItems={[
+                    { icon: <Grid3x3 className="h-3 w-3" />, label: getDiagramName(threat.diagram_id) },
+                    ...(modelName ? [{ icon: <Layers className="h-3 w-3" />, label: modelName }] : []),
+                    { icon: <Layers className="h-3 w-3" />, label: frameworkName },
+                  ]}
+                />
+              );
+            })
+          )}
+        </TabsContent>
+
+        {/* ── Mitigations Tab ── */}
+        <TabsContent value="mitigations" className="mt-0">
+          <MitigationsTab
+            mitigations={mitigations}
+            diagrams={diagrams}
+            threats={threats}
+          />
         </TabsContent>
 
         {/* ── Analytics Tab ── */}
         <TabsContent value="analytics" className="mt-0">
           <ProductAnalytics threats={threats} mitigations={mitigations} />
         </TabsContent>
+
+        {/* ── Audit Log Tab ── */}
       </Tabs>
 
       {/* Threat Details Sheet */}
@@ -1224,6 +1464,7 @@ export default function ProductDetails() {
         onOpenChange={setSheetOpen}
         selectedItem={selectedItem}
         itemType="threat"
+        productId={product?.id}
         onUpdateStatus={handleUpdateStatus}
         onUpdateNotes={handleUpdateItem}
         onNavigateToDiagram={navigateToDiagram}
@@ -1370,17 +1611,18 @@ export default function ProductDetails() {
                   variant="outline"
                   onClick={() => newDiagramStep === 1 ? setNewDiagramMode('choose') : setNewDiagramStep(1)}
                   disabled={newDiagramSubmitting}
+                  className="h-9"
                 >
                   <ArrowLeft className="mr-1.5 h-4 w-4" />
                   Back
                 </Button>
                 {newDiagramStep === 1 ? (
-                  <Button onClick={handleNewDiagramNext}>
+                  <Button onClick={handleNewDiagramNext} className="h-9">
                     Next
                     <ArrowRight className="ml-1.5 h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button onClick={handleNewDiagramSubmit} disabled={newDiagramSubmitting}>
+                  <Button onClick={handleNewDiagramSubmit} disabled={newDiagramSubmitting} className="h-9">
                     {newDiagramSubmitting ? (
                       <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Creating…</>
                     ) : (
@@ -1408,4 +1650,21 @@ export default function ProductDetails() {
       )}
     </div>
   );
+}
+
+// ── Audit Log Tab — replaced by AuditTerminal ─────────────────────────────────
+// legacy ACTION_META kept for reference but no longer rendered
+const ACTION_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  threat_added:              { label: 'Threat added',            icon: <FilePlus className="h-3.5 w-3.5" />,   color: 'text-destructive' },
+  threat_removed:            { label: 'Threat removed',          icon: <FileX className="h-3.5 w-3.5" />,      color: 'text-muted-foreground' },
+  threat_status_changed:     { label: 'Threat status changed',   icon: <ShieldCheck className="h-3.5 w-3.5" />,color: 'var(--risk-medium)' },
+  mitigation_added:          { label: 'Mitigation added',        icon: <ShieldCheck className="h-3.5 w-3.5" />,color: 'text-emerald-500' },
+  mitigation_removed:        { label: 'Mitigation removed',      icon: <ShieldOff className="h-3.5 w-3.5" />,  color: 'text-muted-foreground' },
+  mitigation_status_changed: { label: 'Mitigation updated',      icon: <ShieldCheck className="h-3.5 w-3.5" />,color: 'text-primary' },
+  diagram_created:           { label: 'Diagram created',         icon: <FilePlus className="h-3.5 w-3.5" />,   color: 'text-primary' },
+  diagram_saved:             { label: 'Diagram saved',           icon: <GitCommit className="h-3.5 w-3.5" />,  color: 'text-muted-foreground' },
+};
+
+function AuditLogTab({ productId }: { productId: number }) {
+  return <AuditTerminal productId={productId} height={520} />;
 }

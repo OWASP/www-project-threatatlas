@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { productsApi, diagramsApi, type ProductStatus } from '@/lib/api';
+import { productsApi, diagramsApi, usersApi, type ProductStatus } from '@/lib/api';
 import { toast } from 'sonner';
 import {
   Select,
@@ -62,11 +62,11 @@ import {
   ArrowRight,
   Users,
   Eye,
-  Upload,
 } from 'lucide-react';
 import ShareProductDialog from '@/components/ShareProductDialog';
 import CreateProductWizard from '@/components/CreateProductWizard';
 import { ImportDrawioButton } from '@/components/ImportDrawioButton';
+import NewDiagramWizard from '@/components/NewDiagramWizard';
 
 const STATUS_CLASSES: Record<string, string> = {
   design: 'border-sky-500/50 text-sky-700 dark:text-sky-300 bg-sky-500/10',
@@ -90,6 +90,7 @@ interface Product {
   business_area: string | null;
   owner_name: string | null;
   owner_email: string | null;
+  jira_project_key: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -137,6 +138,11 @@ export default function Products() {
   const navigate = useNavigate();
   const { canWrite } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const [userList, setUserList] = useState<{ id: number; email: string; full_name: string | null; username: string }[]>([]);
+
+  useEffect(() => {
+    usersApi.list().then(r => setUserList(r.data)).catch(() => {});
+  }, []);
   const [diagrams, setDiagrams] = useState<Record<number, Diagram[]>>({});
   const [loading, setLoading] = useState(true);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -157,6 +163,7 @@ export default function Products() {
     business_area: '',
     owner_name: '',
     owner_email: '',
+    jira_project_key: '',
   });
 
   useEffect(() => {
@@ -198,6 +205,7 @@ export default function Products() {
         business_area: formData.business_area || null,
         owner_name: formData.owner_name || null,
         owner_email: formData.owner_email || null,
+        jira_project_key: formData.jira_project_key.trim().toUpperCase() || null,
       });
       setEditOpen(false);
       setSelectedProduct(null);
@@ -224,42 +232,14 @@ export default function Products() {
   };
 
   // ── New Diagram wizard ────────────────────────────────────────────────────
-  const [dgWizProductId,  setDgWizProductId]  = useState<number | null>(null);
-  const [dgWizOpen,       setDgWizOpen]       = useState(false);
-  const [dgWizStep,       setDgWizStep]       = useState<'choose' | 'blank'>('choose');
-  const [dgWizName,       setDgWizName]       = useState('');
-  const [dgWizNameError,  setDgWizNameError]  = useState('');
-  const [dgWizCreating,   setDgWizCreating]   = useState(false);
-  const [dgImportOpen,    setDgImportOpen]    = useState(false);
+  // Wizard UI/creation logic lives in the shared <NewDiagramWizard/>.
+  const [dgWizProductId, setDgWizProductId] = useState<number | null>(null);
+  const [dgWizOpen,      setDgWizOpen]      = useState(false);
+  const [dgImportOpen,   setDgImportOpen]   = useState(false);
 
   const openDiagramWizard = (productId: number) => {
     setDgWizProductId(productId);
-    setDgWizStep('choose');
-    setDgWizName('');
-    setDgWizNameError('');
-    setDgWizCreating(false);
     setDgWizOpen(true);
-  };
-
-  const handleCreateBlankDiagram = async () => {
-    if (!dgWizProductId || !dgWizName.trim()) {
-      setDgWizNameError('Diagram name is required.');
-      return;
-    }
-    try {
-      setDgWizCreating(true);
-      const res = await diagramsApi.create({
-        product_id: dgWizProductId,
-        name: dgWizName.trim(),
-        diagram_data: { nodes: [], edges: [] },
-      });
-      setDgWizOpen(false);
-      navigate(`/diagrams?product=${dgWizProductId}&diagram=${res.data.id}`);
-    } catch {
-      toast.error('Failed to create diagram');
-    } finally {
-      setDgWizCreating(false);
-    }
   };
   // ── End wizard ────────────────────────────────────────────────────────────
 
@@ -295,6 +275,7 @@ export default function Products() {
       business_area: product.business_area || '',
       owner_name: product.owner_name || '',
       owner_email: product.owner_email || '',
+      jira_project_key: product.jira_project_key || '',
     });
     setEditOpen(true);
   };
@@ -363,7 +344,7 @@ export default function Products() {
                   }}
                 >
                   <CardHeader className="pb-3 pt-4 px-4">
-                    {/* Title row: icon + name + menu */}
+                    {/* Title row: icon + name + inline actions */}
                     <div className="flex items-start gap-3">
                       <div
                         className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0 group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300 cursor-pointer mt-0.5"
@@ -382,64 +363,48 @@ export default function Products() {
                           <Calendar className="h-3 w-3 shrink-0" />
                           <span>
                             {new Date(product.created_at).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
+                              month: 'short', day: 'numeric', year: 'numeric',
                             })}
                           </span>
                         </div>
                       </div>
                       {canWrite && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                              data-card-action
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <ShareProductDialog
-                              productId={product.id}
-                              productName={product.name}
-                              isPublic={product.is_public}
-                              onProductUpdate={loadProducts}
-                              trigger={
-                                <DropdownMenuItem data-card-action onSelect={(e) => e.preventDefault()}>
-                                  <Users className="mr-2 h-4 w-4" />
-                                  Share Product
-                                </DropdownMenuItem>
-                              }
-                            />
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem data-card-action onClick={() => openEditDialog(product)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit Product
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              data-card-action
-                              onClick={() => openDeleteDialog(product)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete Product
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <ShareProductDialog productId={product.id} productName={product.name}
+                            isPublic={product.is_public} onProductUpdate={loadProducts}
+                            trigger={
+                              <Button variant="ghost" size="icon" data-card-action title="Share"
+                                className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                                <Users className="h-3.5 w-3.5" />
+                              </Button>
+                            } />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" data-card-action className="h-7 w-7"
+                                onClick={(e) => { e.stopPropagation(); openEditDialog(product); }}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" data-card-action
+                                className="h-7 w-7 hover:text-destructive hover:bg-destructive/10"
+                                onClick={(e) => { e.stopPropagation(); openDeleteDialog(product); }}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Delete</TooltipContent>
+                          </Tooltip>
+                        </div>
                       )}
                     </div>
+
                     {(product.status || product.business_area) && (
                       <div className="flex items-center gap-1.5 flex-wrap mt-2">
                         {product.status && (
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] capitalize h-5 px-2 font-semibold ${getStatusBadgeClass(product.status)}`}
-                          >
+                          <Badge variant="outline" className={`text-[10px] capitalize h-5 px-2 font-semibold ${getStatusBadgeClass(product.status)}`}>
                             {product.status}
                           </Badge>
                         )}
@@ -451,7 +416,6 @@ export default function Products() {
                       </div>
                     )}
 
-                    {/* Description */}
                     {product.description ? (
                       <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-2.5">
                         {product.description}
@@ -462,9 +426,7 @@ export default function Products() {
                   </CardHeader>
 
                   <CardContent className="flex-1 pt-0 px-4 pb-4">
-                    {/* Diagrams panel */}
                     <div className="rounded-lg border border-border/60 overflow-hidden">
-                      {/* Panel header */}
                       <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b border-border/40">
                         <div className="flex items-center gap-1.5">
                           <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" />
@@ -480,27 +442,19 @@ export default function Products() {
                           <FileText className="h-5 w-5 text-muted-foreground/40" />
                           <p className="text-xs text-muted-foreground font-medium">No diagrams yet</p>
                           {canWrite && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              data-card-action
+                            <Button variant="outline" size="sm" data-card-action
                               onClick={() => openDiagramWizard(product.id)}
-                              className="h-7 text-xs hover:bg-primary/5 hover:border-primary/30 transition-all"
-                            >
-                              <Plus className="mr-1 h-3 w-3" />
-                              Create Diagram
+                              className="h-7 text-xs hover:bg-primary/5 hover:border-primary/30 transition-all">
+                              <Plus className="mr-1 h-3 w-3" />Create Diagram
                             </Button>
                           )}
                         </div>
                       ) : (
                         <>
                           {visibleDiagrams.map((diagram) => (
-                            <div
-                              key={diagram.id}
-                              data-card-action
+                            <div key={diagram.id} data-card-action
                               className="flex items-center gap-2 px-3 py-2 hover:bg-muted/30 transition-colors cursor-pointer group/diagram border-b border-border/30 last:border-0"
-                              onClick={() => navigate(`/diagrams?product=${product.id}&diagram=${diagram.id}`)}
-                            >
+                              onClick={() => navigate(`/diagrams?product=${product.id}&diagram=${diagram.id}`)}>
                               <Grid3x3 className="h-3 w-3 text-muted-foreground/50 shrink-0" />
                               <span className="text-xs truncate font-medium flex-1 group-hover/diagram:text-primary transition-colors">
                                 {diagram.name}
@@ -509,13 +463,9 @@ export default function Products() {
                                 {canWrite && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        data-card-action
+                                      <Button variant="ghost" size="sm" data-card-action
                                         className="h-5 w-5 p-0 opacity-0 group-hover/diagram:opacity-100 transition-all hover:bg-destructive/10 rounded"
-                                        onClick={(e) => openDeleteDiagramDialog(e, diagram.id)}
-                                      >
+                                        onClick={(e) => openDeleteDiagramDialog(e, diagram.id)}>
                                         <Trash2 className="h-3 w-3 text-destructive" />
                                       </Button>
                                     </TooltipTrigger>
@@ -527,19 +477,11 @@ export default function Products() {
                             </div>
                           ))}
                           {diagramCount > 3 && (
-                            <button
-                              type="button"
-                              data-card-action
+                            <button type="button" data-card-action
                               className="w-full px-3 py-1.5 bg-muted/20 border-t border-border/30 text-center hover:bg-muted/30 transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedDiagrams((prev) => ({ ...prev, [product.id]: !isExpanded }));
-                              }}
-                            >
+                              onClick={(e) => { e.stopPropagation(); setExpandedDiagrams(prev => ({ ...prev, [product.id]: !isExpanded })); }}>
                               <span className="text-[11px] text-muted-foreground font-medium">
-                                {isExpanded
-                                  ? 'Show less'
-                                  : `+${diagramCount - 3} more diagram${diagramCount - 3 > 1 ? 's' : ''}`}
+                                {isExpanded ? 'Show less' : `+${diagramCount - 3} more diagram${diagramCount - 3 > 1 ? 's' : ''}`}
                               </span>
                             </button>
                           )}
@@ -549,26 +491,16 @@ export default function Products() {
                   </CardContent>
 
                   <CardFooter className="px-4 pb-4 pt-2 flex gap-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      data-card-action
+                    <Button variant="default" size="sm" data-card-action
                       className="flex-1 shadow-sm hover:shadow-md transition-all"
-                      onClick={() => navigate(`/products/${product.id}`)}
-                    >
-                      <Eye className="mr-1.5 h-3.5 w-3.5" />
-                      View Details
+                      onClick={() => navigate(`/products/${product.id}`)}>
+                      <Eye className="mr-1.5 h-3.5 w-3.5" />View Details
                     </Button>
                     {canWrite && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        data-card-action
+                      <Button variant="outline" size="sm" data-card-action
                         className="flex-1 hover:border-primary/40 hover:bg-primary/5 transition-all shadow-sm hover:shadow"
-                        onClick={() => openDiagramWizard(product.id)}
-                      >
-                        <Plus className="mr-1.5 h-3.5 w-3.5" />
-                        New Diagram
+                        onClick={() => openDiagramWizard(product.id)}>
+                        <Plus className="mr-1.5 h-3.5 w-3.5" />New Diagram
                       </Button>
                     )}
                   </CardFooter>
@@ -636,24 +568,25 @@ export default function Products() {
                 placeholder="e.g. Payments, Identity"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-owner-name">Owner name</Label>
-                <Input
-                  id="edit-owner-name"
-                  value={formData.owner_name}
-                  onChange={(e) => setFormData({ ...formData, owner_name: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-owner-email">Owner email</Label>
-                <Input
-                  id="edit-owner-email"
-                  type="email"
-                  value={formData.owner_email}
-                  onChange={(e) => setFormData({ ...formData, owner_email: e.target.value })}
-                />
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-owner">Product Owner</Label>
+              <Select
+                value={userList.find(u => u.email === formData.owner_email)?.id.toString() ?? ''}
+                onValueChange={v => {
+                  if (!v) return;
+                  const u = userList.find(u => u.id.toString() === v);
+                  if (u) setFormData({ ...formData, owner_name: u.full_name || u.username || u.email, owner_email: u.email });
+                }}
+              >
+                <SelectTrigger id="edit-owner"><SelectValue placeholder="Select a user…" /></SelectTrigger>
+                <SelectContent>
+                  {userList.map(u => (
+                    <SelectItem key={u.id} value={u.id.toString()}>
+                      {u.full_name ? `${u.full_name} (${u.email})` : u.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-repo">Repository URL</Label>
@@ -680,6 +613,19 @@ export default function Products() {
                 value={formData.application_url}
                 onChange={(e) => setFormData({ ...formData, application_url: e.target.value })}
                 placeholder="https://app.example.com"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-jira-project">
+                Jira Project Key
+                <span className="text-muted-foreground font-normal ml-1 text-xs">(optional — default board for this product)</span>
+              </Label>
+              <Input
+                id="edit-jira-project"
+                value={formData.jira_project_key}
+                onChange={(e) => setFormData({ ...formData, jira_project_key: e.target.value.toUpperCase() })}
+                placeholder="e.g. SEC"
+                className="font-mono"
               />
             </div>
           </div>
@@ -736,87 +682,15 @@ export default function Products() {
         onSuccess={loadProducts}
       />
 
-      {/* New Diagram Wizard */}
-      <Dialog open={dgWizOpen} onOpenChange={(v) => { if (!v) setDgWizOpen(false); }}>
-        <DialogContent className="sm:max-w-lg">
-
-          {dgWizStep === 'choose' && (
-            <>
-              <DialogHeader>
-                <DialogTitle>New Diagram</DialogTitle>
-                <DialogDescription>Start with a blank canvas or import an existing Draw.io file.</DialogDescription>
-              </DialogHeader>
-
-              <div className="grid grid-cols-2 gap-3 py-2">
-                <button
-                  onClick={() => setDgWizStep('blank')}
-                  className="flex flex-col items-center gap-3 rounded-xl border-2 border-border/60 bg-muted/30 p-6 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                    <Grid3x3 className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-center">Blank Canvas</p>
-                    <p className="text-xs text-muted-foreground text-center mt-0.5">Start from scratch</p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => { setDgWizOpen(false); setDgImportOpen(true); }}
-                  className="flex flex-col items-center gap-3 rounded-xl border-2 border-border/60 bg-muted/30 p-6 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                    <Upload className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-center">Import Draw.io</p>
-                    <p className="text-xs text-muted-foreground text-center mt-0.5">.drawio or .xml file</p>
-                  </div>
-                </button>
-              </div>
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDgWizOpen(false)}>Cancel</Button>
-              </DialogFooter>
-            </>
-          )}
-
-          {dgWizStep === 'blank' && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Name your diagram</DialogTitle>
-                <DialogDescription>Give this diagram a name — you can always change it later.</DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-2 py-2">
-                <Label htmlFor="dg-name">Diagram name</Label>
-                <Input
-                  id="dg-name"
-                  value={dgWizName}
-                  onChange={(e) => { setDgWizName(e.target.value); setDgWizNameError(''); }}
-                  placeholder="e.g. Payment Service DFD"
-                  autoFocus
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateBlankDiagram()}
-                />
-                {dgWizNameError && <p className="text-xs text-destructive">{dgWizNameError}</p>}
-              </div>
-
-              <DialogFooter className="gap-2">
-                <button
-                  className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline mr-auto"
-                  onClick={() => setDgWizStep('choose')}
-                >
-                  Back
-                </button>
-                <Button variant="outline" onClick={() => setDgWizOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateBlankDiagram} disabled={!dgWizName.trim() || dgWizCreating}>
-                  {dgWizCreating ? 'Creating…' : 'Create Diagram'}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* New Diagram wizard — shared with the Diagrams page (model step enabled) */}
+      <NewDiagramWizard
+        open={dgWizOpen}
+        onOpenChange={setDgWizOpen}
+        productId={dgWizProductId}
+        withModelStep
+        onRequestImport={() => setDgImportOpen(true)}
+        onCreated={() => loadProducts()}
+      />
 
       {/* Controlled ImportDrawioButton (opened from New Diagram wizard) */}
       {dgWizProductId && (

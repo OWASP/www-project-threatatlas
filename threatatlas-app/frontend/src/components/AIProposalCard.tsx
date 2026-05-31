@@ -1,4 +1,4 @@
-import { AlertTriangle, Shield, CheckCircle2, X, Plus, Tag, Trash2, Layers, Lightbulb, BarChart2 } from 'lucide-react';
+import { AlertTriangle, Shield, CheckCircle2, X, Plus, Tag, Trash2, Layers, Lightbulb, BarChart2, Gauge } from 'lucide-react';
 
 const ELEMENT_TYPE_LABELS: Record<string, string> = {
   process: 'Process',
@@ -211,6 +211,17 @@ export default function AIProposalCard({ proposal, messageId, onApprove, onDismi
                     {proposal.severity}
                     {proposal.likelihood && proposal.impact ? ` · ${proposal.likelihood}×${proposal.impact}` : ''}
                   </Badge>
+                )}
+                {proposal.confidence && (
+                  <span className={cn(
+                    'inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded-full border',
+                    proposal.confidence === 'high' && 'bg-emerald-500/10 text-emerald-600 border-emerald-500/25',
+                    proposal.confidence === 'medium' && 'bg-amber-500/10 text-amber-600 border-amber-500/25',
+                    proposal.confidence === 'low' && 'bg-slate-500/10 text-slate-500 border-slate-500/25',
+                  )}>
+                    <Gauge className="h-2.5 w-2.5" />
+                    {proposal.confidence}
+                  </span>
                 )}
               </div>
             )}

@@ -697,10 +697,6 @@ export default function UserManagement() {
 
       <GroupsSection />
 
-      <SsoProvidersSection />
-
-      <ScimTokensSection />
-
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="!max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

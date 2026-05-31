@@ -3,7 +3,8 @@ import {
   Sparkles, Send, Plus, Bot, Loader2, StopCircle,
   MessageSquarePlus, ChevronDown, X, CheckCheck,
   Cpu, Database, Users, Box, Trash2, ArrowRightLeft,
-  ShieldAlert, Network, KeyRound, FlaskConical, Lock, AlertTriangle,
+  ShieldAlert, Network, KeyRound, FlaskConical, Lock, AlertTriangle, FileText,
+  ScanSearch, GitBranch,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -468,8 +469,24 @@ function MessageBubble({
           ? 'bg-primary text-primary-foreground rounded-tr-sm'
           : 'bg-card border border-border/60 rounded-tl-sm shadow-xs'
       )}>
-        {isUser
-          ? <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
+        {isUser ? (() => {
+          // Strip the hidden context prefix before displaying — the AI still received it
+          const CONTEXT_RE = /^\[CONTEXT:[^\]]+\]\n\n/;
+          const hasContext = CONTEXT_RE.test(message.content);
+          const displayText = message.content.replace(CONTEXT_RE, '');
+          const focusMatch = message.content.match(/Focus analysis only on these diagram elements: ([^.]+)\./);
+          return (
+            <>
+              {hasContext && focusMatch && (
+                <div className="flex items-center gap-1 mb-2 text-primary-foreground/70 text-[10px]">
+                  <span>✦</span>
+                  <span>Focused on: {focusMatch[1]}</span>
+                </div>
+              )}
+              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{displayText}</p>
+            </>
+          );
+        })()
           : <div className="space-y-1">{renderMarkdown(message.content)}</div>
         }
       </div>
@@ -489,7 +506,8 @@ function MessageBubble({
   );
 }
 
-function StreamingBubble({ content, thinkingStep }: { content: string; thinkingStep?: string }) {
+function StreamingBubble({ content, thinkingStep, thinkingHistory }: { content: string; thinkingStep?: string; thinkingHistory?: string[] }) {
+  const steps = thinkingHistory ?? [];
   return (
     <div className="flex flex-col gap-2 items-start">
       <div className="flex items-center gap-1.5">
@@ -499,11 +517,38 @@ function StreamingBubble({ content, thinkingStep }: { content: string; thinkingS
         <span className="text-[11px] font-medium text-muted-foreground">AI Analyst</span>
         <Loader2 className="h-3 w-3 animate-spin text-muted-foreground/60 ml-1" />
       </div>
-      <div className="max-w-[92%] rounded-2xl rounded-tl-sm px-4 py-3 bg-card border border-border/60 shadow-xs">
-        {content
-          ? <div className="space-y-1">{renderMarkdown(content)}<span className="inline-block w-0.5 h-4 bg-primary ml-0.5 animate-pulse align-text-bottom" /></div>
-          : <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm py-0.5">
+
+      {/* Thinking steps log — visible while working */}
+      {steps.length > 0 && (
+        <div className="max-w-[92%] w-full rounded-xl border border-border/40 bg-muted/30 px-3 py-2 space-y-1">
+          {steps.map((step, i) => {
+            const isActive = i === steps.length - 1 && !content;
+            return (
+              <div key={i} className={`flex items-center gap-2 text-[11px] ${isActive ? 'text-foreground' : 'text-muted-foreground/60'}`}>
+                {isActive ? (
+                  <span className="flex gap-0.5 shrink-0">
+                    <span className="h-1 w-1 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="h-1 w-1 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="h-1 w-1 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                ) : (
+                  <svg className="h-3 w-3 shrink-0 text-emerald-500" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6l2.5 2.5L10 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+                <span className="truncate">{step}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Response content */}
+      {(content || steps.length === 0) && (
+        <div className="max-w-[92%] rounded-2xl rounded-tl-sm px-4 py-3 bg-card border border-border/60 shadow-xs">
+          {content
+            ? <div className="space-y-1">{renderMarkdown(content)}<span className="inline-block w-0.5 h-4 bg-primary ml-0.5 animate-pulse align-text-bottom" /></div>
+            : <div className="flex items-center gap-2 text-muted-foreground text-sm py-0.5">
                 <span className="flex gap-0.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '0ms' }} />
                   <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -511,14 +556,16 @@ function StreamingBubble({ content, thinkingStep }: { content: string; thinkingS
                 </span>
                 <span>{thinkingStep || 'Thinking…'}</span>
               </div>
-            </div>
-        }
-      </div>
+          }
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Main sheet ────────────────────────────────────────────────────────────────
+
+type DiagramNodeRef = { id: string; label: string; type: string };
 
 interface AIChatSheetProps {
   open: boolean;
@@ -527,8 +574,21 @@ interface AIChatSheetProps {
   activeModelId: number | null;
   frameworkId: number | null;
   portalContainer?: HTMLElement | null;
+  unanalyzedNodes?: DiagramNodeRef[];
+  newNodesSinceSave?: DiagramNodeRef[];
   onModelCreated?: (modelId: number, model: { id: number; name: string; framework_id: number; framework_name: string }) => void;
   onProposalApproved?: () => void;
+  focusedNodeIds?: string[];
+  focusedNodeLabels?: string[];
+  onClearFocus?: () => void;
+}
+
+function buildIncrementalPrompt(nodes: DiagramNodeRef[], kind: 'unanalyzed' | 'new'): string {
+  const list = nodes.map(n => `- ${n.label} (${n.type}, id: ${n.id})`).join('\n');
+  if (kind === 'new') {
+    return `The following elements were recently added to the diagram and haven't been analyzed yet. Please analyse only these new elements for threats and mitigations and add them to the existing model:\n${list}`;
+  }
+  return `The following diagram elements currently have no threat coverage. Please analyse only these elements for threats and mitigations using the active model and framework:\n${list}`;
 }
 
 const SUGGESTIONS: { icon: React.ElementType; label: string; description: string; prompt: string }[] = [
@@ -580,14 +640,22 @@ const SUGGESTIONS: { icon: React.ElementType; label: string; description: string
     description: 'Highest-impact risks with priority fixes',
     prompt: 'What are the 5 most critical security threats in this diagram? Rank them by risk level and suggest the most impactful mitigations.',
   },
+  {
+    icon: FileText,
+    label: 'Executive Summary',
+    description: 'Plain-language summary for stakeholders',
+    prompt: 'Write a concise executive summary (3-5 sentences) of this threat model in plain, non-technical language, suitable for a management or compliance report. Highlight the key risk areas, overall security posture, mitigation coverage, and one clear recommendation.',
+  },
 ];
 
 export default function AIChatSheet({
   open, onOpenChange, diagramId, activeModelId, frameworkId,
-  portalContainer, onModelCreated, onProposalApproved,
+  portalContainer, unanalyzedNodes = [], newNodesSinceSave = [],
+  onModelCreated, onProposalApproved,
+  focusedNodeIds = [], focusedNodeLabels = [], onClearFocus,
 }: AIChatSheetProps) {
   const {
-    conversations, activeConvId, messages, streamingContent, thinkingStep,
+    conversations, activeConvId, messages, streamingContent, thinkingStep, thinkingHistory,
     isStreaming, isLoading, pendingCount, pendingRemovalCount, pendingModelCount,
     effectiveModelId,
     sendMessage, selectConversation,
@@ -618,7 +686,13 @@ export default function AIChatSheet({
     const content = input.trim();
     if (!content || isStreaming) return;
     setInput('');
-    await sendMessage(content);
+    let messageContent = content;
+    if (focusedNodeIds.length > 0) {
+      const elementNames = focusedNodeLabels.slice(0, 2).join(', ') +
+        (focusedNodeLabels.length > 2 ? ` +${focusedNodeLabels.length - 2} more` : '');
+      messageContent = `[CONTEXT: Focus analysis only on these diagram elements: ${elementNames}. Ignore all other elements.]\n\n${content}`;
+    }
+    await sendMessage(messageContent);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -733,6 +807,63 @@ export default function AIChatSheet({
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* ── AI Focus bar ── */}
+        {focusedNodeIds.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-2 border-b border-blue-500/20 shrink-0 gap-3" style={{ backgroundColor: 'color-mix(in srgb, #3b82f6 8%, transparent)' }}>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm shrink-0">🎯</span>
+              <span className="text-xs font-medium text-blue-600 dark:text-blue-400 truncate">
+                AI focused on {focusedNodeIds.length} element{focusedNodeIds.length !== 1 ? 's' : ''}
+                {focusedNodeLabels.length > 0 && (
+                  <> · {focusedNodeLabels.slice(0, 2).join(', ')}{focusedNodeLabels.length > 2 ? ` +${focusedNodeLabels.length - 2} more` : ''}</>
+                )}
+              </span>
+            </div>
+            <button
+              className="text-xs font-semibold shrink-0 px-2 py-0.5 rounded-lg text-blue-600 dark:text-blue-400 transition-colors hover:bg-blue-500/15"
+              onClick={onClearFocus}
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
+        {/* ── Incremental analysis banners ── */}
+        {newNodesSinceSave.length > 0 && !isStreaming && (
+          <div className="flex items-center justify-between px-4 py-2 border-b border-amber-500/20 shrink-0 gap-3" style={{ backgroundColor: 'color-mix(in srgb, var(--lemon-500) 6%, transparent)' }}>
+            <div className="flex items-center gap-2 min-w-0">
+              <GitBranch className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--risk-medium)' }} />
+              <span className="text-xs font-medium truncate" style={{ color: 'var(--risk-medium)' }}>
+                {newNodesSinceSave.length} new element{newNodesSinceSave.length !== 1 ? 's' : ''} added since last save
+              </span>
+            </div>
+            <button
+              className="text-xs font-semibold shrink-0 px-2.5 py-1 rounded-lg transition-colors"
+              style={{ color: 'var(--risk-medium)', backgroundColor: 'color-mix(in srgb, var(--lemon-500) 15%, transparent)' }}
+              onClick={() => sendMessage(buildIncrementalPrompt(newNodesSinceSave, 'new'))}
+            >
+              Analyze changes
+            </button>
+          </div>
+        )}
+        {newNodesSinceSave.length === 0 && unanalyzedNodes.length > 0 && messages.length > 0 && !isStreaming && (
+          <div className="flex items-center justify-between px-4 py-2 border-b border-primary/15 shrink-0 gap-3" style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 4%, transparent)' }}>
+            <div className="flex items-center gap-2 min-w-0">
+              <ScanSearch className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <span className="text-xs font-medium text-primary truncate">
+                {unanalyzedNodes.length} element{unanalyzedNodes.length !== 1 ? 's' : ''} with no threat coverage
+              </span>
+            </div>
+            <button
+              className="text-xs font-semibold shrink-0 px-2.5 py-1 rounded-lg text-primary transition-colors"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}
+              onClick={() => sendMessage(buildIncrementalPrompt(unanalyzedNodes, 'unanalyzed'))}
+            >
+              Analyze now
+            </button>
+          </div>
+        )}
+
         {/* ── Approve-all banner ── */}
         {(pendingCount > 0 || pendingRemovalCount > 0) && !isStreaming && (
           <div className="flex items-center justify-between px-5 py-2.5 border-b border-border/60 shrink-0 bg-muted/30 gap-3 flex-wrap">
@@ -776,6 +907,41 @@ export default function AIChatSheet({
                 Analyse your diagram for security threats and get mitigation suggestions from the knowledge base.
                 Every proposal requires your approval before being added.
               </p>
+              {/* Incremental analysis callout — shown when unanalyzed nodes exist */}
+              {(newNodesSinceSave.length > 0 || unanalyzedNodes.length > 0) && (
+                <div className="w-full max-w-lg mb-2">
+                  {newNodesSinceSave.length > 0 ? (
+                    <button
+                      onClick={() => sendMessage(buildIncrementalPrompt(newNodesSinceSave, 'new'))}
+                      className="w-full text-left border rounded-xl px-4 py-3 transition-all group"
+                      style={{ borderColor: 'color-mix(in srgb, var(--lemon-500) 40%, transparent)', backgroundColor: 'color-mix(in srgb, var(--lemon-500) 5%, transparent)' }}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <GitBranch className="h-4 w-4 shrink-0" style={{ color: 'var(--risk-medium)' }} />
+                        <span className="text-xs font-semibold" style={{ color: 'var(--risk-medium)' }}>
+                          {newNodesSinceSave.length} new element{newNodesSinceSave.length !== 1 ? 's' : ''} since last save
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground pl-6">Analyze only the newly added elements against the active threat model</p>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => sendMessage(buildIncrementalPrompt(unanalyzedNodes, 'unanalyzed'))}
+                      className="w-full text-left border border-primary/20 rounded-xl px-4 py-3 hover:bg-primary/5 transition-all group"
+                      style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 3%, transparent)' }}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <ScanSearch className="h-4 w-4 text-primary shrink-0" />
+                        <span className="text-xs font-semibold text-primary">
+                          {unanalyzedNodes.length} element{unanalyzedNodes.length !== 1 ? 's' : ''} with no threat coverage
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground pl-6">Run a targeted analysis on only the uncovered elements</p>
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2 w-full max-w-lg">
                 {SUGGESTIONS.map((s) => {
                   const Icon = s.icon;
@@ -807,7 +973,7 @@ export default function AIChatSheet({
                   onDismiss={dismissProposal}
                 />
               ))}
-              {isStreaming && <StreamingBubble content={streamingContent} thinkingStep={thinkingStep} />}
+              {isStreaming && <StreamingBubble content={streamingContent} thinkingStep={thinkingStep} thinkingHistory={thinkingHistory} />}
               <div ref={bottomRef} />
             </div>
           )}

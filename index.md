@@ -25,14 +25,18 @@ Bridge the gap between security frameworks and real architectures: make it easy 
 
 ## 🧭 What ThreatAtlas offers
 
-- **Data Flow Diagrams (DFDs)** — Interactive diagrams for processes, data stores, external entities, flows, and trust boundaries (including **Draw.io / .drawio import** to jump-start models).
-- **Threats, mitigations, and risk** — Link mitigations to threats; record likelihood and impact; see risk-oriented views in **analytics** (including a likelihood × impact matrix where configured).
+- **Data Flow Diagrams (DFDs)** — Interactive diagrams for processes, data stores, external entities, flows, and trust boundaries, with **Draw.io / .drawio import** and diagram templates for fast onboarding.
+- **Component Library** — Drag pre-built security components into diagrams and use the Component Threat Library to browse, edit, and revert predefined threat/mitigation mappings per framework.
+- **Threats, mitigations, and risk** — Link mitigations to threats; record likelihood, impact, and risk score; see risk-oriented views in **analytics** and heatmap overlays.
 - **Knowledge base** — Browse and apply content from multiple frameworks (e.g. STRIDE, PASTA, LINDDUN, OWASP references, MITRE-oriented material, CVSS-oriented guidance—see the app and docs for the current catalog).
-- **Collaboration** — Products shared with teammates; **RBAC**, invitations, and visibility controls aligned with how teams actually work.
+- **Collaboration** — Products shared with teammates; **RBAC**, invitations, live cursor tracking, real-time diagram sync, auto-save, and visibility controls aligned with how teams actually work.
+- **Approvals and risk acceptance** — Formal approval workflows, justification tracking, a dedicated approvals dashboard, and notifications for reviewers and collaborators.
+- **Notifications and search** — In-app bell with unread badges plus global search (⌘K / Ctrl+K) for products, diagrams, KB threats, and mitigations.
+- **DevOps integration** — API Tokens for machine access, JIRA issue creation from threat cards, and a CI/CD Security Gate endpoint for pass/fail checks.
 - **History** — **Diagram versioning** with comparison, including visibility into threat and mitigation changes—not only canvas edits.
 - **Comments** — Discussion on threats and mitigations for async review.
 - **Custom frameworks** — Define organization-specific methodology and reuse it across diagrams.
-- **Optional AI assistant** — When enabled by an administrator, a conversational assistant in the diagram editor can help explore threats and proposals; provider and keys are configured in-app (see deployment and security notes in the docs).
+- **Optional AI assistant** — When enabled by an administrator, a **conversational AI assistant** in the diagram editor can help explore threats and proposals; provider and keys are configured in-app (see deployment and security notes in the docs).
 
 ---
 

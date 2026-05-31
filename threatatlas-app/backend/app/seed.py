@@ -1304,6 +1304,240 @@ FRAMEWORKS_REGISTRY = [
              "description": "Configure HSTS, CSP, X-Frame-Options, X-Content-Type-Options, and Permissions-Policy on all responses"},
         ],
     },
+    # ── OWASP Top 10 for LLM Applications ─────────────────────────────────────
+    {
+        "name": "OWASP LLM Top 10",
+        "description": (
+            "The OWASP Top 10 for Large Language Model Applications (2025 edition) "
+            "identifies the most critical security risks specific to LLM-powered "
+            "systems—from prompt injection and sensitive data exposure to supply chain "
+            "weaknesses and unbounded resource consumption. See "
+            "https://genai.owasp.org/llm-top-10/ for the full specification."
+        ),
+        "threats": [
+            {"name": "LLM01: Prompt Injection", "category": "Prompt Injection",
+             "description": "Attackers craft malicious inputs that override or manipulate an LLM's system prompt or context window, causing the model to ignore its instructions, leak confidential data, or execute unintended actions. Both direct injection (via user messages) and indirect injection (via poisoned external content retrieved by the LLM) are covered."},
+            {"name": "LLM02: Sensitive Information Disclosure", "category": "Information Disclosure",
+             "description": "LLMs may inadvertently reveal confidential information—including personal data, proprietary business logic, or system configuration—through their training data memorisation, overly verbose responses, or misconfigured access controls around retrieval-augmented context."},
+            {"name": "LLM03: Supply Chain Vulnerabilities", "category": "Supply Chain",
+             "description": "LLM pipelines depend on third-party components—pretrained base models, fine-tuning datasets, plugins, vector stores, and external APIs—each of which may introduce vulnerabilities, backdoors, or malicious modifications that are inherited by the final application."},
+            {"name": "LLM04: Data and Model Poisoning", "category": "Data and Model Poisoning",
+             "description": "Adversaries corrupt the data used to train, fine-tune, or feed (via RAG) an LLM, introducing biases, backdoors, or hidden behaviours. Poisoned models may produce subtly incorrect, harmful, or attacker-controlled outputs in specific trigger conditions."},
+            {"name": "LLM05: Improper Output Handling", "category": "Improper Output Handling",
+             "description": "When LLM-generated text is passed unsanitised to downstream systems—browsers, shells, databases, or APIs—it can trigger Cross-Site Scripting (XSS), Server-Side Request Forgery (SSRF), code injection, or remote code execution depending on the consuming system."},
+            {"name": "LLM06: Excessive Agency", "category": "Excessive Agency",
+             "description": "LLM agents granted overly broad permissions, capabilities, or access to external tools can take high-impact autonomous actions beyond what is required for their intended purpose, leading to unintended data modifications, service disruptions, or privilege escalation."},
+            {"name": "LLM07: System Prompt Leakage", "category": "System Prompt Leakage",
+             "description": "Attackers induce the LLM to reveal the contents of its confidential system prompt, exposing business logic, safety guardrails, hidden instructions, or proprietary configurations that can be exploited to craft more effective subsequent attacks."},
+            {"name": "LLM08: Vector and Embedding Weaknesses", "category": "Vector and Embedding Weaknesses",
+             "description": "Retrieval-Augmented Generation (RAG) systems rely on vector databases and embedding models that can be manipulated through adversarial document injection, embedding inversion attacks, or access-control gaps, allowing attackers to influence what context is retrieved and fed to the LLM."},
+            {"name": "LLM09: Misinformation", "category": "Misinformation",
+             "description": "LLMs can generate plausible-sounding but factually incorrect, misleading, or hallucinated content. When this output is presented without appropriate caveats or human review—especially in high-stakes domains such as healthcare, law, or finance—it can cause direct harm or undermine trust."},
+            {"name": "LLM10: Unbounded Consumption", "category": "Unbounded Consumption",
+             "description": "Applications that allow unlimited LLM inference requests, excessive context sizes, or runaway agentic loops are vulnerable to Denial-of-Wallet attacks, cost amplification, and service disruption. Adversaries can also exploit these weaknesses for competitive model extraction."},
+        ],
+        "mitigations": [
+            {"name": "Input Validation and Sanitisation", "category": "Prompt Injection",
+             "description": "Validate, sanitise, and contextually escape all user-supplied text before passing it to the LLM. Use allow-lists for expected input formats and reject or neutralise attempts to embed instruction-like patterns in user data."},
+            {"name": "Privilege-Separated Prompt Architecture", "category": "Prompt Injection",
+             "description": "Clearly demarcate system instructions from user content using structural separators, distinct roles, or separate API calls. Treat user-provided text as untrusted data—never interpolate it directly into privileged instruction blocks."},
+            {"name": "Minimum Necessary Data in Context", "category": "Information Disclosure",
+             "description": "Restrict what sensitive information is included in the LLM context window. Apply data classification policies so personally identifiable information, secrets, and confidential business logic are not unnecessarily retrieved or passed to the model."},
+            {"name": "Output Filtering and Redaction", "category": "Information Disclosure",
+             "description": "Apply post-processing filters to LLM responses to detect and redact sensitive patterns such as PII, credentials, or internal infrastructure details before responses are returned to users or downstream systems."},
+            {"name": "Supply Chain Integrity Verification", "category": "Supply Chain",
+             "description": "Verify cryptographic checksums or signatures for all model weights, datasets, and third-party plugins before use. Prefer models and components sourced from audited, reputable providers with published transparency reports."},
+            {"name": "Training Data Provenance and Auditing", "category": "Data and Model Poisoning",
+             "description": "Maintain a complete audit trail for all data used in pre-training, fine-tuning, and RAG pipelines. Implement anomaly detection to identify unexpected distributions or patterns in datasets that may indicate poisoning."},
+            {"name": "LLM Output Encoding for Downstream Systems", "category": "Improper Output Handling",
+             "description": "Treat all LLM output as untrusted input when passing it to downstream components. Apply context-appropriate encoding (HTML escaping, shell quoting, parameterised queries) before the output is rendered, executed, or stored."},
+            {"name": "Least-Privilege Agent Permissions", "category": "Excessive Agency",
+             "description": "Grant LLM agents only the minimum permissions, tool access, and data scopes required to complete their intended tasks. Implement explicit action allow-lists and require human-in-the-loop confirmation for high-impact or irreversible operations."},
+            {"name": "System Prompt Confidentiality Controls", "category": "System Prompt Leakage",
+             "description": "Do not rely solely on the LLM to keep system prompts secret. Store sensitive instructions outside the context window where possible, monitor outputs for prompt leakage patterns, and treat system prompt contents as potentially observable by determined adversaries."},
+            {"name": "RAG Access Control and Document Isolation", "category": "Vector and Embedding Weaknesses",
+             "description": "Apply row-level and document-level access controls to vector stores so that retrieval is scoped to what the requesting user is authorised to read. Implement namespace isolation and content-integrity checks to detect injected adversarial documents."},
+            {"name": "Grounding and Source Attribution", "category": "Misinformation",
+             "description": "Ground LLM responses against authoritative, verified knowledge sources and provide citations so users can evaluate accuracy independently. Clearly label AI-generated content and implement confidence thresholds below which human review is required."},
+            {"name": "Rate Limiting and Token Budget Controls", "category": "Unbounded Consumption",
+             "description": "Enforce per-user, per-session, and per-application token limits and request rate caps. Set maximum context sizes and output lengths. Implement cost alerts and hard budget ceilings to prevent runaway consumption and Denial-of-Wallet attacks."},
+        ],
+    },
+    # ── MAESTRO (Agentic AI) ──────────────────────────────────────────────────
+    {
+        "name": "MAESTRO",
+        "description": (
+            "MAESTRO (Multi-Agent Environment, Security, Threat, Risk, & Outcome) — "
+            "a layered threat-modeling framework for Agentic AI from the Cloud Security "
+            "Alliance. It decomposes an agentic system into seven layers (Foundation "
+            "Models, Data Operations, Agent Frameworks, Deployment & Infrastructure, "
+            "Evaluation & Observability, Security & Compliance, and the Agent Ecosystem) "
+            "and models threats within each layer plus cross-layer threats. "
+            "Categories below map to the MAESTRO layers."
+        ),
+        "threats": [
+            # Layer 1 — Foundation Models
+            {"name": "Adversarial Examples", "category": "Layer 1: Foundation Models",
+             "description": "Crafted inputs that fool the foundation model into incorrect or attacker-chosen outputs"},
+            {"name": "Model Stealing via API Queries", "category": "Layer 1: Foundation Models",
+             "description": "Systematic querying of a model's API to reconstruct or approximate the underlying model"},
+            {"name": "Backdoor Attack with Hidden Triggers", "category": "Layer 1: Foundation Models",
+             "description": "Hidden triggers embedded in the model that cause malicious behavior when activated"},
+            {"name": "Membership Inference Attack", "category": "Layer 1: Foundation Models",
+             "description": "Inferring whether specific records were in the training data, leaking sensitive information"},
+            {"name": "Training-Time Data Poisoning", "category": "Layer 1: Foundation Models",
+             "description": "Corrupting training data to degrade the model or implant attacker-controlled behavior"},
+            {"name": "Model Reprogramming", "category": "Layer 1: Foundation Models",
+             "description": "Repurposing a deployed model to perform tasks unintended by its operators"},
+            {"name": "Compute-Exhaustion Denial of Service", "category": "Layer 1: Foundation Models",
+             "description": "Computationally expensive queries that exhaust inference resources and deny availability"},
+
+            # Layer 2 — Data Operations
+            {"name": "Data Poisoning in Pipelines", "category": "Layer 2: Data Operations",
+             "description": "Manipulating data in preparation/processing pipelines feeding the agent"},
+            {"name": "Data Exfiltration from Stores", "category": "Layer 2: Data Operations",
+             "description": "Unauthorized extraction of data from databases, vector stores, or caches"},
+            {"name": "Data Infrastructure Denial of Service", "category": "Layer 2: Data Operations",
+             "description": "Overwhelming databases or vector stores to deny availability of data operations"},
+            {"name": "Data Tampering in Transit or at Rest", "category": "Layer 2: Data Operations",
+             "description": "Altering data while stored or moving between data components"},
+            {"name": "RAG Pipeline Injection", "category": "Layer 2: Data Operations",
+             "description": "Injecting malicious content into a retrieval-augmented-generation pipeline to steer agent output"},
+
+            # Layer 3 — Agent Frameworks
+            {"name": "Compromised Framework Component", "category": "Layer 3: Agent Frameworks",
+             "description": "A trojaned or tampered component within the agent development framework"},
+            {"name": "Framework Backdoor", "category": "Layer 3: Agent Frameworks",
+             "description": "A backdoor planted in the agent framework enabling covert control"},
+            {"name": "Framework Input Validation Weakness", "category": "Layer 3: Agent Frameworks",
+             "description": "Missing or weak input validation in framework APIs exploited to inject or escape"},
+            {"name": "Supply Chain Dependency Attack", "category": "Layer 3: Agent Frameworks",
+             "description": "Malicious or vulnerable third-party dependencies pulled into the agent framework"},
+            {"name": "Framework API Denial of Service", "category": "Layer 3: Agent Frameworks",
+             "description": "Abusing framework APIs to exhaust resources and deny service"},
+            {"name": "Framework Evasion", "category": "Layer 3: Agent Frameworks",
+             "description": "Techniques that bypass safety or control mechanisms built into the framework"},
+
+            # Layer 4 — Deployment & Infrastructure
+            {"name": "Compromised Container Image", "category": "Layer 4: Deployment & Infrastructure",
+             "description": "Malicious or vulnerable container images used to run agents"},
+            {"name": "Orchestration Attack", "category": "Layer 4: Deployment & Infrastructure",
+             "description": "Exploitation of orchestration platforms such as Kubernetes hosting the agents"},
+            {"name": "Infrastructure-as-Code Manipulation", "category": "Layer 4: Deployment & Infrastructure",
+             "description": "Tampering with IaC definitions to weaken or backdoor the deployed environment"},
+            {"name": "Infrastructure Denial of Service", "category": "Layer 4: Deployment & Infrastructure",
+             "description": "Denial-of-service against the infrastructure supporting agent execution"},
+            {"name": "Resource Hijacking", "category": "Layer 4: Deployment & Infrastructure",
+             "description": "Hijacking compute/storage resources (e.g. for cryptomining) at the expense of the system"},
+            {"name": "Lateral Movement Across Infrastructure", "category": "Layer 4: Deployment & Infrastructure",
+             "description": "Moving laterally through infrastructure after an initial foothold"},
+
+            # Layer 5 — Evaluation & Observability
+            {"name": "Evaluation Metric Manipulation", "category": "Layer 5: Evaluation & Observability",
+             "description": "Tampering with evaluation metrics to mask poor or malicious agent behavior"},
+            {"name": "Compromised Observability Tools", "category": "Layer 5: Evaluation & Observability",
+             "description": "Subverting monitoring/observability tooling to hide anomalies"},
+            {"name": "Evaluation Infrastructure DoS", "category": "Layer 5: Evaluation & Observability",
+             "description": "Denial-of-service against evaluation and monitoring infrastructure"},
+            {"name": "Detection Evasion", "category": "Layer 5: Evaluation & Observability",
+             "description": "Techniques that avoid triggering anomaly detection and monitoring"},
+            {"name": "Data Leakage Through Monitoring", "category": "Layer 5: Evaluation & Observability",
+             "description": "Sensitive data exposed through monitoring and observability systems"},
+            {"name": "Observability Data Poisoning", "category": "Layer 5: Evaluation & Observability",
+             "description": "Poisoning observability data so dashboards and alerts misrepresent reality"},
+
+            # Layer 6 — Security & Compliance
+            {"name": "Security Agent Data Poisoning", "category": "Layer 6: Security & Compliance",
+             "description": "Poisoning the data that security AI agents rely on, degrading their judgment"},
+            {"name": "Evasion of Security AI Agents", "category": "Layer 6: Security & Compliance",
+             "description": "Crafting activity that evades detection by AI-based security agents"},
+            {"name": "Compromised Security Agent", "category": "Layer 6: Security & Compliance",
+             "description": "An attacker takes control of a security agent, turning a defense into a liability"},
+            {"name": "Regulatory Non-Compliance by Security Agents", "category": "Layer 6: Security & Compliance",
+             "description": "Security agents acting in ways that violate regulatory obligations"},
+            {"name": "Bias in Security Systems", "category": "Layer 6: Security & Compliance",
+             "description": "Bias in security agents causing systematic blind spots or unfair outcomes"},
+            {"name": "Lack of Explainability in Security Decisions", "category": "Layer 6: Security & Compliance",
+             "description": "Opaque security-agent decisions that cannot be audited or justified"},
+            {"name": "Model Extraction of Security Agents", "category": "Layer 6: Security & Compliance",
+             "description": "Extracting a security agent's model to learn how to evade it"},
+
+            # Layer 7 — Agent Ecosystem
+            {"name": "Agent Impersonation", "category": "Layer 7: Agent Ecosystem",
+             "description": "A malicious agent masquerades as a trusted agent to abuse integrations or users"},
+            {"name": "Agent Identity Attack", "category": "Layer 7: Agent Ecosystem",
+             "description": "Forging or stealing agent identities to gain unauthorized capabilities"},
+            {"name": "Tool Misuse", "category": "Layer 7: Agent Ecosystem",
+             "description": "An agent abusing the tools/integrations it can call to cause harm"},
+            {"name": "Goal Manipulation", "category": "Layer 7: Agent Ecosystem",
+             "description": "Manipulating an agent's objectives so it pursues attacker-chosen goals"},
+            {"name": "Marketplace Manipulation", "category": "Layer 7: Agent Ecosystem",
+             "description": "Gaming the agent marketplace (pricing, ranking, discovery) for malicious ends"},
+            {"name": "Compromised Agent Registry", "category": "Layer 7: Agent Ecosystem",
+             "description": "Tampering with the registry agents are discovered and trusted through"},
+            {"name": "Malicious Agent Discovery", "category": "Layer 7: Agent Ecosystem",
+             "description": "Surfacing malicious agents to users/other agents via discovery mechanisms"},
+            {"name": "Inaccurate Capability Description", "category": "Layer 7: Agent Ecosystem",
+             "description": "Agents advertising false capabilities to be selected and then misbehave"},
+            {"name": "Agent Repudiation", "category": "Layer 7: Agent Ecosystem",
+             "description": "Inability to attribute agent actions, allowing agents to deny what they did"},
+
+            # Cross-Layer
+            {"name": "Cross-Layer Supply Chain Compromise", "category": "Cross-Layer",
+             "description": "A single supply-chain compromise that affects multiple MAESTRO layers at once"},
+            {"name": "Cross-Layer Lateral Movement", "category": "Cross-Layer",
+             "description": "Exploiting boundaries between layers to move from one layer into another"},
+            {"name": "Cross-Layer Privilege Escalation", "category": "Cross-Layer",
+             "description": "Escalating privileges by chaining weaknesses across multiple layers"},
+            {"name": "Inter-Layer Data Leakage", "category": "Cross-Layer",
+             "description": "Sensitive data leaking through the interactions between layers"},
+            {"name": "Goal Misalignment Cascade", "category": "Cross-Layer",
+             "description": "Misaligned goals propagating between agents and layers, amplifying harm"},
+        ],
+        "mitigations": [
+            # Cross-layer controls
+            {"name": "Defense in Depth Across Layers", "category": "Cross-Layer",
+             "description": "Layer multiple, independent security controls so no single failure is catastrophic"},
+            {"name": "Secure Inter-Layer Communication", "category": "Cross-Layer",
+             "description": "Authenticate, encrypt, and validate all communication crossing layer boundaries"},
+            {"name": "System-Wide Anomaly Monitoring", "category": "Cross-Layer",
+             "description": "Monitor behavior across all layers to detect anomalies that single-layer views miss"},
+            {"name": "Multi-Layer Incident Response Plan", "category": "Cross-Layer",
+             "description": "Plan and rehearse coordinated response to incidents spanning several layers"},
+
+            # AI-specific controls
+            {"name": "Adversarial Training", "category": "AI-Specific",
+             "description": "Train agents against adversarial examples to harden them at the model layer"},
+            {"name": "Formal Verification of Goal Alignment", "category": "AI-Specific",
+             "description": "Use formal methods to verify agent behavior stays within intended goals and bounds"},
+            {"name": "Explainable AI (XAI)", "category": "AI-Specific",
+             "description": "Make agent decisions transparent and auditable to support oversight and compliance"},
+            {"name": "Red Teaming of Agents", "category": "AI-Specific",
+             "description": "Run simulated attacks against agents to surface vulnerabilities before adversaries do"},
+            {"name": "Runtime Safety Monitoring", "category": "AI-Specific",
+             "description": "Continuously detect and intervene on unsafe agent behavior at runtime"},
+
+            # Layer-specific controls
+            {"name": "Model Access Rate Limiting", "category": "Layer 1: Foundation Models",
+             "description": "Throttle and quota model API access to blunt model-stealing and compute-exhaustion attacks"},
+            {"name": "RAG Input Sanitization & Source Vetting", "category": "Layer 2: Data Operations",
+             "description": "Validate and vet retrieved content before it reaches the agent to prevent RAG injection/poisoning"},
+            {"name": "Framework Input Validation", "category": "Layer 3: Agent Frameworks",
+             "description": "Rigorously validate inputs to framework APIs to block injection and evasion"},
+            {"name": "Dependency Pinning & SBOM", "category": "Layer 3: Agent Frameworks",
+             "description": "Pin dependencies and maintain a software bill of materials to manage supply-chain risk"},
+            {"name": "Container Image Signing & Scanning", "category": "Layer 4: Deployment & Infrastructure",
+             "description": "Sign and scan container images, and admit only trusted, scanned images to runtime"},
+            {"name": "Orchestration Hardening", "category": "Layer 4: Deployment & Infrastructure",
+             "description": "Apply least-privilege RBAC, network policies, and CIS hardening to the orchestration platform"},
+            {"name": "Observability Data Integrity Controls", "category": "Layer 5: Evaluation & Observability",
+             "description": "Protect the integrity of metrics and logs so monitoring cannot be silently subverted"},
+            {"name": "Strong Agent Identity & Authentication", "category": "Layer 7: Agent Ecosystem",
+             "description": "Issue and verify cryptographic agent identities to prevent impersonation and identity attacks"},
+            {"name": "Verified Agent Registry & Capability Attestation", "category": "Layer 7: Agent Ecosystem",
+             "description": "Sign registry entries and attest agent capabilities to counter malicious discovery and false claims"},
+        ],
+    },
 ]
 
 
@@ -1372,3 +1606,144 @@ def seed_knowledge_base() -> None:
         raise
     finally:
         db.close()
+
+    # Seed the Component Threat Library
+    _seed_component_library()
+
+
+def _seed_component_library() -> None:
+    """
+    Seed the Component Threat Library templates.
+
+    Imports the COMPONENTS list from populate_component_library and inserts
+    any templates not already present (idempotent by slug).
+    """
+    try:
+        # Import here to avoid circular imports at module load time
+        import sys
+        import os
+
+        # Allow importing the root-level populate script
+        backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if backend_root not in sys.path:
+            sys.path.insert(0, backend_root)
+
+        from populate_component_library import COMPONENTS
+        from app.models.component_template import ComponentTemplate
+
+        db = SessionLocal()
+        try:
+            existing_slugs = {
+                row[0]
+                for row in db.query(ComponentTemplate.slug).all()
+            }
+
+            new_components = [
+                ComponentTemplate(
+                    name=c["name"],
+                    slug=c["slug"],
+                    category=c["category"],
+                    node_type=c["node_type"],
+                    icon=c.get("icon"),
+                    description=c.get("description"),
+                    threats=c["threats"],
+                    mitigations=c["mitigations"],
+                    is_custom=False,
+                    created_by=None,
+                )
+                for c in COMPONENTS
+                if c["slug"] not in existing_slugs
+            ]
+
+            if new_components:
+                db.bulk_save_objects(new_components)
+                db.commit()
+                logger.info(
+                    "Component library seeding complete: added %d templates.",
+                    len(new_components),
+                )
+            else:
+                logger.debug("Component library already seeded — no new templates added.")
+
+            # ── Populate KB links (framework-aware FK pivot tables) ──────────
+            _seed_component_kb_links(db, COMPONENTS)
+
+        except Exception:
+            db.rollback()
+            logger.exception("Component library seeding failed — rolled back.")
+            raise
+        finally:
+            db.close()
+
+    except ImportError:
+        logger.warning(
+            "populate_component_library.py not found — skipping component library seeding."
+        )
+
+
+def _seed_component_kb_links(db, _components: list) -> None:
+    """
+    Populate component_template_threats / component_template_mitigations using
+    the CURATED mappings in seed_component_kb_links_curated.py — specific
+    threat/mitigation IDs per component per framework.
+
+    Clears any existing broad-category links first, then inserts the curated ones.
+    Idempotent on re-runs (clears and re-inserts — safe because it's pure reference data).
+    """
+    from app.models.component_template import ComponentTemplate
+    from app.models.component_template_link import ComponentTemplateThreat, ComponentTemplateMitigation
+    from app.models.framework import Framework
+
+    try:
+        import sys, os
+        backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if backend_root not in sys.path:
+            sys.path.insert(0, backend_root)
+        from seed_component_kb_links_curated import CURATED
+    except ImportError:
+        logger.warning("seed_component_kb_links_curated.py not found — skipping curated KB links.")
+        return
+
+    try:
+        framework_name_to_id = {f.name: f.id for f in db.query(Framework).all()}
+        slug_to_id = {c.slug: c.id for c in db.query(ComponentTemplate).all()}
+
+        # Clear all existing links (curated seed is authoritative)
+        db.query(ComponentTemplateThreat).delete()
+        db.query(ComponentTemplateMitigation).delete()
+        db.flush()
+
+        new_threat_links = []
+        new_mit_links = []
+        seen_t: set[tuple] = set()
+        seen_m: set[tuple] = set()
+
+        for slug, fw_map in CURATED.items():
+            comp_id = slug_to_id.get(slug)
+            if not comp_id:
+                continue
+            for fw_name, data in fw_map.items():
+                fw_id = framework_name_to_id.get(fw_name)
+                if not fw_id:
+                    continue
+                for tid in data.get("t", []):
+                    if (comp_id, tid) not in seen_t:
+                        new_threat_links.append(ComponentTemplateThreat(component_id=comp_id, threat_id=tid))
+                        seen_t.add((comp_id, tid))
+                for mid in data.get("m", []):
+                    if (comp_id, mid) not in seen_m:
+                        new_mit_links.append(ComponentTemplateMitigation(component_id=comp_id, mitigation_id=mid))
+                        seen_m.add((comp_id, mid))
+
+        if new_threat_links:
+            db.bulk_save_objects(new_threat_links)
+        if new_mit_links:
+            db.bulk_save_objects(new_mit_links)
+        db.commit()
+        logger.info(
+            "Component curated KB links seeded: %d threat links, %d mitigation links across %d components.",
+            len(new_threat_links), len(new_mit_links), len(slug_to_id),
+        )
+    except Exception:
+        db.rollback()
+        logger.exception("Component KB links seeding failed — rolled back.")

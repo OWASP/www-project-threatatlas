@@ -1,0 +1,1 @@
+"""Bundled static reference data."""

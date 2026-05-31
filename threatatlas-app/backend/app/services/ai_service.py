@@ -313,9 +313,17 @@ def approve_proposal(
         # Patch sibling proposals so they point to the newly created model.
         # Proposals explicitly linked via pending_model_proposal_id take priority
         # (multi-framework: STRIDE proposals only patch when the STRIDE model is approved).
-        # Fall back to the old model_id=None heuristic for backward-compat proposals
-        # that carry no explicit link.
+        # Fall back to orphan heuristic ONLY when this is the sole pending create_model,
+        # to avoid cross-contaminating proposals in multi-framework analyses.
         _model_bearing_types = {"threat", "mitigation", "suggest_kb_threat", "suggest_kb_mitigation"}
+        other_pending_models = [
+            p for p in proposals
+            if p.get("type") == "create_model"
+            and p.get("status") == "pending"
+            and p["id"] != proposal_id
+        ]
+        allow_orphan_patch = len(other_pending_models) == 0  # only safe when no other model pending
+
         patched: list[dict] = []
         for p in proposals:
             if p["id"] == proposal_id:
@@ -324,8 +332,8 @@ def approve_proposal(
                 if p.get("pending_model_proposal_id") == proposal_id:
                     # Explicitly linked to this create_model — always patch
                     patched.append({**p, "model_id": new_model.id, "framework_id": framework_id})
-                elif p.get("model_id") is None and p.get("pending_model_proposal_id") is None:
-                    # Backward-compat: orphaned proposal with no explicit link
+                elif p.get("model_id") is None and p.get("pending_model_proposal_id") is None and allow_orphan_patch:
+                    # Backward-compat: orphaned proposal, only patch when this is the only pending model
                     patched.append({**p, "model_id": new_model.id})
                 else:
                     patched.append(p)
@@ -534,6 +542,8 @@ def approve_all_proposals(
     user_id: int,
 ) -> dict[str, Any]:
     """Approve every pending proposal across all messages in a conversation."""
+    from app.models.model import Model as ModelTable
+
     messages = db.query(AIMessage).filter(
         AIMessage.conversation_id == conversation_id
     ).all()
@@ -543,13 +553,66 @@ def approve_all_proposals(
     created_models: list[dict] = []
     errors: list[str] = []
 
+    # ── Pass 1: approve create_model proposals across ALL messages first ──────
+    # Build a map {proposal_id → model_id} so cross-message threats can resolve
+    # their model_id even when the create_model lived in a different message.
+    proposal_to_model: dict[str, int] = {}
+
     for message in messages:
         if not message.proposals:
             continue
-        pending = [p for p in message.proposals if p.get("status") == "pending"]
-        # Process create_model proposals first so siblings get their model_id patched
-        pending.sort(key=lambda p: 0 if p.get("type") == "create_model" else 1)
+        for proposal in message.proposals:
+            if proposal.get("type") == "create_model" and proposal.get("status") == "pending":
+                try:
+                    result = approve_proposal(db, message, proposal["id"], diagram_id, user_id)
+                    if result.get("type") == "create_model":
+                        proposal_to_model[proposal["id"]] = result["id"]
+                        created_models.append(result)
+                except Exception:
+                    logger.exception("approve_all_proposals: create_model failed for %s", proposal["id"])
+                    errors.append(f"{proposal['id']}: model creation failed")
+
+    # Also collect already-approved create_model proposals so historical
+    # conversations (refreshed page) can still resolve model_ids.
+    for message in messages:
+        if not message.proposals:
+            continue
+        for proposal in message.proposals:
+            if proposal.get("type") == "create_model" and proposal.get("status") == "approved":
+                pid = proposal["id"]
+                if pid not in proposal_to_model and proposal.get("model_id"):
+                    proposal_to_model[pid] = proposal["model_id"]
+
+    # Fallback: if diagram already has exactly one model, treat it as the default
+    fallback_model_id: int | None = None
+    existing_models = db.query(ModelTable).filter(ModelTable.diagram_id == diagram_id).all()
+    if len(existing_models) == 1:
+        fallback_model_id = existing_models[0].id
+
+    # ── Pass 2: resolve model_ids and approve all remaining pending proposals ──
+    _model_bearing = {"threat", "mitigation", "suggest_kb_threat", "suggest_kb_mitigation"}
+
+    for message in messages:
+        if not message.proposals:
+            continue
+        pending = [p for p in message.proposals if p.get("status") == "pending" and p.get("type") != "create_model"]
         for proposal in pending:
+            # Resolve model_id for proposals that were stored with None
+            if proposal.get("type") in _model_bearing and proposal.get("model_id") is None:
+                resolved_model_id = (
+                    proposal_to_model.get(proposal.get("pending_model_proposal_id", ""))
+                    or (fallback_model_id if len(proposal_to_model) <= 1 else None)
+                )
+                if resolved_model_id:
+                    # Patch in-memory so approve_proposal sees the resolved model_id
+                    patched_proposals = [
+                        {**p, "model_id": resolved_model_id} if p["id"] == proposal["id"] else p
+                        for p in message.proposals
+                    ]
+                    message.proposals = patched_proposals
+                    # Update local reference too
+                    proposal = next(p for p in message.proposals if p["id"] == proposal["id"])
+
             try:
                 result = approve_proposal(db, message, proposal["id"], diagram_id, user_id)
                 t = result.get("type")
@@ -557,8 +620,6 @@ def approve_all_proposals(
                     created_threats += 1
                 elif t in ("mitigation", "suggest_kb_mitigation"):
                     created_mitigations += 1
-                elif t == "create_model":
-                    created_models.append(result)
             except ValueError as exc:
                 logger.warning(
                     "approve_all_proposals: validation failed for proposal %s",

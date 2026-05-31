@@ -8,6 +8,7 @@ from app.schemas import Diagram, DiagramCreate, DiagramUpdate
 from app.services import VersionService
 from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_standard_or_admin, can_access_product, can_edit_product, PermissionDenied
+from app.services.audit import log_event
 
 router = APIRouter(prefix="/diagrams", tags=["diagrams"])
 
@@ -118,6 +119,17 @@ def create_diagram(
     db.add(db_diagram)
     db.commit()
     db.refresh(db_diagram)
+    log_event(
+        db,
+        action="diagram_created",
+        entity_type="diagram",
+        entity_name=db_diagram.name,
+        details={"diagram_id": db_diagram.id},
+        product_id=db_diagram.product_id,
+        diagram_id=db_diagram.id,
+        user_id=current_user.id,
+    )
+    db.commit()
     return db_diagram
 
 
@@ -180,6 +192,17 @@ def update_diagram(
 
     db.commit()
     db.refresh(db_diagram)
+    log_event(
+        db,
+        action="diagram_saved",
+        entity_type="diagram",
+        entity_name=db_diagram.name,
+        details={"diagram_id": db_diagram.id},
+        product_id=db_diagram.product_id,
+        diagram_id=db_diagram.id,
+        user_id=current_user.id,
+    )
+    db.commit()
     return db_diagram
 
 

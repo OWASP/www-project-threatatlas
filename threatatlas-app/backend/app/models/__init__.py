@@ -12,7 +12,14 @@ from app.models.product_collaborator import ProductCollaborator
 from app.models.oidc_provider import OIDCProviderConfig
 from app.models.group import Group, user_groups
 from app.models.scim_token import ScimToken
+from app.models.api_token import ApiToken
+from app.models.audit_event import AuditEvent
+from app.models.user_integration import UserIntegration
+from app.models.component_template import ComponentTemplate
+from app.models.component_template_link import ComponentTemplateThreat, ComponentTemplateMitigation
+from app.models.attack_technique_link import DiagramThreatAttackTechnique
 from app.models.enums import UserRole, CollaboratorRole
+from app.models.notification import Notification
 
 __all__ = [
     "User",
@@ -34,9 +41,17 @@ __all__ = [
     "Group",
     "user_groups",
     "ScimToken",
+    "ApiToken",
+    "AuditEvent",
+    "UserIntegration",
+    "ComponentTemplate",
+    "ComponentTemplateThreat",
+    "ComponentTemplateMitigation",
+    "DiagramThreatAttackTechnique",
     "UserRole",
     "CollaboratorRole",
     "AIConfig",
     "AIConversation",
     "AIMessage",
+    "Notification",
 ]

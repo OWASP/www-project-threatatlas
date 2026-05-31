@@ -80,30 +80,28 @@ function NodeTypeIcon({ type, className }: { type: NodeType; className?: string 
  * "<b>S3</b><br>Context analyzer" — we want just "S3".
  */
 function stripHtml(s: string): string {
-  // `&amp;` is decoded last; a second `&nbsp;` pass catches `&amp;nbsp;` → `&nbsp;` → space.
+  if (!s.includes('<') && !s.includes('&')) return s.trim();
+
+  // Decode XML entities that linkedom may leave encoded in attribute values.
   const decoded = s
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#160;/g, ' ')
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '\x00AMP\x00')   // protect & before other replacements
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, ' ')
-    .replace(/&#160;/g, ' ');
+    .replace(/&#160;/g, ' ')
+    .replace(/\x00AMP\x00/g, '&');
 
-  // Normalize known line-boundary tags to '\n', then strip all remaining tags.
-  const withLineBreaks = decoded
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/?(p|div|h[1-6]|li)\b[^>]*>/gi, '\n');
-  const text = withLineBreaks.replace(/<[^>]*>/g, '');
+  // Use a detached DOM div to reliably strip all HTML tags and nested content.
+  // Reading textContent never executes scripts, making this safe for untrusted input.
+  const div = document.createElement('div');
+  // eslint-disable-next-line no-unsanitized/property
+  div.innerHTML = decoded;
+  const text = (div.textContent ?? div.innerText ?? '').replace(/\s+/g, ' ');
 
-  const firstLine =
-    text
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter(Boolean)[0] ?? '';
-  return firstLine;
+  return text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)[0] ?? '';
 }
 
 /**

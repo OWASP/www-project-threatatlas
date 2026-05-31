@@ -67,6 +67,13 @@ class DiagramThreatUpdate(BaseModel):
     comments: str | None = None
     likelihood: int | None = None
     impact: int | None = None
+    acceptance_justification: str | None = None
+    acceptance_approver_id: int | None = None
+    acceptance_review_date: str | None = None
+    accepted_at: str | None = None
+    acceptance_review_status: str | None = None
+    acceptance_review_note: str | None = None
+    acceptance_reviewed_at: datetime | None = None
 
     @field_validator('likelihood', 'impact')
     @classmethod
@@ -84,6 +91,13 @@ class DiagramThreat(DiagramThreatBase):
     threat_id: int
     risk_score: int | None = None
     severity: str | None = None
+    acceptance_justification: str | None = None
+    acceptance_approver_id: int | None = None
+    acceptance_review_date: datetime | None = None
+    accepted_at: datetime | None = None
+    acceptance_review_status: str | None = None
+    acceptance_review_note: str | None = None
+    acceptance_reviewed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -96,5 +110,6 @@ class DiagramThreatWithDetails(DiagramThreat):
     """Schema for DiagramThreat with threat details."""
     threat: Threat
     model: Model | None = None
+    acceptance_approver_name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Release notes are kept in sync with the in-app changelog (`threatatlas-app/frontend/src/data/changelog.json`).
 
+## [0.7.0] - 2026-05-22
+
+### Added
+
+- Three-panel diagram editor: left tool/component sidebar, ReactFlow canvas, and a right-side Inspector + AI Analysis panel. The AI chat and element properties now live inline instead of as overlay sheets.
+- Component Library: 28 pre-built security components (AWS S3, PostgreSQL, Redis, Kafka, OAuth2, Docker, Kubernetes, Lambda, CI/CD Pipeline, and more) with curated Knowledge Base threats and mitigations per framework. Drag from the left panel to add to a diagram and get instant KB-backed threat proposals.
+- Component Threat Library management page: browse, view T&M relationships, edit (admin), and revert-to-original for predefined components. T&M linked to the KB as single source of truth, filtered by active framework.
+- Diagram templates: New Diagram wizard now offers 4 pre-built DFD starters — Web Application, Microservices, Mobile + API, and CI/CD Pipeline.
+- Right-click context menu on the diagram canvas: Copy, Duplicate, Paste, Select All, Delete, Add element at cursor position, and Set as AI Focus for targeted analysis.
+- Keyboard shortcuts: Ctrl/⌘+C (copy), Ctrl/⌘+V (paste), Ctrl/⌘+D (duplicate), Ctrl/⌘+A (select all), Delete/Backspace (delete selected), Escape (close menus).
+- AI Element Focus: pin specific diagram nodes for targeted AI analysis. Focused nodes get a blue ring; the AI panel shows a focus bar and the AI only analyzes selected elements.
+- Notification system: in-app bell with unread count badge. Triggered on: threat added, risk acceptance submitted, approval decision (approved/rejected), and collaborator invitation. Polls every 60 seconds.
+- Risk Acceptance Workflow: accepting a threat opens a formal dialog requiring justification text, optional approver (from user list), and optional review date. Approval/rejection is handled by the assignee via the new Approvals page.
+- Approvals dashboard: dedicated page where assigned approvers can review pending risk acceptances, add notes, approve or reject. Rejected acceptances revert the threat to 'identified'. Sidebar shows pending count badge.
+- Global search ⌘K / Ctrl+K: command palette searching products, diagrams, KB threats, and KB mitigations with keyboard navigation.
+- API Tokens: generate long-lived machine-to-machine tokens (ta_ prefix) in Settings → Integrations → Access Tokens for CI/CD pipelines.
+- JIRA integration: configure JIRA URL, email, and API token in Settings. 'Create JIRA Issue' button on threat cards pushes threats directly as JIRA issues.
+- CI/CD Security Gate endpoint: GET /api/products/{id}/security-status returns machine-readable JSON with configurable pass/fail thresholds. Settings → CI/CD shows platform-specific code snippets for GitHub Actions, GitLab CI, Azure DevOps, Jenkins, and Bitbucket with syntax highlighting and VCS logos.
+
+### Improved
+
+- Dashboard redesign: greeting header, 5-column KPI strip (Total Threats, Critical, High, Mitigated, Products at Risk), improved threat list with compact filter pills.
+- Product Details hub: 4-tab navigation (Overview, Threats, Mitigations, Analytics) with always-visible KPI strip. New Mitigations tab shows all mitigations in a filterable table.
+- Settings redesign: sidebar navigation (Team, SSO & SCIM, AI Model, Integrations, Audit Log) replacing horizontal tabs. Integrations tab has sub-tabs for Access Tokens, Connections (JIRA), and CI/CD.
+- Audit Log: replaced card-based timeline with a terminal-style log viewer (dark/light theme-aware). Used in Settings → Audit Log (global, admin-only).
+- New Diagram wizard now adds a Model setup step (framework selection, optional skip) after naming the diagram, navigating directly to canvas with the model ready.
+- AI thinking steps now show as a live log above the response — completed steps show a green checkmark, the current step shows animated dots.
+- AI confidence scoring: threat and mitigation proposals now include a confidence level (high/medium/low) shown as a colored pill on each proposal card.
+- Threat heat map overlay: toggle in the diagram toolbar colors nodes by their worst-severity threat (red=critical, orange=high, yellow=medium, green=low).
+- Incremental re-analysis: the AI chat shows banners for unanalyzed elements and newly added nodes since last save, with one-click targeted analysis.
+- Real-time collaboration: live cursor tracking (flow coordinates), diagram state sync (200ms debounce), auto-save after 3 seconds of inactivity with Unsaved/Auto-saved indicator.
+- Product owner field is now a user dropdown (pulled from user list) instead of free-text name + email fields.
+- Analytics: Risk Trend Over Time chart (per diagram, across versions) and Cross-Product Risk Breakdown (stacked bar by severity per product).
+
+### Fixed
+
+- Multi-framework AI analysis: approving a model proposal no longer incorrectly assigns threats from other frameworks to the wrong model.
+- WebSocket disconnect causing infinite receive loop that blocked the backend event loop — all other API requests would hang until restart.
+- Draw.io import: HTML tags (bold, font, style attributes) now stripped correctly from element labels using DOM-based parsing instead of regex.
+- Connector handle positions now recompute correctly after changing a node's type (process → datastore, etc.).
+- Audit log in ProductDetails and Settings was calling localStorage with the wrong key ('access_token' instead of 'token'), returning 401 and crashing with 'map is not a function'.
+
 ## [0.6.1] - 2026-05-10
 
 ### Added

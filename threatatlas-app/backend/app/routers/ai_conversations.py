@@ -19,9 +19,35 @@ from app.schemas.ai import (
     ProposalActionRequest,
 )
 from app.auth.dependencies import get_current_user
-from app.auth.permissions import require_standard_or_admin
+from app.auth.permissions import require_standard_or_admin, can_edit_product, PermissionDenied
 
 router = APIRouter(prefix="/ai-conversations", tags=["ai-conversations"])
+
+
+# Canonical instruction for a one-click, whole-diagram STRIDE analysis. The agent
+# already exposes propose_threat / propose_mitigation tools, so a directive prompt
+# makes it walk every element and emit reviewable draft proposals.
+DIAGRAM_ANALYSIS_PROMPT = (
+    "Perform a comprehensive threat model of this entire diagram. "
+    "For every element (process, data store, external entity, data flow, and trust "
+    "boundary), systematically work through the STRIDE categories (Spoofing, "
+    "Tampering, Repudiation, Information disclosure, Denial of service, Elevation "
+    "of privilege) and identify the threats that genuinely apply. For each threat "
+    "you find, call propose_threat, and where a control is warranted call "
+    "propose_mitigation linked to that threat. Prefer knowledge-base entries when "
+    "they fit. Do not invent elements that are not in the diagram. Finish with a "
+    "short summary of the most important risks."
+)
+
+
+class AnalyzeDiagramRequest(BaseModel):
+    diagram_id: int
+
+
+class AnalyzeDiagramResponse(BaseModel):
+    conversation_id: int
+    diagram_id: int
+    prompt: str
 
 
 def _assert_owner(conversation: AIConversation, user: UserModel) -> None:
@@ -65,6 +91,57 @@ def create_conversation(
     db.commit()
     db.refresh(conv)
     return conv
+
+
+@router.post("/analyze-diagram", response_model=AnalyzeDiagramResponse, status_code=status.HTTP_201_CREATED)
+def analyze_diagram(
+    body: AnalyzeDiagramRequest,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """One-click "analyze this diagram with AI".
+
+    Validates that the caller may edit the diagram and that an AI provider is
+    configured, then creates a conversation seeded for a full STRIDE analysis.
+    The client drives generation by POSTing the returned ``prompt`` to the
+    streaming ``messages`` endpoint, reusing the existing proposal/accept flow —
+    so threats are surfaced as draft suggestions the user approves or dismisses.
+    """
+    require_standard_or_admin(current_user)
+
+    from sqlalchemy.orm import joinedload
+    diagram = (
+        db.query(DiagramModel)
+        .options(joinedload(DiagramModel.product))
+        .filter(DiagramModel.id == body.diagram_id)
+        .first()
+    )
+    if not diagram:
+        raise HTTPException(status_code=404, detail="Diagram not found")
+    if not can_edit_product(current_user, diagram.product):
+        raise PermissionDenied("Not authorized to analyze this diagram")
+
+    from app.services.ai_service import get_active_config
+    if get_active_config(db) is None:
+        raise HTTPException(
+            status_code=400,
+            detail="AI is not configured. Ask an admin to set up the AI provider in Settings.",
+        )
+
+    conv = AIConversation(
+        diagram_id=body.diagram_id,
+        user_id=current_user.id,
+        title="AI Threat Analysis",
+    )
+    db.add(conv)
+    db.commit()
+    db.refresh(conv)
+
+    return AnalyzeDiagramResponse(
+        conversation_id=conv.id,
+        diagram_id=body.diagram_id,
+        prompt=DIAGRAM_ANALYSIS_PROMPT,
+    )
 
 
 @router.get("/{conversation_id}", response_model=ConversationWithMessages)

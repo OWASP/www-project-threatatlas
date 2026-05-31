@@ -12,6 +12,7 @@ from app.schemas.user import UserCreate, User
 from app.auth.password import verify_password
 from app.auth.jwt import create_access_token
 from app.auth.dependencies import get_current_user
+from app.auth.rate_limit import limiter
 from app.auth.secrets import decrypt_secret
 from app.config import settings
 
@@ -55,7 +56,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(login_data: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_db)):
     """Local login with email + password."""
     user = db.query(UserModel).filter(UserModel.email == login_data.email).first()
 

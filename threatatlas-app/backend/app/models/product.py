@@ -27,6 +27,7 @@ class Product(Base):
     business_area = Column(String(200), nullable=True)
     owner_name = Column(String(200), nullable=True)
     owner_email = Column(String(255), nullable=True)
+    jira_project_key = Column(String(50), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

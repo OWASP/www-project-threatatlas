@@ -2,13 +2,16 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { diagramThreatsApi, diagramMitigationsApi } from '@/lib/api';
+import { analyticsApi, diagramsApi, diagramVersionsApi, type PortfolioAnalytics } from '@/lib/api';
 import { toast } from 'sonner';
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Label } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Label, LineChart, Line, Legend } from 'recharts';
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Shield, AlertTriangle, Activity, Target, Layers, CheckCircle2, Grid3x3 } from 'lucide-react';
+import { Shield, AlertTriangle, Activity, Target, Layers, CheckCircle2, Grid3x3, TrendingUp, TrendingDown, Package, Clock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 function AnalyticsSkeleton() {
   return (
@@ -52,19 +55,21 @@ function AnalyticsSkeleton() {
 }
 
 export default function Analytics() {
-  const [threats, setThreats] = useState<any[]>([]);
-  const [mitigations, setMitigations] = useState<any[]>([]);
+  const [data, setData] = useState<PortfolioAnalytics | null>(null);
+  const [diagrams, setDiagrams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [threatRes, mitRes] = await Promise.all([
-          diagramThreatsApi.list(),
-          diagramMitigationsApi.list()
+        // Single server-side rollup for every metric; the diagram list is only
+        // needed for the per-diagram trend selector below.
+        const [portfolioRes, diagRes] = await Promise.all([
+          analyticsApi.portfolio(),
+          diagramsApi.list(),
         ]);
-        setThreats(threatRes.data);
-        setMitigations(mitRes.data);
+        setData(portfolioRes.data);
+        setDiagrams(diagRes.data);
       } catch (error) {
         console.error("Error fetching analytics data", error);
         toast.error('Failed to load analytics data');
@@ -75,54 +80,54 @@ export default function Analytics() {
     fetchData();
   }, []);
 
-  // ====== METRICS ======
-  const totalThreats = threats.length;
-  const mitigatedThreats = threats.filter(t => t.status === 'mitigated').length;
-  const criticalThreats = threats.filter(t => t.severity === 'critical').length;
-  const totalMitigations = mitigations.length;
-  const activeMitigations = mitigations.filter(m => m.status === 'implemented' || m.status === 'verified').length;
+  // ====== METRICS (all server-aggregated) ======
+  const totalThreats = data?.totals.threats ?? 0;
+  const criticalThreats = data?.threats_by_severity.critical ?? 0;
+  const totalMitigations = data?.totals.mitigations ?? 0;
+  const activeMitigations = (data?.mitigations_by_status.implemented ?? 0) + (data?.mitigations_by_status.verified ?? 0);
 
-  const mitigateRatio = totalThreats > 0 ? Math.round((mitigatedThreats / totalThreats) * 100) : 0;
+  const mitigateRatio = Math.round((data?.mitigation_ratio ?? 0) * 100);
+  const mitigatedThreats = Math.round((data?.mitigation_ratio ?? 0) * totalThreats);
   const activeRatio = totalMitigations > 0 ? Math.round((activeMitigations / totalMitigations) * 100) : 0;
+  const riskReduction = Math.round((data?.risk_reduction ?? 0) * 100);
+  const unmitigatedHighCritical = data?.unmitigated_high_critical ?? 0;
 
   // ====== CHART DATA ======
-  const threatStatusData = useMemo(() => [
-    { status: 'identified', count: threats.filter(t => t.status === 'identified').length, fill: 'var(--destructive)' },
-    { status: 'mitigated', count: threats.filter(t => t.status === 'mitigated').length, fill: 'var(--risk-low)' },
-    { status: 'accepted', count: threats.filter(t => t.status === 'accepted').length, fill: 'var(--muted-foreground)' },
-  ], [threats]);
+  const threatStatusData = useMemo(() => {
+    const s = data?.threats_by_status ?? {};
+    return [
+      { status: 'identified', count: s['identified'] ?? 0, fill: 'var(--destructive)' },
+      { status: 'mitigated', count: s['mitigated'] ?? 0, fill: 'var(--risk-low)' },
+      { status: 'accepted', count: s['accepted'] ?? 0, fill: 'var(--muted-foreground)' },
+    ];
+  }, [data]);
 
   const mitigationStatusData = useMemo(() => {
-    const data = [
-      { status: 'proposed', count: mitigations.filter(m => m.status === 'proposed').length, fill: 'var(--chart-4)' },
-      { status: 'implemented', count: mitigations.filter(m => m.status === 'implemented').length, fill: 'var(--chart-3)' },
-      { status: 'verified', count: mitigations.filter(m => m.status === 'verified').length, fill: 'var(--risk-low)' },
+    const s = data?.mitigations_by_status ?? {};
+    const arr = [
+      { status: 'proposed', count: s['proposed'] ?? 0, fill: 'var(--chart-4)' },
+      { status: 'implemented', count: s['implemented'] ?? 0, fill: 'var(--chart-3)' },
+      { status: 'verified', count: s['verified'] ?? 0, fill: 'var(--risk-low)' },
     ];
-    return data.some(d => d.count > 0) ? data : [];
-  }, [mitigations]);
+    return arr.some(d => d.count > 0) ? arr : [];
+  }, [data]);
 
-  const severityData = useMemo(() => [
-    { severity: 'critical', count: threats.filter(t => t.severity === 'critical').length, fill: 'var(--risk-critical)' },
-    { severity: 'high', count: threats.filter(t => t.severity === 'high').length, fill: 'var(--risk-high)' },
-    { severity: 'medium', count: threats.filter(t => t.severity === 'medium').length, fill: 'var(--risk-medium)' },
-    { severity: 'low', count: threats.filter(t => t.severity === 'low').length, fill: 'var(--risk-low)' },
-  ], [threats]);
+  const severityData = useMemo(() => {
+    const s = data?.threats_by_severity;
+    return [
+      { severity: 'critical', count: s?.critical ?? 0, fill: 'var(--risk-critical)' },
+      { severity: 'high', count: s?.high ?? 0, fill: 'var(--risk-high)' },
+      { severity: 'medium', count: s?.medium ?? 0, fill: 'var(--risk-medium)' },
+      { severity: 'low', count: s?.low ?? 0, fill: 'var(--risk-low)' },
+    ];
+  }, [data]);
 
-  const categoryData = useMemo(() => {
-    const cats: Record<string, number> = {};
-    threats.forEach(t => {
-      const c = t.threat?.category || 'Uncategorized';
-      cats[c] = (cats[c] || 0) + 1;
-    });
-    return Object.entries(cats)
-      .sort(([, countA], [, countB]) => countB - countA)
+  const categoryData = useMemo(() =>
+    (data?.threats_by_category ?? [])
       .slice(0, 5)
-      .map(([category, count], idx) => ({
-        category,
-        count,
-        fill: `var(--chart-${(idx % 5) + 1})`
-      }));
-  }, [threats]);
+      .map((c, idx) => ({ category: c.category, count: c.count, fill: `var(--chart-${(idx % 5) + 1})` })),
+    [data]
+  );
 
   // ====== CONFIGURATIONS ======
   const threatStatusConfig = {
@@ -169,7 +174,7 @@ export default function Analytics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalThreats}</div>
-            <p className="text-xs text-muted-foreground mt-1">Identified across all models</p>
+            <p className="text-xs text-muted-foreground mt-1">Across {data?.totals.products ?? 0} products</p>
           </CardContent>
         </Card>
 
@@ -196,21 +201,21 @@ export default function Analytics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{criticalThreats}</div>
-            <p className="text-xs text-muted-foreground mt-1">Requires immediate attention</p>
+            <p className="text-xs text-muted-foreground mt-1">{unmitigatedHighCritical} high/critical unmitigated</p>
           </CardContent>
         </Card>
 
         <Card className="animate-fadeInUp shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50" style={{ animationDelay: '180ms' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active Mitigations</CardTitle>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Risk Reduction</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
-              <Shield className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
+              <TrendingDown className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activeMitigations}</div>
-            <Progress value={activeRatio} className="h-1.5 mt-2 mb-1" />
-            <p className="text-xs text-muted-foreground mt-1">Out of {totalMitigations} mapped controls</p>
+            <div className="text-2xl font-bold">{riskReduction}%</div>
+            <Progress value={riskReduction} className="h-1.5 mt-2 mb-1" />
+            <p className="text-xs text-muted-foreground mt-1">{activeMitigations} active controls ({activeRatio}%)</p>
           </CardContent>
         </Card>
       </div>
@@ -339,28 +344,107 @@ export default function Analytics() {
 
       </div>
 
+      {/* Org-wide watchlists */}
+      <div className="grid gap-4 lg:grid-cols-2 animate-fadeInUp" style={{ animationDelay: '300ms' }}>
+        <TopRiskProducts products={data?.top_risk_products ?? []} />
+        <StaleDiagrams diagrams={data?.stale_diagrams ?? []} />
+      </div>
+
       {/* Risk Matrix */}
-      <RiskMatrix threats={threats} />
+      <RiskMatrix cells={data?.risk_matrix ?? []} />
+
+      {/* Risk Trend Over Time */}
+      <RiskTrend diagrams={diagrams} />
+
+      {/* Cross-Product Breakdown */}
+      <CrossProductBreakdown products={data?.by_product ?? []} />
     </div>
   );
 }
 
+// ── Top Risk Products ─────────────────────────────────────────────────────────
+function TopRiskProducts({ products }: { products: PortfolioAnalytics['top_risk_products'] }) {
+  return (
+    <Card className="shadow-sm border-border/60 rounded-xl">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <Target className="h-4 w-4" style={{ color: 'var(--risk-high)' }} />
+          Top Risk Products
+        </CardTitle>
+        <CardDescription className="text-sm">Most open high/critical threats without active mitigation</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {products.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground text-sm opacity-60">
+            <CheckCircle2 className="h-8 w-8 mb-2 opacity-50" />
+            <p>No products with unmitigated high-risk threats.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {products.map(p => (
+              <div key={p.product_id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="font-medium truncate" title={p.product_name}>{p.product_name}</span>
+                <Badge className="h-5 px-2 text-[10px] font-bold shrink-0" style={{ backgroundColor: 'var(--risk-high)', color: '#fff' }}>
+                  {p.open_high_critical} open
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Stale Diagrams ──────────────────────────────────────────────────────────────
+function StaleDiagrams({ diagrams }: { diagrams: PortfolioAnalytics['stale_diagrams'] }) {
+  return (
+    <Card className="shadow-sm border-border/60 rounded-xl">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          Stale Models
+        </CardTitle>
+        <CardDescription className="text-sm">Diagrams not updated recently — may need review</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {diagrams.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground text-sm opacity-60">
+            <CheckCircle2 className="h-8 w-8 mb-2 opacity-50" />
+            <p>All models are up to date.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {diagrams.map(d => (
+              <div key={d.diagram_id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="truncate">
+                  <span className="font-medium">{d.diagram_name}</span>
+                  <span className="text-muted-foreground"> · {d.product_name}</span>
+                </span>
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {format(new Date(d.last_updated), 'MMM d, yyyy')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Risk Matrix (Likelihood x Impact heatmap) ──
-function RiskMatrix({ threats }: { threats: any[] }) {
+function RiskMatrix({ cells }: { cells: PortfolioAnalytics['risk_matrix'] }) {
   const levels = [1, 2, 3, 4, 5];
   const levelLabels: Record<number, string> = { 1: 'Very Low', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Very High' };
 
   const matrix = useMemo(() => {
-    const m: Record<string, any[]> = {};
-    threats.forEach(t => {
-      if (t.likelihood != null && t.impact != null) {
-        const key = `${t.likelihood}-${t.impact}`;
-        if (!m[key]) m[key] = [];
-        m[key].push(t);
-      }
-    });
+    const m: Record<string, number> = {};
+    cells.forEach(c => { m[`${c.likelihood}-${c.impact}`] = c.count; });
     return m;
-  }, [threats]);
+  }, [cells]);
+
+  const totalScored = useMemo(() => cells.reduce((sum, c) => sum + c.count, 0), [cells]);
 
   // Returns inline style using CSS variables defined in index.css (same system as --chart-*)
   const getCellStyle = (likelihood: number, impact: number, filled: boolean): React.CSSProperties => {
@@ -376,8 +460,6 @@ function RiskMatrix({ threats }: { threats: any[] }) {
       : { backgroundColor: `var(--${varName}-muted)` };
   };
 
-  const threatsWithRisk = threats.filter(t => t.likelihood != null && t.impact != null);
-
   return (
     <Card className="animate-fadeInUp shadow-sm border-border/60 rounded-xl" style={{ animationDelay: '320ms' }}>
       <CardHeader className="pb-2">
@@ -386,11 +468,11 @@ function RiskMatrix({ threats }: { threats: any[] }) {
           Risk Matrix
         </CardTitle>
         <CardDescription className="text-sm">
-          Likelihood vs Impact heatmap ({threatsWithRisk.length} threats with risk scores)
+          Likelihood vs Impact heatmap ({totalScored} threats with risk scores)
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {threatsWithRisk.length === 0 ? (
+        {totalScored === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
             <Grid3x3 className="h-8 w-8 mb-2 opacity-50" />
             <p className="text-sm">No threats with risk assessments yet.</p>
@@ -434,8 +516,7 @@ function RiskMatrix({ threats }: { threats: any[] }) {
                     <div key={lik} className="flex gap-1">
                       {levels.map(imp => {
                         const key = `${lik}-${imp}`;
-                        const cellThreats = matrix[key] || [];
-                        const count = cellThreats.length;
+                        const count = matrix[key] || 0;
 
                         return (
                           <Tooltip key={key}>
@@ -458,16 +539,9 @@ function RiskMatrix({ threats }: { threats: any[] }) {
                               <p className="font-semibold text-xs mb-1">
                                 Likelihood: {levelLabels[lik]} / Impact: {levelLabels[imp]}
                               </p>
-                              {count === 0 ? (
-                                <p className="text-xs text-muted-foreground">No threats</p>
-                              ) : (
-                                <ul className="text-xs space-y-0.5">
-                                  {cellThreats.slice(0, 5).map((t: any) => (
-                                    <li key={t.id} className="truncate">- {t.threat?.name}</li>
-                                  ))}
-                                  {count > 5 && <li className="text-muted-foreground">+{count - 5} more</li>}
-                                </ul>
-                              )}
+                              <p className="text-xs text-muted-foreground">
+                                Risk score {lik * imp} · {count} threat{count !== 1 ? 's' : ''}
+                              </p>
                             </TooltipContent>
                           </Tooltip>
                         );
@@ -493,6 +567,215 @@ function RiskMatrix({ threats }: { threats: any[] }) {
             </div>
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Risk Trend Over Time ──────────────────────────────────────────────────────
+function RiskTrend({ diagrams }: { diagrams: any[] }) {
+  const [selectedDiagramId, setSelectedDiagramId] = useState<number | null>(null);
+  const [versions, setVersions] = useState<any[]>([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+
+  useEffect(() => {
+    if (diagrams.length > 0 && selectedDiagramId === null) {
+      setSelectedDiagramId(diagrams[0].id);
+    }
+  }, [diagrams]);
+
+  useEffect(() => {
+    if (!selectedDiagramId) return;
+    setLoadingVersions(true);
+    diagramVersionsApi.list(selectedDiagramId)
+      .then(res => setVersions([...res.data].reverse()))
+      .catch(() => toast.error('Failed to load version history'))
+      .finally(() => setLoadingVersions(false));
+  }, [selectedDiagramId]);
+
+  const trendData = useMemo(() =>
+    versions.map(v => ({
+      label: `v${v.version_number}`,
+      date: format(new Date(v.created_at), 'MMM d'),
+      threats: v.threat_count,
+      mitigations: v.mitigation_count,
+      risk: v.total_risk_score,
+    })),
+    [versions]
+  );
+
+  const trendConfig = {
+    threats: { label: 'Threats', color: 'var(--destructive)' },
+    mitigations: { label: 'Mitigations', color: 'var(--risk-low)' },
+  } satisfies ChartConfig;
+
+  return (
+    <Card className="animate-fadeInUp shadow-sm border-border/60 rounded-xl" style={{ animationDelay: '360ms' }}>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              Risk Trend Over Time
+            </CardTitle>
+            <CardDescription className="text-sm mt-1">
+              Threat and mitigation counts across diagram versions
+            </CardDescription>
+          </div>
+          <Select
+            value={selectedDiagramId ? selectedDiagramId.toString() : undefined}
+            onValueChange={v => setSelectedDiagramId(Number(v))}
+          >
+            <SelectTrigger className="w-[200px] h-8 text-xs">
+              <SelectValue placeholder="Select diagram" />
+            </SelectTrigger>
+            <SelectContent>
+              {diagrams.map(d => (
+                <SelectItem key={d.id} value={d.id.toString()} className="text-xs">
+                  {d.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loadingVersions ? (
+          <Skeleton className="h-[260px] w-full rounded-lg" />
+        ) : trendData.length < 2 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+            <TrendingUp className="h-8 w-8 mb-2 opacity-40" />
+            <p className="text-sm">Not enough versions to show a trend.</p>
+            <p className="text-xs mt-1">Save at least 2 diagram versions to see progress over time.</p>
+          </div>
+        ) : (
+          <ChartContainer config={trendConfig} className="h-[260px] w-full">
+            <LineChart data={trendData} margin={{ top: 8, right: 16, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tickFormatter={(val, i) => trendData[i]?.date ?? val}
+                tick={{ fontSize: 11 }}
+              />
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
+              <ChartTooltip
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = trendData.find(t => t.label === label);
+                  return (
+                    <div className="rounded-lg border bg-card px-3 py-2 shadow-md text-xs space-y-1">
+                      <p className="font-semibold">{label} — {d?.date}</p>
+                      {payload.map(p => (
+                        <p key={p.dataKey} style={{ color: p.color }}>
+                          {p.name}: <strong>{p.value as number}</strong>
+                        </p>
+                      ))}
+                      {d && <p className="text-muted-foreground">Risk score: {d.risk}</p>}
+                    </div>
+                  );
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+              <Line type="monotone" dataKey="threats" stroke="var(--destructive)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="mitigations" stroke="var(--risk-low)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ChartContainer>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Cross-Product Risk Breakdown ──────────────────────────────────────────────
+function CrossProductBreakdown({ products }: { products: PortfolioAnalytics['by_product'] }) {
+  const chartData = products.map(p => ({
+    name: p.product_name.length > 14 ? p.product_name.slice(0, 14) + '…' : p.product_name,
+    fullName: p.product_name,
+    critical: p.critical,
+    high: p.high,
+    medium: p.medium,
+    low: p.low,
+    unscored: p.unscored,
+    total: p.threats,
+    mitigations: p.mitigations,
+  }));
+
+  const barConfig = {
+    critical: { label: 'Critical', color: 'var(--risk-critical)' },
+    high: { label: 'High', color: 'var(--risk-high)' },
+    medium: { label: 'Medium', color: 'var(--risk-medium)' },
+    low: { label: 'Low', color: 'var(--risk-low)' },
+    unscored: { label: 'Unscored', color: 'var(--muted-foreground)' },
+  } satisfies ChartConfig;
+
+  if (products.length === 0) return null;
+
+  return (
+    <Card className="animate-fadeInUp shadow-sm border-border/60 rounded-xl" style={{ animationDelay: '400ms' }}>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <Package className="h-4 w-4 text-primary" />
+          Cross-Product Risk Breakdown
+        </CardTitle>
+        <CardDescription className="text-sm">Threat severity distribution across all products</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="h-[260px] w-full">
+          <ChartContainer config={barConfig} className="h-full w-full">
+            <BarChart data={chartData} margin={{ top: 8, right: 16, left: -20, bottom: 0 }}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
+              <ChartTooltip
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = chartData.find(c => c.name === label);
+                  return (
+                    <div className="rounded-lg border bg-card px-3 py-2 shadow-md text-xs space-y-1 min-w-[150px]">
+                      <p className="font-semibold">{d?.fullName ?? label}</p>
+                      {payload.map(p => p.value ? (
+                        <p key={p.dataKey} style={{ color: p.color ?? p.fill }}>
+                          {p.name}: <strong>{p.value as number}</strong>
+                        </p>
+                      ) : null)}
+                      <p className="text-muted-foreground border-t pt-1 mt-1">Total: {d?.total}</p>
+                    </div>
+                  );
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+              <Bar dataKey="critical" stackId="s" fill="var(--risk-critical)" radius={[0, 0, 0, 0]} maxBarSize={48} />
+              <Bar dataKey="high" stackId="s" fill="var(--risk-high)" maxBarSize={48} />
+              <Bar dataKey="medium" stackId="s" fill="var(--risk-medium)" maxBarSize={48} />
+              <Bar dataKey="low" stackId="s" fill="var(--risk-low)" maxBarSize={48} />
+              <Bar dataKey="unscored" stackId="s" fill="var(--muted-foreground)" radius={[4, 4, 0, 0]} maxBarSize={48} />
+            </BarChart>
+          </ChartContainer>
+        </div>
+
+        {/* Per-product stats table */}
+        <div className="space-y-2">
+          {chartData.map(p => {
+            const mitRatio = p.total > 0 ? Math.round((p.mitigations / p.total) * 100) : 0;
+            return (
+              <div key={p.fullName} className="flex items-center gap-3 text-xs">
+                <span className="w-32 shrink-0 font-medium truncate" title={p.fullName}>{p.fullName}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  {p.critical > 0 && <Badge className="h-4 px-1.5 text-[9px] font-bold" style={{ backgroundColor: 'var(--risk-critical)', color: '#fff' }}>{p.critical}C</Badge>}
+                  {p.high > 0 && <Badge className="h-4 px-1.5 text-[9px] font-bold" style={{ backgroundColor: 'var(--risk-high)', color: '#fff' }}>{p.high}H</Badge>}
+                  {p.medium > 0 && <Badge className="h-4 px-1.5 text-[9px] font-bold" style={{ backgroundColor: 'var(--risk-medium)', color: '#fff' }}>{p.medium}M</Badge>}
+                </div>
+                <div className="flex-1 flex items-center gap-2">
+                  <Progress value={mitRatio} className="h-1.5 flex-1" />
+                  <span className="text-muted-foreground whitespace-nowrap w-10 text-right">{mitRatio}%</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );

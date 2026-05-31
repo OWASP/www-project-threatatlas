@@ -13,8 +13,12 @@ import {
     PieChart,
     Notebook,
     Settings,
+    Package,
+    ShieldCheck,
+    Info,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { approvalsApi } from '@/lib/api';
 import PasswordChangeDialog from '@/components/PasswordChangeDialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -55,7 +59,9 @@ const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Products', href: '/products', icon: Box },
     { name: 'Analytics', href: '/analytics', icon: PieChart },
+    { name: 'Approvals', href: '/approvals', icon: ShieldCheck },
     { name: 'Knowledge Base', href: '/knowledge', icon: Library },
+    { name: 'Component Library', href: '/component-library', icon: Package },
 ];
 
 export default function AppSidebar() {
@@ -65,6 +71,25 @@ export default function AppSidebar() {
     const { theme, setTheme } = useTheme();
 
     const [logoutOpen, setLogoutOpen] = useState(false);
+    const [pendingApprovals, setPendingApprovals] = useState(0);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function fetchCount() {
+            try {
+                const res = await approvalsApi.getCount();
+                if (!cancelled) setPendingApprovals(res.data.count);
+            } catch {
+                // silently ignore — badge is non-critical
+            }
+        }
+        fetchCount();
+        const interval = setInterval(fetchCount, 60_000);
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
+    }, []);
 
     const cycleTheme = () => {
         if (theme === 'light') setTheme('dark');
@@ -140,6 +165,7 @@ export default function AppSidebar() {
                                     location.pathname === item.href ||
                                     (item.href === '/products' &&
                                         location.pathname.startsWith('/products'));
+                                const showBadge = item.href === '/approvals' && pendingApprovals > 0;
                                 return (
                                     <SidebarMenuItem key={item.name}>
                                         <SidebarMenuButton
@@ -149,9 +175,21 @@ export default function AppSidebar() {
                                             tooltip={item.name}
                                         >
                                             <Link to={item.href} className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
-                                                <item.icon className="shrink-0 h-4 w-4" />
+                                                <div className="relative shrink-0">
+                                                    <item.icon className="h-4 w-4" />
+                                                    {showBadge && isCollapsed && (
+                                                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white leading-none">
+                                                            {pendingApprovals > 9 ? '9+' : pendingApprovals}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 {!isCollapsed && (
-                                                    <span className="ml-2.5 text-sm">{item.name}</span>
+                                                    <span className="ml-2.5 text-sm flex-1">{item.name}</span>
+                                                )}
+                                                {!isCollapsed && showBadge && (
+                                                    <span className="ml-auto inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-amber-500 text-white text-[11px] font-bold leading-none">
+                                                        {pendingApprovals > 99 ? '99+' : pendingApprovals}
+                                                    </span>
                                                 )}
                                             </Link>
                                         </SidebarMenuButton>
@@ -190,7 +228,7 @@ export default function AppSidebar() {
                     </SidebarGroup>
                 )}
 
-                {/* Changelog above footer */}
+                {/* Changelog + About above footer */}
                 <SidebarGroup className="mt-auto">
                     <SidebarGroupContent>
                         <SidebarMenu className="space-y-0.5">
@@ -204,6 +242,19 @@ export default function AppSidebar() {
                                     <Link to="/changelog" className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
                                         <Notebook className="shrink-0 h-4 w-4" />
                                         {!isCollapsed && <span className="ml-2.5 text-sm">Changelog</span>}
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={location.pathname === '/about'}
+                                    className={navButtonClass}
+                                    tooltip="About"
+                                >
+                                    <Link to="/about" className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
+                                        <Info className="shrink-0 h-4 w-4" />
+                                        {!isCollapsed && <span className="ml-2.5 text-sm">About</span>}
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>

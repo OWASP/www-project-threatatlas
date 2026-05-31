@@ -27,6 +27,7 @@ export interface Proposal {
   framework_id?: number;
   framework_name?: string;
   reasoning?: string;
+  confidence?: 'low' | 'medium' | 'high';
   for_threat_proposal_id?: string;
   likelihood?: number;
   impact?: number;
@@ -66,6 +67,7 @@ export function useAIChat({ diagramId, activeModelId, frameworkId, onModelCreate
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
   const [thinkingStep, setThinkingStep] = useState('');
+  const [thinkingHistory, setThinkingHistory] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   // Tracks a model created mid-conversation so subsequent messages use the right model_id
@@ -75,6 +77,13 @@ export function useAIChat({ diagramId, activeModelId, frameworkId, onModelCreate
 
   const effectiveModelId = createdModelId ?? activeModelId;
   const effectiveFrameworkId = createdFrameworkId ?? frameworkId;
+
+  // When user manually switches the model selector, clear any AI-created override
+  // so the user's explicit selection always takes precedence.
+  useEffect(() => {
+    setCreatedModelId(null);
+    setCreatedFrameworkId(null);
+  }, [activeModelId]);
 
   // Load conversations when diagram changes
   useEffect(() => {
@@ -146,6 +155,7 @@ export function useAIChat({ diagramId, activeModelId, frameworkId, onModelCreate
     setMessages((prev) => [...prev, tempUserMsg]);
     setIsStreaming(true);
     setStreamingContent('');
+    setThinkingHistory([]);
 
     abortRef.current = new AbortController();
 
@@ -190,6 +200,10 @@ export function useAIChat({ diagramId, activeModelId, frameworkId, onModelCreate
             const data = JSON.parse(line.slice(6));
             if (data.thinking) {
               setThinkingStep(data.thinking);
+              setThinkingHistory(prev => {
+                const last = prev[prev.length - 1];
+                return last === data.thinking ? prev : [...prev, data.thinking];
+              });
             } else if (data.delta) {
               setThinkingStep('');
               accumulatedText += data.delta;
@@ -408,6 +422,7 @@ export function useAIChat({ diagramId, activeModelId, frameworkId, onModelCreate
     messages,
     streamingContent,
     thinkingStep,
+    thinkingHistory,
     isStreaming,
     isLoading,
     pendingCount,

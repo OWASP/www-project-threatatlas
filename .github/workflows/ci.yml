@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  # ── Backend tests ─────────────────────────────────────────────────────────────
+  backend-tests:
+    name: Backend Tests (pytest)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: threatatlas
+          POSTGRES_PASSWORD: threatatlas_dev
+          POSTGRES_DB: threatatlas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U threatatlas"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: threatatlas-app/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PDM
+        run: pip install pdm
+
+      - name: Install dependencies
+        run: pdm install --dev
+
+      - name: Run tests
+        env:
+          TEST_DATABASE_URL: postgresql://threatatlas:threatatlas_dev@localhost:5432/threatatlas_test
+        run: pdm run pytest tests/ -v --tb=short
+
+  # ── Frontend tests ────────────────────────────────────────────────────────────
+  frontend-tests:
+    name: Frontend Tests (vitest)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: threatatlas-app/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test

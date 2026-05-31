@@ -39,9 +39,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertTriangle, Shield, ExternalLink, Plus, Trash2, Search, X, MessageSquare, Target } from 'lucide-react';
+import { AlertTriangle, Shield, ExternalLink, Plus, Trash2, Search, X, MessageSquare, Target, CalendarClock, UserCheck, FileText } from 'lucide-react';
 import { RiskSelector } from '@/components/RiskSelector';
 import { diagramMitigationsApi, mitigationsApi, frameworksApi } from '@/lib/api';
+import { AcceptRiskDialog } from '@/components/AcceptRiskDialog';
 import { getSeverity, getSeverityClasses, getSeverityVariant, getStatusClasses } from '@/lib/risk';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -86,8 +87,9 @@ interface ThreatDetailsSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedItem: any;
+  productId?: number;
   itemType: 'threat' | 'mitigation' | null;
-  onUpdateStatus: (status: string) => void;
+  onUpdateStatus: (status: string, acceptanceData?: { justification: string; approver_id?: number; review_date?: string }) => void;
   onUpdateNotes: (comments: string) => void;
   onNavigateToDiagram: (item: any) => void;
   onUpdateRisk?: (threatId: number, data: { likelihood?: number; impact?: number }) => void;
@@ -99,6 +101,7 @@ export default function ThreatDetailsSheet({
   onOpenChange,
   selectedItem,
   itemType,
+  productId,
   onUpdateStatus,
   onUpdateNotes,
   onNavigateToDiagram,
@@ -120,6 +123,7 @@ export default function ThreatDetailsSheet({
   const [activeTab, setActiveTab] = useState('details');
   const [localLikelihood, setLocalLikelihood] = useState<number | null>(null);
   const [localImpact, setLocalImpact] = useState<number | null>(null);
+  const [acceptRiskOpen, setAcceptRiskOpen] = useState(false);
 
   useEffect(() => {
     if (selectedItem) {
@@ -393,7 +397,16 @@ export default function ThreatDetailsSheet({
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">STATUS</p>
                     {canWrite ? (
-                      <Select value={selectedItem.status} onValueChange={onUpdateStatus}>
+                      <Select
+                        value={selectedItem.status}
+                        onValueChange={(val) => {
+                          if (itemType === 'threat' && val === 'accepted' && selectedItem.status !== 'accepted') {
+                            setAcceptRiskOpen(true);
+                          } else {
+                            onUpdateStatus(val);
+                          }
+                        }}
+                      >
                         <SelectTrigger className="h-9 text-sm rounded-lg w-48">
                           <SelectValue />
                         </SelectTrigger>
@@ -466,6 +479,45 @@ export default function ThreatDetailsSheet({
                     <p className="text-[11px] text-muted-foreground">
                       {localMitigations.filter(m => m.status === 'implemented' || m.status === 'verified').length} of {localMitigations.length} implemented or verified
                     </p>
+                  </div>
+                )}
+
+                {/* Acceptance details — only shown when status is accepted */}
+                {itemType === 'threat' && selectedItem.status === 'accepted' && selectedItem.acceptance_justification && (
+                  <div className="rounded-xl border px-4 py-3.5 space-y-3" style={{ borderColor: 'color-mix(in srgb, var(--muted-foreground) 20%, transparent)', backgroundColor: 'color-mix(in srgb, var(--muted-foreground) 5%, transparent)' }}>
+                    <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Risk Acceptance Details</p>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <FileText className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                        <div>
+                          <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">Justification</p>
+                          <p className="text-xs leading-relaxed">{selectedItem.acceptance_justification}</p>
+                        </div>
+                      </div>
+                      {selectedItem.acceptance_approver_name && (
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">Approver</p>
+                            <p className="text-xs">{selectedItem.acceptance_approver_name}</p>
+                          </div>
+                        </div>
+                      )}
+                      {selectedItem.acceptance_review_date && (
+                        <div className="flex items-center gap-2">
+                          <CalendarClock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">Review Date</p>
+                            <p className="text-xs">{new Date(selectedItem.acceptance_review_date).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                      )}
+                      {selectedItem.accepted_at && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Accepted on {new Date(selectedItem.accepted_at).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
               </TabsContent>
@@ -741,6 +793,22 @@ export default function ThreatDetailsSheet({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Accept Risk Dialog */}
+      {selectedItem && itemType === 'threat' && (
+        <AcceptRiskDialog
+          open={acceptRiskOpen}
+          threatName={selectedItem.threat?.name ?? ''}
+          diagramThreatId={selectedItem.id}
+          diagramId={selectedItem.diagram_id}
+          productId={productId ?? selectedItem.diagram?.product_id ?? selectedItem.product_id ?? 0}
+          onConfirm={(data) => {
+            setAcceptRiskOpen(false);
+            onUpdateStatus('accepted', data);
+          }}
+          onCancel={() => setAcceptRiskOpen(false)}
+        />
+      )}
     </>
   );
 }

@@ -87,6 +87,19 @@ const getNodeStyles = (type: string): NodeStyle => {
   return baseStyle[type] || baseStyle.process;
 };
 
+const HEAT_COLORS: Record<string, string> = {
+  critical: '#ef4444',
+  high: '#f97316',
+  medium: '#eab308',
+  low: '#22c55e',
+};
+
+function getHeatmapGlow(heatmapEnabled: boolean, threatCount: number, maxSeverity?: string): React.CSSProperties {
+  if (!heatmapEnabled || threatCount === 0) return {};
+  const color = HEAT_COLORS[maxSeverity ?? 'low'] ?? HEAT_COLORS.low;
+  return { boxShadow: `0 0 0 2px ${color}, 0 0 12px 2px ${color}55` };
+}
+
 function DiagramNode({ data, selected }: NodeProps) {
   const nodeType = (data.type as string) || 'process';
   const style = getNodeStyles(nodeType);
@@ -94,6 +107,10 @@ function DiagramNode({ data, selected }: NodeProps) {
   const threatCount = (data.threatCount as number) || 0;
   const mitigationCount = (data.mitigationCount as number) || 0;
   const isDropTarget = (data.isDropTarget as boolean) || false;
+  const heatmapEnabled = (data.heatmapEnabled as boolean) || false;
+  const maxSeverity = data.maxSeverity as string | undefined;
+  const aiFocused = (data.aiFocused as boolean) || false;
+  const heatGlow = getHeatmapGlow(heatmapEnabled, threatCount, maxSeverity);
 
   // Process - Circle (DFD standard)
   if (style.shape === 'circle') {
@@ -153,9 +170,10 @@ function DiagramNode({ data, selected }: NodeProps) {
               'flex flex-col items-center justify-center rounded-full border-2 shadow-lg transition-all duration-200',
               'w-24 h-24 p-3',
               style.border,
-              selected && 'ring-2 ring-primary/60 ring-offset-2 shadow-xl scale-110'
+              selected && 'ring-2 ring-primary/60 ring-offset-2 shadow-xl scale-110',
+              aiFocused && !selected && 'ring-2 ring-blue-500 ring-offset-2'
             )}
-            style={style.bg as React.CSSProperties}
+            style={{ ...(style.bg as React.CSSProperties), ...heatGlow }}
           >
             <Icon className="h-5 w-5 mb-1" style={style.iconColor as React.CSSProperties} />
             <div className="font-medium text-xs text-center leading-tight" style={style.textColor as React.CSSProperties}>
@@ -231,7 +249,12 @@ function DiagramNode({ data, selected }: NodeProps) {
               ...(selected && {
                 outline: '2px solid var(--element-datastore)',
                 outlineOffset: '2px'
-              })
+              }),
+              ...(aiFocused && !selected && {
+                outline: '2px solid #3b82f6',
+                outlineOffset: '2px'
+              }),
+              ...heatGlow,
             }}
           >
             <div className="flex items-center gap-2">
@@ -305,11 +328,13 @@ function DiagramNode({ data, selected }: NodeProps) {
           <div
             className={cn(
               'px-4 py-3 border-2 shadow-lg transition-all duration-200 min-w-[120px]',
-              selected && 'ring-2 ring-[color:var(--element-external)] ring-offset-2 shadow-xl scale-105'
+              selected && 'ring-2 ring-[color:var(--element-external)] ring-offset-2 shadow-xl scale-105',
+              aiFocused && !selected && 'ring-2 ring-blue-500 ring-offset-2'
             )}
             style={{
               ...style.bg,
               borderColor: style.borderColor,
+              ...heatGlow,
             }}
           >
             <div className="flex items-center gap-2">
@@ -381,7 +406,8 @@ function DiagramNode({ data, selected }: NodeProps) {
           className={cn(
             'w-full h-full border-2 rounded-lg transition-all duration-150 p-4',
             isDropTarget ? 'border-solid ring-2 ring-primary/40 ring-offset-1' : 'border-dashed',
-            selected && !isDropTarget && 'ring-2 ring-stone-400 ring-offset-2'
+            selected && !isDropTarget && 'ring-2 ring-stone-400 ring-offset-2',
+            aiFocused && !selected && !isDropTarget && 'ring-2 ring-blue-500 ring-offset-2'
           )}
           style={{
             minWidth: '200px',

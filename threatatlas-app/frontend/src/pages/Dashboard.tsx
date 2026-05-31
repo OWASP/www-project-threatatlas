@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { diagramThreatsApi, diagramMitigationsApi, diagramsApi, productsApi, modelsApi, frameworksApi } from '@/lib/api';
+import { diagramThreatsApi, diagramMitigationsApi, diagramsApi, productsApi, modelsApi, frameworksApi, jiraApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,10 +23,12 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from '@/components/ui/pagination';
-import { Search, AlertTriangle, TrendingUp, CheckCircle2, Activity, Box, Grid3x3 } from 'lucide-react';
+import { Search, AlertTriangle, TrendingUp, CheckCircle2, Activity, Box, Grid3x3, Shield, Package, ChevronRight, ArrowRight, Flame } from 'lucide-react';
 import ThreatDetailsSheet from '@/components/ThreatDetailsSheet';
 import ThreatCard from '@/components/ThreatCard';
+import AuditTerminal from '@/components/AuditTerminal';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DiagramThreat {
   id: number;
@@ -125,6 +127,7 @@ function DashboardSkeleton() {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [threats, setThreats] = useState<DiagramThreat[]>([]);
   const [mitigations, setMitigations] = useState<DiagramMitigation[]>([]);
   const [diagrams, setDiagrams] = useState<any[]>([]);
@@ -143,9 +146,17 @@ export default function Dashboard() {
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [jiraConfigured, setJiraConfigured] = useState(false);
+  const [jiraGlobalProjectKey, setJiraGlobalProjectKey] = useState<string | null>(null);
 
   useEffect(() => {
     loadData(true);
+    jiraApi.get()
+      .then(r => {
+        setJiraConfigured(r.data.configured === true);
+        setJiraGlobalProjectKey(r.data.jira_project_key || null);
+      })
+      .catch(() => {});
   }, []);
 
   const loadData = async (showLoading = false) => {
@@ -256,11 +267,18 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpdateStatus = async (status: string) => {
+  const handleUpdateStatus = async (status: string, acceptanceData?: { justification: string; approver_id?: number; review_date?: string }) => {
     if (!selectedItem) return;
     try {
       setSelectedItem((prev: any) => prev ? { ...prev, status } : null);
-      await diagramThreatsApi.update(selectedItem.id, { status });
+      await diagramThreatsApi.update(selectedItem.id, {
+        status,
+        ...(acceptanceData ? {
+          acceptance_justification: acceptanceData.justification,
+          acceptance_approver_id: acceptanceData.approver_id ?? null,
+          acceptance_review_date: acceptanceData.review_date ?? null,
+        } : {}),
+      });
       await loadData();
       toast.success(`Status updated to ${status}`);
     } catch (error) {
@@ -356,185 +374,199 @@ export default function Dashboard() {
     return pages;
   };
 
+
+  // Products summary for "at risk" section
+  const productThreatCounts = products.map(p => {
+    const pDiagrams = diagrams.filter(d => d.product_id === p.id);
+    const pDiagramIds = new Set(pDiagrams.map(d => d.id));
+    const pThreats = threats.filter(t => pDiagramIds.has(t.diagram_id));
+    return {
+      id: p.id, name: p.name,
+      total: pThreats.length,
+      critical: pThreats.filter(t => t.severity === 'critical').length,
+      high: pThreats.filter(t => t.severity === 'high').length,
+    };
+  }).filter(p => p.total > 0).sort((a, b) => b.critical - a.critical || b.high - a.high).slice(0, 5);
+
+  const displayName = user?.full_name || user?.username || user?.email || 'there';
+  const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
+
   return (
-    <div className="flex-1 space-y-6 mx-auto p-4">
-      {/* Stats Cards */}
-      <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat, index) => (
-          <Card
-            key={stat.title}
-            className="animate-fadeInUp hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl border-border/60 group cursor-default py-0"
-            style={{ animationDelay: `${index * 80}ms` }}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2.5 pb-1.5">
-              <CardTitle className="text-xs font-bold text-muted-foreground tracking-wider">{stat.title.toUpperCase()}</CardTitle>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:scale-105" style={{ backgroundColor: stat.iconBg }}>
-                <stat.icon className="h-4 w-4 transition-transform duration-300 group-hover:rotate-12" style={{ color: stat.iconColor }} />
+    <div className="flex-1 space-y-5 p-4 md:p-6 lg:p-8 animate-fadeIn">
+
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{greeting}, {displayName.split(' ')[0]} 👋</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {products.length} product{products.length !== 1 ? 's' : ''} · {threats.length} threats · {mitigations.length} mitigations
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => navigate('/products')}>
+            <Package className="h-3.5 w-3.5 mr-1.5" />Products
+          </Button>
+          <Button size="sm" onClick={() => navigate('/diagrams')}>
+            <Grid3x3 className="h-3.5 w-3.5 mr-1.5" />New Diagram
+          </Button>
+        </div>
+      </div>
+
+      {/* ── KPI strip (5 cards) ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {/* 4 metric cards */}
+        {[
+          { label: 'Total Threats', value: threats.length, sub: `${identifiedCount} active`, color: 'text-foreground', bg: 'bg-muted/40', icon: AlertTriangle, iconColor: 'var(--risk-high)' },
+          { label: 'Critical', value: riskStats.critical, sub: riskStats.critical > 0 ? 'Immediate action' : 'None outstanding', color: riskStats.critical > 0 ? 'text-red-600' : 'text-muted-foreground', bg: riskStats.critical > 0 ? 'bg-red-500/8' : 'bg-muted/40', icon: Flame, iconColor: 'var(--risk-critical)' },
+          { label: 'High Risk', value: riskStats.high, sub: riskStats.high > 0 ? 'Priority attention' : 'None outstanding', color: riskStats.high > 0 ? 'text-orange-600' : 'text-muted-foreground', bg: riskStats.high > 0 ? 'bg-orange-500/8' : 'bg-muted/40', icon: TrendingUp, iconColor: 'var(--risk-high)' },
+          { label: 'Mitigated', value: mitigatedCount, sub: `${coveragePercent}% coverage`, color: 'text-emerald-600', bg: 'bg-emerald-500/8', icon: CheckCircle2, iconColor: 'var(--risk-low)', progress: coveragePercent },
+        ].map(({ label, value, sub, color, bg, icon: Icon, iconColor, progress }) => (
+          <Card key={label} className={cn('rounded-xl border-border/60 shadow-xs', bg)}>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</p>
+                <Icon className="h-3.5 w-3.5" style={{ color: iconColor }} />
               </div>
-            </CardHeader>
-            <CardContent className="pb-2.5 pt-0">
-              <div className="text-2xl font-bold tracking-tight leading-none mb-0.5">{stat.value}</div>
-              <p className="text-[11px] text-muted-foreground mb-1 font-medium">{stat.description}</p>
-              {'showProgress' in stat && stat.showProgress && (
-                <Progress value={stat.progressValue} className="h-1.5 mb-1.5" />
-              )}
-              <div role="status" className="text-[11px] font-semibold flex items-center gap-1 leading-tight" style={{ color: stat.trendPositive ? 'var(--risk-low)' : 'var(--risk-high)' }}>
-                {stat.trend}
-              </div>
+              <p className={cn('text-2xl font-bold', color)}>{value}</p>
+              {progress !== undefined && <Progress value={progress} className="h-1 mt-1.5 mb-0.5" />}
+              <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>
             </CardContent>
           </Card>
         ))}
-      </div>
 
-      {/* Filters */}
-      <div className="animate-fadeInUp flex flex-col md:flex-row md:items-center gap-2" style={{ animationDelay: '200ms' }}>
-        <div className="relative group flex-1">
-          <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-          <Input
-            placeholder="Search threats..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-9 w-full rounded-lg border-border/60 focus:border-primary/50 transition-all"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full md:w-40 h-9 rounded-lg border-border/60 hover:border-primary/30 transition-all">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="identified">Identified</SelectItem>
-            <SelectItem value="mitigated">Mitigated</SelectItem>
-            <SelectItem value="accepted">Accepted</SelectItem>
-            <SelectItem value="proposed">Proposed</SelectItem>
-            <SelectItem value="implemented">Implemented</SelectItem>
-            <SelectItem value="verified">Verified</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="flex gap-1.5 flex-wrap">
-          {([
-            { key: 'all' as const, label: 'All', dotColor: '', activeStyle: { backgroundColor: 'var(--foreground)', color: 'var(--background)', borderColor: 'var(--foreground)' }, hoverStyle: {} },
-            { key: 'critical' as const, label: `Critical (${riskStats.critical})`, dotColor: 'var(--risk-critical)', activeStyle: { backgroundColor: 'var(--risk-critical-muted)', borderColor: 'color-mix(in srgb, var(--pomegranate-600) 40%, transparent)', color: 'var(--risk-critical)' }, hoverStyle: { backgroundColor: 'var(--risk-critical-muted)' } },
-            { key: 'high' as const, label: `High (${riskStats.high})`, dotColor: 'var(--risk-high)', activeStyle: { backgroundColor: 'var(--risk-high-muted)', borderColor: 'color-mix(in srgb, var(--pomegranate-400) 40%, transparent)', color: 'var(--risk-high)' }, hoverStyle: { backgroundColor: 'var(--risk-high-muted)' } },
-            { key: 'medium' as const, label: `Medium (${riskStats.medium})`, dotColor: 'var(--risk-medium)', activeStyle: { backgroundColor: 'var(--risk-medium-muted)', borderColor: 'color-mix(in srgb, var(--lemon-500) 40%, transparent)', color: 'var(--risk-medium)' }, hoverStyle: { backgroundColor: 'var(--risk-medium-muted)' } },
-            { key: 'low' as const, label: `Low (${riskStats.low})`, dotColor: 'var(--risk-low)', activeStyle: { backgroundColor: 'var(--risk-low-muted)', borderColor: 'color-mix(in srgb, var(--matcha-600) 35%, transparent)', color: 'var(--risk-low)' }, hoverStyle: { backgroundColor: 'var(--risk-low-muted)' } },
-          ]).map((sev) => (
-            <Button
-              key={sev.key}
-              variant="outline"
-              size="sm"
-              onClick={() => setSeverityFilter(sev.key)}
-              className="h-8 px-2.5 rounded-lg transition-all shadow-sm hover:shadow gap-1.5 text-xs"
-              style={severityFilter === sev.key ? sev.activeStyle : {}}
-            >
-              {sev.dotColor && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: sev.dotColor }} />}
-              {sev.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      {/* Threats List */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-medium flex items-center gap-2.5">
-            <AlertTriangle className="h-5 w-5" style={{ color: 'var(--risk-high)' }} />
-            Threats & Mitigations ({filteredThreats.length})
-          </h2>
-          {filteredThreats.length > 0 && (
-            <div className="text-sm text-muted-foreground font-medium">
-              Showing {startIndex + 1}-{Math.min(endIndex, filteredThreats.length)} of {filteredThreats.length}
+        {/* 5th card: Products at Risk */}
+        <Card className="rounded-xl border-border/60 shadow-xs bg-muted/40 row-span-1">
+          <CardContent className="pt-3 pb-2">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">At Risk</p>
+              <Shield className="h-3.5 w-3.5 text-destructive" />
             </div>
-          )}
+            {productThreatCounts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">All clear</p>
+            ) : (
+              <div className="space-y-1">
+                {productThreatCounts.slice(0, 3).map(p => (
+                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)}
+                    className="w-full flex items-center gap-1.5 py-0.5 hover:text-primary transition-colors text-left group">
+                    <span className="text-xs font-medium truncate flex-1 group-hover:text-primary">{p.name}</span>
+                    <div className="flex gap-0.5 shrink-0">
+                      {p.critical > 0 && <span className="text-[8px] font-bold px-1 rounded" style={{ backgroundColor: 'var(--risk-critical-muted)', color: 'var(--risk-critical)' }}>{p.critical}C</span>}
+                      {p.high > 0 && <span className="text-[8px] font-bold px-1 rounded" style={{ backgroundColor: 'var(--risk-high-muted)', color: 'var(--risk-high)' }}>{p.high}H</span>}
+                    </div>
+                  </button>
+                ))}
+                {productThreatCounts.length > 3 && (
+                  <p className="text-[10px] text-muted-foreground">+{productThreatCounts.length - 3} more</p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Threats list ── */}
+      <div className="space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-2">
+          <h2 className="text-base font-semibold flex items-center gap-2 shrink-0">
+            <AlertTriangle className="h-4.5 w-4.5" style={{ color: 'var(--risk-high)' }} />
+            All Threats
+            <span className="text-sm font-normal text-muted-foreground">({filteredThreats.length})</span>
+          </h2>
+          <div className="flex flex-1 gap-2 flex-wrap">
+            <div className="relative flex-1 min-w-[160px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Search threats…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-8 text-sm" />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="identified">Identified</SelectItem>
+                <SelectItem value="mitigated">Mitigated</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex gap-1">
+              {(['all', 'critical', 'high', 'medium', 'low'] as const).map(sev => (
+                <button key={sev} onClick={() => setSeverityFilter(sev)}
+                  className={cn('h-8 px-2.5 text-xs rounded-lg border transition-colors capitalize font-medium',
+                    severityFilter === sev ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
+                  )}>
+                  {sev === 'all' ? 'All' : `${sev.slice(0,3).toUpperCase()} (${riskStats[sev]})`}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-3">
-          {filteredThreats.length === 0 ? (
-            <Card className="border-dashed border-2 rounded-xl">
-              <CardContent className="flex flex-col items-center justify-center p-12">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-3 shadow-sm" style={{ background: 'var(--risk-high-muted)' }}>
-                  <AlertTriangle className="h-8 w-8" style={{ color: 'var(--risk-high)' }} />
-                </div>
-                <h3 className="text-lg font-medium mb-1.5">No threats found</h3>
-                <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
-                  Start by creating diagrams and attaching threats to elements.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              {paginatedThreats.map((threat, index) => {
-                const linkedMitigations = getMitigationsForThreat(threat);
-                const { productName, diagramName } = getProductAndDiagramNames(threat);
-                const { modelName, frameworkName } = getModelInfo(threat);
+        {filteredThreats.length === 0 ? (
+          <Card className="border-dashed border-2 rounded-xl">
+            <CardContent className="flex flex-col items-center justify-center p-12">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-3" style={{ background: 'var(--risk-high-muted)' }}>
+                <AlertTriangle className="h-8 w-8" style={{ color: 'var(--risk-high)' }} />
+              </div>
+              <h3 className="text-lg font-medium mb-1">No threats found</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-sm">
+                {searchTerm || statusFilter !== 'all' || severityFilter !== 'all' ? 'Try adjusting your filters.' : 'No threats have been modeled yet. Open a diagram and run an AI analysis.'}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="space-y-2.5">
+              {paginatedThreats.map((threat, i) => {
+                const linkedMits = mitigations.filter(m => m.diagram_id === threat.diagram_id && m.threat_id === threat.id);
+                const { diagramName, productName } = getProductAndDiagramNames(threat);
+                // Resolve effective Jira project key: product-level → global fallback
+                const diagram = diagrams.find(d => d.id === threat.diagram_id);
+                const threatProduct = diagram ? products.find((p: any) => p.id === diagram.product_id) : null;
+                const effectiveJiraProjectKey = (threatProduct as any)?.jira_project_key ?? jiraGlobalProjectKey;
 
                 return (
                   <ThreatCard
                     key={threat.id}
-                    threat={threat}
-                    linkedMitigations={linkedMitigations}
-                    index={index}
-                    onOpen={() => handleOpenThreat(threat)}
+                    threat={threat as any}
+                    linkedMitigations={linkedMits as any}
+                    index={i}
+                    jiraConfigured={jiraConfigured}
+                    jiraProjectKey={effectiveJiraProjectKey}
+                    onOpen={() => { setSelectedItem({ ...threat, linkedMitigations: linkedMits }); setSheetOpen(true); }}
                     onNavigateToDiagram={() => navigateToDiagram(threat)}
                     contextItems={[
                       { icon: <Box className="h-3 w-3" />, label: productName },
                       { icon: <Grid3x3 className="h-3 w-3" />, label: diagramName },
-                      ...(modelName ? [{ icon: <Activity className="h-3 w-3" />, label: modelName }] : []),
-                      { icon: <Activity className="h-3 w-3" />, label: frameworkName },
                     ]}
                   />
                 );
               })}
+            </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-2">
-                  <p className="text-sm text-muted-foreground font-medium whitespace-nowrap">
-                    Page {currentPage} of {totalPages}
-                  </p>
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                          className={cn(currentPage === 1 && 'pointer-events-none opacity-50')}
-                          href="#"
-                        />
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-center pt-2">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'} />
+                    </PaginationItem>
+                    {getPaginationPages().map((page, i) => (
+                      <PaginationItem key={i}>
+                        {page === 'ellipsis' ? <PaginationEllipsis /> : (
+                          <PaginationLink onClick={() => setCurrentPage(page)} isActive={currentPage === page} className="cursor-pointer">{page}</PaginationLink>
+                        )}
                       </PaginationItem>
-                      {getPaginationPages().map((page, idx) =>
-                        page === 'ellipsis' ? (
-                          <PaginationItem key={`ellipsis-${idx}`}>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        ) : (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              href="#"
-                              isActive={currentPage === page}
-                              onClick={() => setCurrentPage(page)}
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
-                        )
-                      )}
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                          className={cn(currentPage === totalPages && 'pointer-events-none opacity-50')}
-                          href="#"
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'} />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Threat Details Sheet */}
       <ThreatDetailsSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}

@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowUp, ArrowDown, Plus, Minus, Edit, AlertTriangle, Shield } from 'lucide-react';
 import { diagramVersionsApi } from '@/lib/api';
 import { toast } from 'sonner';
+import DiagramDiffCanvas from '@/components/DiagramDiffCanvas';
 
 interface ElementChange {
   element_id: string;
@@ -191,8 +192,9 @@ export default function DiagramVersionComparison({
           </div>
         ) : comparison ? (
           <Tabs defaultValue="summary" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsTrigger value="visual">Visual</TabsTrigger>
               <TabsTrigger value="structure">Structure</TabsTrigger>
               <TabsTrigger value="threats">
                 Threats
@@ -211,6 +213,15 @@ export default function DiagramVersionComparison({
                 )}
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="visual">
+              <DiagramDiffCanvas
+                diagramId={diagramId}
+                fromVersion={fromVersion}
+                toVersion={toVersion}
+                comparison={comparison}
+              />
+            </TabsContent>
 
             <TabsContent value="summary">
               <ScrollArea className="h-[400px] pr-4">

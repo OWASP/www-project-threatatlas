@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { productsApi, diagramsApi, frameworksApi, modelsApi, type ProductStatus } from '@/lib/api';
+import { productsApi, diagramsApi, frameworksApi, modelsApi, usersApi, type ProductStatus } from '@/lib/api';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -35,7 +36,6 @@ import {
 } from 'lucide-react';
 import { Field, FieldLabel, FieldDescription, FieldError } from '@/components/ui/field';
 import { ImportDrawioButton } from '@/components/ImportDrawioButton';
-import { toast } from 'sonner';
 
 interface Framework {
   id: number;
@@ -71,6 +71,12 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
   const [businessArea, setBusinessArea] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerUserId, setOwnerUserId] = useState<string>('');
+  const [userList, setUserList] = useState<{ id: number; email: string; full_name: string | null; username: string }[]>([]);
+
+  useEffect(() => {
+    usersApi.list().then(r => setUserList(r.data)).catch(() => toast.error('Failed to load user list'));
+  }, []);
 
   // Step 2
   const [diagramMode, setDiagramMode] = useState<'choose' | 'blank' | 'import'>('choose');
@@ -394,27 +400,30 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                     />
                   </Field>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field>
-                      <FieldLabel htmlFor="wiz-owner-name">Owner name</FieldLabel>
-                      <Input
-                        id="wiz-owner-name"
-                        placeholder="Jane Doe"
-                        value={ownerName}
-                        onChange={(e) => setOwnerName(e.target.value)}
-                      />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="wiz-owner-email">Owner email</FieldLabel>
-                      <Input
-                        id="wiz-owner-email"
-                        type="email"
-                        placeholder="jane@example.com"
-                        value={ownerEmail}
-                        onChange={(e) => setOwnerEmail(e.target.value)}
-                      />
-                    </Field>
-                  </div>
+                  <Field>
+                    <FieldLabel htmlFor="wiz-owner">Product Owner</FieldLabel>
+                    <Select
+                      value={ownerUserId}
+                      onValueChange={v => {
+                        setOwnerUserId(v);
+                        const u = userList.find(u => u.id.toString() === v);
+                        if (u) {
+                          setOwnerName(u.full_name || u.username || u.email);
+                          setOwnerEmail(u.email);
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="wiz-owner"><SelectValue placeholder="Select a user…" /></SelectTrigger>
+                      <SelectContent>
+                        {userList.map(u => (
+                          <SelectItem key={u.id} value={u.id.toString()}>
+                            {u.full_name ? `${u.full_name} (${u.email})` : u.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>The user responsible for this product.</FieldDescription>
+                  </Field>
 
                   <Field>
                     <FieldLabel htmlFor="wiz-repo-url">Repository URL</FieldLabel>

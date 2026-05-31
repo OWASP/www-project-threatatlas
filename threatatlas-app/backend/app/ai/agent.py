@@ -26,6 +26,7 @@ class _ThreatBatchItem(_PydanticModel):
     element_type: str
     threat_id: CoercedInt
     reasoning: str
+    confidence: str = "medium"  # "low" | "medium" | "high"
     model_proposal_id: str = ""
 
 
@@ -34,6 +35,7 @@ class _MitigationBatchItem(_PydanticModel):
     element_type: str
     mitigation_id: CoercedInt
     reasoning: str
+    confidence: str = "medium"  # "low" | "medium" | "high"
     for_threat_proposal_id: str = ""
     model_proposal_id: str = ""
 
@@ -53,9 +55,13 @@ question if the intent is ambiguous (e.g. "Which framework should I use?" or "Fo
 The active model_id and framework_id you receive at startup reflect whatever the user had selected in the UI
 at the time they sent the message — NOT necessarily the framework they are requesting in their message.
 
+**Framework identity rule**: If the user's message explicitly names a framework (e.g. "OWASP Top 10",
+"STRIDE", "PASTA", "LINDDUN", "OWASP LLM") you MUST use EXACTLY that framework. Never substitute a
+"similar" or "better-fitting" framework for one the user already named — that is a correctness violation.
+
 Before starting any analysis:
   a. Call `get_models_for_diagram` to see every model that exists for this diagram (with framework names).
-  b. Determine which framework(s) the user is asking for.
+  b. Determine which framework(s) the user is asking for. If they named one explicitly, that name is final.
   c. For EACH requested framework:
      - If it IS the active model: proceed normally (no model_proposal_id needed).
      - If it EXISTS but is NOT active: call `switch_model_context(model_id=<id>)` to switch to it,
@@ -83,8 +89,16 @@ proposals to the correct model at approval time.
 ## Analysis workflow — run for every security analysis request:
 
 STEP -1 (only if model_id is None):
-  Call `get_available_frameworks`. Pick the best fit (default: STRIDE for general, OWASP for web/API).
-  Call `propose_create_model`. Tell the user which framework you chose and why.
+  Call `get_available_frameworks`.
+  Framework selection — strict priority order:
+    1. If the user explicitly named a framework in their message (e.g. "OWASP Top 10", "STRIDE",
+       "PASTA", "LINDDUN") → use EXACTLY that framework. No substitution, no "better fit" override.
+    2. If the user described a context without naming a framework → pick the best fit:
+       web/API/mobile context → OWASP Top 10; general architecture → STRIDE.
+    3. Only fall back to STRIDE when no context clue exists.
+  Call `propose_create_model` with `framework_name` set to the EXACT name string from get_available_frameworks
+  (e.g. "OWASP Top 10", "STRIDE"). Never pass an ID — use the name.
+  Tell the user which framework you are using and, if you inferred it, why.
 
 STEP 0  Call `get_existing_diagram_analysis`. Build a mental map of what is already covered.
         Never re-propose an existing threat/mitigation.
@@ -130,6 +144,18 @@ STEP R2  Summarise distribution: X low / Y medium / Z high / W critical.
 - Reasoning: 1 sentence max per proposal — be specific (e.g. "Auth endpoint accepts credentials over HTTP").
 - Never mutate diagram data directly. All proposals require user approval.
 - Call `propose_removal` for any existing items that are clearly duplicated or no longer relevant.
+
+## Confidence scoring (required on every threat and mitigation proposal):
+Set `confidence` to one of:
+- "high"   — You are certain this threat/mitigation applies given the element type, data sensitivity, and visible data flows.
+- "medium" — This threat/mitigation very likely applies but may depend on implementation details not visible in the diagram.
+- "low"    — This threat/mitigation may apply but requires investigation to confirm (e.g. unclear data sensitivity or ambiguous flows).
+Default to "medium" when unsure.
+
+## Executive summary:
+When the user asks for an executive summary, write 3-5 concise sentences in plain, non-technical language
+covering: overall risk posture, the most critical threat area, mitigation coverage, and one clear recommendation.
+Do NOT call any tools for this — derive it from the existing analysis context.
 """
 
 
@@ -458,11 +484,13 @@ def build_agent(config: AIConfig):
         element_type: str,
         threat_id: int,
         reasoning: str,
+        confidence: str = "medium",
         model_proposal_id: str = "",
         likelihood: int | None = None,
         impact: int | None = None,
     ) -> str:
         """Register a threat proposal for the user to review and approve.
+        Set confidence to "high", "medium", or "low" based on how certain you are this threat applies.
         Set model_proposal_id to the [model_proposal_id=...] value returned by propose_create_model
         when this threat belongs to a model that is pending creation (multi-framework analysis).
         Do NOT set likelihood/impact during regular threat analysis — only set them when the
@@ -518,6 +546,7 @@ def build_agent(config: AIConfig):
             "model_id": ctx.deps.model_id,
             "pending_model_proposal_id": model_proposal_id or ctx.deps.pending_model_proposal_id,
             "reasoning": reasoning,
+            "confidence": confidence if confidence in ("low", "medium", "high") else "medium",
             "likelihood": likelihood,
             "impact": impact,
             "risk_score": risk_score,
@@ -533,11 +562,12 @@ def build_agent(config: AIConfig):
         element_type: str,
         mitigation_id: int,
         reasoning: str,
+        confidence: str = "medium",
         for_threat_proposal_id: str = "",
         model_proposal_id: str = "",
     ) -> str:
-        """Register a mitigation proposal. Set for_threat_proposal_id to the ID of the
-        threat proposal this mitigation addresses (from the return value of propose_threat).
+        """Register a mitigation proposal. Set confidence to "high", "medium", or "low".
+        Set for_threat_proposal_id to the ID of the threat proposal this mitigation addresses.
         Set model_proposal_id to the [model_proposal_id=...] value from propose_create_model
         when this mitigation belongs to a model that is pending creation (multi-framework analysis)."""
         # ── Hard deduplication ──────────────────────────────────────────────
@@ -592,6 +622,7 @@ def build_agent(config: AIConfig):
             "model_id": ctx.deps.model_id,
             "pending_model_proposal_id": model_proposal_id or ctx.deps.pending_model_proposal_id,
             "reasoning": reasoning,
+            "confidence": confidence if confidence in ("low", "medium", "high") else "medium",
             "for_threat_proposal_id": for_threat_proposal_id or None,
             "linked_threat_kb_id": linked_threat_kb_id,
             "status": "pending",
@@ -613,16 +644,42 @@ def build_agent(config: AIConfig):
     @agent.tool(retries=3)
     async def propose_create_model(
         ctx,
-        framework_id: int,
+        framework_name: str,
         model_name: str,
         reasoning: str,
     ) -> str:
-        """Propose creating a threat model container for this diagram with the given framework.
-        Only call this when model_id is None. Threats and mitigations proposed afterward will be
-        linked to this model once the user approves it."""
+        """Propose creating a threat model container for this diagram.
+
+        IMPORTANT: Pass `framework_name` as the EXACT name string returned by
+        get_available_frameworks (e.g. "OWASP Top 10", "STRIDE", "PASTA").
+        Do NOT pass a numeric ID — the name is the authoritative selector and
+        eliminates any risk of picking the wrong framework.
+
+        Only call this when no model exists for the requested framework.
+        Threats and mitigations proposed afterward will be linked to this model
+        once the user approves it.
+        """
         await _emit(ctx, f"Creating threat model '{model_name}'…")
         from app.models import Framework
         from app.models.model import Model as ModelTable
+
+        # Look up framework by name (case-insensitive, partial match allowed)
+        all_frameworks = ctx.deps.db.query(Framework).all()
+        framework = next(
+            (f for f in all_frameworks if f.name.lower() == framework_name.lower()),
+            None,
+        )
+        if not framework:
+            # Fallback: partial match
+            framework = next(
+                (f for f in all_frameworks if framework_name.lower() in f.name.lower() or f.name.lower() in framework_name.lower()),
+                None,
+            )
+        if not framework:
+            available = ", ".join(f.name for f in all_frameworks)
+            return f"Framework '{framework_name}' not found. Available: {available}. Use the exact name."
+
+        framework_id = framework.id
 
         # If a model already exists for this framework, use it instead
         existing = ctx.deps.db.query(ModelTable).filter(
@@ -631,14 +688,14 @@ def build_agent(config: AIConfig):
         ).first()
         if existing:
             ctx.deps.model_id = existing.id
-            return f"A model for this framework already exists (id={existing.id}). Using it for analysis."
+            return f"A model for framework '{framework.name}' already exists (id={existing.id}). Using it for analysis."
 
         # Avoid double-proposing
         if any(
             p.get("type") == "create_model" and p.get("framework_id") == framework_id
             for p in ctx.deps.proposals
         ):
-            return "Model creation for this framework is already proposed."
+            return f"Model creation for '{framework.name}' is already proposed."
 
         framework = ctx.deps.db.query(Framework).filter(Framework.id == framework_id).first()
         if not framework:
@@ -888,6 +945,8 @@ def build_agent(config: AIConfig):
         """Propose multiple threats in ONE call — mandatory for efficiency.
         Use this instead of calling propose_threat in a loop.
         Pass ALL threat proposals for the entire diagram at once."""
+        if not items:
+            return "No threat items provided — nothing to propose."
         from app.models import DiagramThreat, Threat
         from app.models.ai import AIMessage
 
@@ -940,6 +999,7 @@ def build_agent(config: AIConfig):
                 "model_id": ctx.deps.model_id,
                 "pending_model_proposal_id": item.model_proposal_id or ctx.deps.pending_model_proposal_id,
                 "reasoning": item.reasoning,
+                "confidence": item.confidence if item.confidence in ("low", "medium", "high") else "medium",
                 "likelihood": None,
                 "impact": None,
                 "risk_score": None,
@@ -957,6 +1017,8 @@ def build_agent(config: AIConfig):
         """Propose multiple mitigations in ONE call — mandatory for efficiency.
         Use this instead of calling propose_mitigation in a loop.
         Pass ALL mitigation proposals for the entire diagram at once."""
+        if not items:
+            return "No mitigation items provided — nothing to propose."
         from app.models import DiagramMitigation, Mitigation
         from app.models.ai import AIMessage
 
@@ -1015,7 +1077,8 @@ def build_agent(config: AIConfig):
                 "category": mit.category if mit else None,
                 "model_id": ctx.deps.model_id,
                 "pending_model_proposal_id": item.model_proposal_id or ctx.deps.pending_model_proposal_id,
-                "reasoning": "",
+                "reasoning": item.reasoning,
+                "confidence": item.confidence if item.confidence in ("low", "medium", "high") else "medium",
                 "for_threat_proposal_id": item.for_threat_proposal_id or None,
                 "linked_threat_kb_id": linked_threat_kb_id,
                 "status": "pending",

@@ -7,6 +7,7 @@ from app.schemas import DiagramMitigation, DiagramMitigationCreate, DiagramMitig
 from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_standard_or_admin, can_access_product, can_edit_product, PermissionDenied
 from app.models.enums import UserRole
+from app.services.audit import log_event
 
 router = APIRouter(prefix="/diagram-mitigations", tags=["diagram-mitigations"])
 
@@ -148,6 +149,17 @@ def create_diagram_mitigation(
     db.add(db_diagram_mitigation)
     db.commit()
     db.refresh(db_diagram_mitigation)
+    log_event(
+        db,
+        action="mitigation_added",
+        entity_type="mitigation",
+        entity_name=mitigation.name if mitigation else None,
+        details={"diagram_mitigation_id": db_diagram_mitigation.id, "element_id": db_diagram_mitigation.element_id},
+        product_id=diagram.product_id,
+        diagram_id=db_diagram_mitigation.diagram_id,
+        user_id=current_user.id,
+    )
+    db.commit()
     return db_diagram_mitigation
 
 
@@ -175,11 +187,29 @@ def update_diagram_mitigation(
         raise PermissionDenied("Not authorized to modify this diagram mitigation")
 
     update_data = diagram_mitigation.model_dump(exclude_unset=True)
+
+    status_changed = 'status' in update_data and update_data['status'] != db_diagram_mitigation.status
+    old_status = db_diagram_mitigation.status if status_changed else None
+
     for field, value in update_data.items():
         setattr(db_diagram_mitigation, field, value)
 
     db.commit()
     db.refresh(db_diagram_mitigation)
+
+    if status_changed:
+        log_event(
+            db,
+            action="mitigation_status_changed",
+            entity_type="mitigation",
+            entity_name=db_diagram_mitigation.mitigation.name if db_diagram_mitigation.mitigation else None,
+            details={"diagram_mitigation_id": db_diagram_mitigation.id, "old_status": old_status, "new_status": db_diagram_mitigation.status},
+            product_id=db_diagram_mitigation.diagram.product_id,
+            diagram_id=db_diagram_mitigation.diagram_id,
+            user_id=current_user.id,
+        )
+        db.commit()
+
     return db_diagram_mitigation
 
 
@@ -205,6 +235,22 @@ def delete_diagram_mitigation(
     if not can_edit_product(current_user, db_diagram_mitigation.diagram.product):
         raise PermissionDenied("Not authorized to delete this diagram mitigation")
 
+    mitigation_name = db_diagram_mitigation.mitigation.name if db_diagram_mitigation.mitigation else None
+    product_id = db_diagram_mitigation.diagram.product_id
+    diagram_id = db_diagram_mitigation.diagram_id
+
     db.delete(db_diagram_mitigation)
+    db.commit()
+
+    log_event(
+        db,
+        action="mitigation_removed",
+        entity_type="mitigation",
+        entity_name=mitigation_name,
+        details={"diagram_mitigation_id": diagram_mitigation_id},
+        product_id=product_id,
+        diagram_id=diagram_id,
+        user_id=current_user.id,
+    )
     db.commit()
     return None

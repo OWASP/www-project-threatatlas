@@ -47,6 +47,13 @@ class DiagramThreat(Base):
     impact = Column(Integer, nullable=True)  # 1-5
     risk_score = Column(Integer, nullable=True)  # Auto-calculated: likelihood × impact
     severity = Column(String(20), nullable=True)  # 'low', 'medium', 'high', 'critical'
+    acceptance_justification = Column(Text, nullable=True)
+    acceptance_approver_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    acceptance_review_date = Column(DateTime(timezone=True), nullable=True)
+    accepted_at = Column(DateTime(timezone=True), nullable=True)
+    acceptance_review_status = Column(String(20), nullable=True)  # 'pending' | 'approved' | 'rejected'
+    acceptance_review_note = Column(Text, nullable=True)
+    acceptance_reviewed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -54,4 +61,5 @@ class DiagramThreat(Base):
     diagram = relationship("Diagram", back_populates="diagram_threats")
     model = relationship("Model", back_populates="diagram_threats")
     threat = relationship("Threat", back_populates="diagram_threats")
+    acceptance_approver = relationship("User", foreign_keys=[acceptance_approver_id])
     diagram_mitigations = relationship("DiagramMitigation", back_populates="diagram_threat", cascade="all, delete-orphan", foreign_keys="DiagramMitigation.threat_id")

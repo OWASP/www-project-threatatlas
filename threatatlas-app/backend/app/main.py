@@ -4,9 +4,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 import logging
 
 from app.config import settings
+from app.auth.rate_limit import limiter
 
 # Configure logging to reduce verbosity
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
@@ -32,6 +35,16 @@ from app.routers import (
     product_downloads,
 )
 from app.routers import ai_config, ai_conversations
+from app.routers import api_tokens
+from app.routers import audit
+from app.routers import collaboration
+from app.routers import integrations
+from app.routers import component_templates
+from app.routers import search
+from app.routers import analytics
+from app.routers import attack
+from app.routers import approvals
+from app.routers import notifications
 from app.routers.scim import ScimError
 
 
@@ -49,6 +62,9 @@ app = FastAPI(
     debug=settings.debug,
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Session middleware — required by Authlib to hold OIDC state/nonce
 # between the authorize redirect and the callback.
@@ -89,9 +105,20 @@ app.include_router(collaborators.router, prefix="/api")
 app.include_router(oidc_providers.router, prefix="/api")
 app.include_router(groups.router, prefix="/api")
 app.include_router(scim_tokens.router, prefix="/api")
+app.include_router(api_tokens.router, prefix="/api")
 app.include_router(product_downloads.router, prefix="/api")
 app.include_router(ai_config.router, prefix="/api")
 app.include_router(ai_conversations.router, prefix="/api")
+app.include_router(audit.router, prefix="/api")
+app.include_router(integrations.router, prefix="/api")
+app.include_router(component_templates.router, prefix="/api")
+app.include_router(search.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
+app.include_router(attack.router, prefix="/api")
+app.include_router(approvals.router, prefix="/api")
+app.include_router(notifications.router, prefix="/api")
+# WebSocket collaboration endpoint — no /api prefix, lives at /ws/diagrams/{id}
+app.include_router(collaboration.router)
 # SCIM endpoints are mounted at /scim/v2 (not /api) per RFC 7644 convention.
 app.include_router(scim.router)
 

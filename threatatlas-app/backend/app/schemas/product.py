@@ -25,8 +25,9 @@ class ProductBase(BaseModel):
     business_area: str | None = Field(default=None, max_length=200)
     owner_name: str | None = Field(default=None, max_length=200)
     owner_email: EmailStr | None = None
+    jira_project_key: str | None = Field(default=None, max_length=50)
 
-    @field_validator("repository_url", "confluence_url", "application_url", "owner_email", mode="before")
+    @field_validator("repository_url", "confluence_url", "application_url", "owner_email", "jira_project_key", mode="before")
     @classmethod
     def _coerce_empty(cls, v):
         return _empty_to_none(v)

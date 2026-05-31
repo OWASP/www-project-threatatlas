@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 96 96" id="Bitbucket--Streamline-Svg-Logos" height="24" width="24">
+  <desc>
+    Bitbucket Streamline Icon: https://streamlinehq.com
+  </desc>
+  <path fill="#2684ff" d="M4.05064 5.73707c-.88973-.01148-1.739.37107-2.31999 1.04502-.58099.67394-.834228 1.57031-.69179 2.44864L13.8239 86.8442c.3288 1.9605 2.0178 3.4019 4.0056 3.4184h61.3349c1.492.0192 2.7731-1.057 3.0117-2.5299l12.785-78.48691c.1425-.87833-.1108-1.7747-.6917-2.44865-.581-.67394-1.4303-1.05649-2.32-1.04501L4.05064 5.73707ZM57.8862 61.8314H38.3096l-5.3007-27.6933h29.6208l-4.7435 27.6933Z"></path>
+  <path fill="url(#a)" d="M90.8179 34.0991h-28.243l-4.7398 27.6712H38.2742l-23.097 27.4154c.7321.633 1.6655.9851 2.6332.9931h61.301c1.4908.0192 2.771-1.0561 3.0094-2.5279l8.6971-53.5518Z"></path>
+  <defs>
+    <linearGradient id="a" x1="8232.27" x2="4969.73" y1="809.013" y2="5441.39" gradientUnits="userSpaceOnUse">
+      <stop offset=".18" stop-color="#0052cc"></stop>
+      <stop offset="1" stop-color="#2684ff"></stop>
+    </linearGradient>
+  </defs>
+</svg>
