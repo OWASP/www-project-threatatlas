@@ -27,6 +27,16 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     defaults:
       run:
         working-directory: threatatlas-app/backend
@@ -47,6 +57,7 @@ jobs:
       - name: Run tests
         env:
           TEST_DATABASE_URL: postgresql://threatatlas:threatatlas_dev@localhost:5432/threatatlas_test
+          REDIS_URL: redis://localhost:6379/0
         run: pdm run pytest tests/ -v --tb=short
 
   # ── Frontend tests ────────────────────────────────────────────────────────────
