@@ -14,6 +14,7 @@ import csv
 import html
 import io
 import json
+import re
 import zipfile
 from datetime import datetime, timezone
 
@@ -99,10 +100,27 @@ def _threats_mitigations_rows(product: ProductModel) -> tuple[list[dict], list[d
     threats: list[dict] = []
     mitigations: list[dict] = []
     for d in product.diagrams:
+        # Build a lookup of element_id → label from diagram_data
+        element_labels: dict[str, str] = {}
+        if d.diagram_data:
+            for node in d.diagram_data.get("nodes", []):
+                nid = node.get("id", "")
+                label = (node.get("data") or {}).get("label", "")
+                if nid and label:
+                    element_labels[nid] = label
+            for edge in d.diagram_data.get("edges", []):
+                eid = edge.get("id", "")
+                label = edge.get("label") or (edge.get("data") or {}).get("label", "")
+                if eid and label:
+                    element_labels[eid] = label
+
         for dt in d.diagram_threats:
+            element_name = element_labels.get(dt.element_id, dt.element_id or "")
             threats.append({
                 "diagram": d.name,
+                "diagram_threat_id": dt.id,
                 "element_id": dt.element_id,
+                "element_name": element_name,
                 "element_type": dt.element_type,
                 "threat_name": dt.threat.name if dt.threat else "",
                 "category": dt.threat.category if dt.threat else "",
@@ -115,9 +133,11 @@ def _threats_mitigations_rows(product: ProductModel) -> tuple[list[dict], list[d
                 "comments": dt.comments or "",
             })
         for dm in d.diagram_mitigations:
+            element_name = element_labels.get(dm.element_id, dm.element_id or "")
             mitigations.append({
                 "diagram": d.name,
                 "element_id": dm.element_id,
+                "element_name": element_name,
                 "element_type": dm.element_type,
                 "mitigation_name": dm.mitigation.name if dm.mitigation else "",
                 "category": dm.mitigation.category if dm.mitigation else "",
@@ -131,20 +151,37 @@ def _threats_mitigations_rows(product: ProductModel) -> tuple[list[dict], list[d
 
 def _threats_csv(threats: list[dict], mitigations: list[dict]) -> str:
     buf = io.StringIO()
-    buf.write("# Threats\n")
-    if threats:
-        w = csv.DictWriter(buf, fieldnames=list(threats[0].keys()))
-        w.writeheader()
-        w.writerows(threats)
-    else:
+    # Combined threats & mitigations CSV
+    fieldnames = ["Diagram", "Data Flow / Element", "Threat", "Category", "Status", "Severity", "Risk Score", "Description", "Mitigations"]
+    w = csv.DictWriter(buf, fieldnames=fieldnames)
+    w.writeheader()
+
+    # Sort threats by element name (leading number)
+    def _csv_sort_key(t):
+        name = t.get("element_name", "")
+        match = re.match(r'^(\d+)', name)
+        return int(match.group(1)) if match else 9999
+
+    for t in sorted(threats, key=_csv_sort_key):
+        # Find linked mitigations
+        linked_mits = [m for m in mitigations if m.get("linked_threat_id") == t.get("diagram_threat_id")]
+        mits_text = "; ".join(f'{m["mitigation_name"]} ({m["status"]})' for m in linked_mits) if linked_mits else "None"
+
+        w.writerow({
+            "Diagram": t.get("diagram", ""),
+            "Data Flow / Element": t.get("element_name", t.get("element_id", "")),
+            "Threat": t.get("threat_name", ""),
+            "Category": t.get("category", ""),
+            "Status": t.get("status", ""),
+            "Severity": t.get("severity", ""),
+            "Risk Score": t.get("risk_score", ""),
+            "Description": t.get("description", ""),
+            "Mitigations": mits_text,
+        })
+
+    if not threats:
         buf.write("(no threats)\n")
-    buf.write("\n# Mitigations\n")
-    if mitigations:
-        w = csv.DictWriter(buf, fieldnames=list(mitigations[0].keys()))
-        w.writeheader()
-        w.writerows(mitigations)
-    else:
-        buf.write("(no mitigations)\n")
+
     return buf.getvalue()
 
 
@@ -165,33 +202,38 @@ def _html_report(product: ProductModel, threats: list[dict], mitigations: list[d
     )
 
     def threat_row(t):
+        # Find linked mitigations for this threat
+        linked_mits = [m for m in mitigations if m.get("linked_threat_id") == t.get("diagram_threat_id")]
+        mits_html = ""
+        if linked_mits:
+            mits_html = "<br/>".join(
+                f'<span style="color:#059669;font-size:12px;">✓ {esc(m["mitigation_name"])} ({esc(m["status"])})</span>'
+                for m in linked_mits
+            )
+        else:
+            mits_html = '<span style="color:#9ca3af;font-size:12px;">No mitigations</span>'
+
         return (
             f"<tr>"
             f"<td>{esc(t['diagram'])}</td>"
-            f"<td>{esc(t['element_id'])}</td>"
-            f"<td>{esc(t['threat_name'])}</td>"
+            f"<td>{esc(t['element_name'])}</td>"
+            f"<td><strong>{esc(t['threat_name'])}</strong><br/><span style='font-size:12px;color:#666;'>{esc(t['description'][:100])}</span></td>"
             f"<td>{esc(t['category'])}</td>"
             f"<td>{esc(t['status'])}</td>"
             f"<td>{esc(t['severity'])}</td>"
             f"<td>{esc(t['risk_score'])}</td>"
-            f"<td>{esc(t['description'])}</td>"
+            f"<td>{mits_html}</td>"
             f"</tr>"
         )
 
-    def mit_row(m):
-        return (
-            f"<tr>"
-            f"<td>{esc(m['diagram'])}</td>"
-            f"<td>{esc(m['element_id'])}</td>"
-            f"<td>{esc(m['mitigation_name'])}</td>"
-            f"<td>{esc(m['category'])}</td>"
-            f"<td>{esc(m['status'])}</td>"
-            f"<td>{esc(m['description'])}</td>"
-            f"</tr>"
-        )
+    # Sort threats by element name (leading number)
+    def _threat_sort_key(t):
+        name = t.get("element_name", "")
+        match = re.match(r'^(\d+)', name)
+        return int(match.group(1)) if match else 9999
 
-    threats_html = "".join(threat_row(t) for t in threats) or '<tr><td colspan="8">No threats recorded.</td></tr>'
-    mitigations_html = "".join(mit_row(m) for m in mitigations) or '<tr><td colspan="6">No mitigations recorded.</td></tr>'
+    sorted_threats = sorted(threats, key=_threat_sort_key)
+    threats_html = "".join(threat_row(t) for t in sorted_threats) or '<tr><td colspan="8">No threats recorded.</td></tr>'
 
     diagrams_html = ""
     for d in product.diagrams:
@@ -237,22 +279,13 @@ def _html_report(product: ProductModel, threats: list[dict], mitigations: list[d
 <h2>Diagrams</h2>
 <ul>{diagrams_html}</ul>
 
-<h2>Threats ({len(threats)})</h2>
+<h2>Threats &amp; Mitigations ({len(threats)})</h2>
 <table>
   <thead><tr>
-    <th>Diagram</th><th>Element</th><th>Threat</th><th>Category</th>
-    <th>Status</th><th>Severity</th><th>Risk</th><th>Description</th>
+    <th>Diagram</th><th>Data Flow / Element</th><th>Threat</th><th>Category</th>
+    <th>Status</th><th>Severity</th><th>Risk</th><th>Mitigations</th>
   </tr></thead>
   <tbody>{threats_html}</tbody>
-</table>
-
-<h2>Mitigations ({len(mitigations)})</h2>
-<table>
-  <thead><tr>
-    <th>Diagram</th><th>Element</th><th>Mitigation</th><th>Category</th>
-    <th>Status</th><th>Description</th>
-  </tr></thead>
-  <tbody>{mitigations_html}</tbody>
 </table>
 
 <p class="footer">Generated by ThreatAtlas on {generated}. Use your browser's Print → Save as PDF to export.</p>
@@ -444,19 +477,43 @@ def _docx_report(product: ProductModel, threats: list[dict], mitigations: list[d
             diagram_data = d.diagram_data or {}
             nodes_list = diagram_data.get("nodes", [])
             edges_list = diagram_data.get("edges", [])
-            if nodes_list:
+            if nodes_list or edges_list:
                 doc.add_paragraph(f"Elements: {len(nodes_list)} nodes, {len(edges_list)} data flows")
-                elements_table = doc.add_table(rows=1, cols=3)
-                elements_table.style = "Light Grid Accent 1"
-                for i, header in enumerate(["Element", "Type", "ID"]):
-                    run = elements_table.rows[0].cells[i].paragraphs[0].add_run(header)
-                    run.bold = True
-                for node in nodes_list:
-                    data = node.get("data", {})
-                    cells = elements_table.add_row().cells
-                    cells[0].text = str(data.get("label", ""))
-                    cells[1].text = str(data.get("type", ""))
-                    cells[2].text = str(node.get("id", ""))
+
+                # Nodes table
+                if nodes_list:
+                    elements_table = doc.add_table(rows=1, cols=2)
+                    elements_table.style = "Light Grid Accent 1"
+                    for i, header in enumerate(["Element", "Type"]):
+                        run = elements_table.rows[0].cells[i].paragraphs[0].add_run(header)
+                        run.bold = True
+                    for node in nodes_list:
+                        data = node.get("data", {})
+                        cells = elements_table.add_row().cells
+                        cells[0].text = str(data.get("label", ""))
+                        cells[1].text = str(data.get("type", ""))
+
+                # Data flows table
+                if edges_list:
+                    doc.add_paragraph("")
+                    flows_table = doc.add_table(rows=1, cols=3)
+                    flows_table.style = "Light Grid Accent 1"
+                    for i, header in enumerate(["Data Flow", "From", "To"]):
+                        run = flows_table.rows[0].cells[i].paragraphs[0].add_run(header)
+                        run.bold = True
+                    # Build node label lookup
+                    node_labels = {n.get("id", ""): (n.get("data") or {}).get("label", "") for n in nodes_list}
+                    # Sort edges by leading number in label (1. xxx, 2. xxx, etc.)
+                    def edge_sort_key(edge):
+                        label = str(edge.get("label") or (edge.get("data") or {}).get("label", ""))
+                        match = re.match(r'^(\d+)', label)
+                        return int(match.group(1)) if match else 9999
+                    sorted_edges = sorted(edges_list, key=edge_sort_key)
+                    for edge in sorted_edges:
+                        cells = flows_table.add_row().cells
+                        cells[0].text = str(edge.get("label") or (edge.get("data") or {}).get("label", "Data Flow"))
+                        cells[1].text = node_labels.get(edge.get("source", ""), edge.get("source", ""))
+                        cells[2].text = node_labels.get(edge.get("target", ""), edge.get("target", ""))
             doc.add_paragraph("")  # spacing
         note = doc.add_paragraph()
         note_run = note.add_run("Note: Visual diagrams are available in the HTML report export.")
@@ -481,18 +538,27 @@ def _docx_report(product: ProductModel, threats: list[dict], mitigations: list[d
         cells[0].text = label
         cells[1].text = str(value)
 
-    # Threats
-    doc.add_heading(f"Threats ({total})", level=1)
+    # Threats & Mitigations
+    doc.add_heading(f"Threats & Mitigations ({total})", level=1)
     if threats:
-        t_table = doc.add_table(rows=1, cols=6)
+        t_table = doc.add_table(rows=1, cols=7)
         t_table.style = "Light Grid Accent 1"
-        for i, header in enumerate(["Diagram", "Element", "Threat", "Category", "Severity", "Status"]):
+        for i, header in enumerate(["Diagram", "Data Flow / Element", "Threat", "Category", "Severity", "Status", "Mitigations"]):
             run = t_table.rows[0].cells[i].paragraphs[0].add_run(header)
             run.bold = True
-        for t in threats:
+        # Sort threats by element name (leading number)
+        def _docx_threat_sort(t):
+            name = t.get("element_name", "")
+            match = re.match(r'^(\d+)', name)
+            return int(match.group(1)) if match else 9999
+        for t in sorted(threats, key=_docx_threat_sort):
+            # Find linked mitigations
+            linked_mits = [m for m in mitigations if m.get("linked_threat_id") == t.get("diagram_threat_id")]
+            mits_text = "\n".join(f'• {m["mitigation_name"]} ({m["status"]})' for m in linked_mits) if linked_mits else "None"
+
             cells = t_table.add_row().cells
             cells[0].text = str(t.get("diagram", ""))
-            cells[1].text = str(t.get("element_id", ""))
+            cells[1].text = str(t.get("element_name", t.get("element_id", "")))
             cells[2].text = str(t.get("threat_name", ""))
             cells[3].text = str(t.get("category", ""))
             sev = t.get("severity") or "—"
@@ -501,26 +567,9 @@ def _docx_report(product: ProductModel, threats: list[dict], mitigations: list[d
                 sev_run.font.color.rgb = _SEVERITY_COLORS[sev]
                 sev_run.bold = True
             cells[5].text = str(t.get("status", ""))
+            cells[6].text = mits_text
     else:
         doc.add_paragraph("No threats recorded.")
-
-    # Mitigations
-    doc.add_heading(f"Mitigations ({len(mitigations)})", level=1)
-    if mitigations:
-        m_table = doc.add_table(rows=1, cols=5)
-        m_table.style = "Light Grid Accent 1"
-        for i, header in enumerate(["Diagram", "Element", "Mitigation", "Category", "Status"]):
-            run = m_table.rows[0].cells[i].paragraphs[0].add_run(header)
-            run.bold = True
-        for m in mitigations:
-            cells = m_table.add_row().cells
-            cells[0].text = str(m.get("diagram", ""))
-            cells[1].text = str(m.get("element_id", ""))
-            cells[2].text = str(m.get("mitigation_name", ""))
-            cells[3].text = str(m.get("category", ""))
-            cells[4].text = str(m.get("status", ""))
-    else:
-        doc.add_paragraph("No mitigations recorded.")
 
     footer = doc.add_paragraph()
     footer_run = footer.add_run(f"Generated by ThreatAtlas on {generated}.")
