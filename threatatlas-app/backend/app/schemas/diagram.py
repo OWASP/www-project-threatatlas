@@ -21,6 +21,7 @@ class DiagramUpdate(DiagramBase):
     product_id: int | None = None
     auto_version: bool | None = None
     version_comment: str | None = None
+    snapshot: str | None = None
 
 
 class Diagram(DiagramBase):

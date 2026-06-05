@@ -72,6 +72,8 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
   const [ownerName, setOwnerName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
   const [ownerUserId, setOwnerUserId] = useState<string>('');
+  const [reviewer, setReviewer] = useState('');
+  const [contributors, setContributors] = useState('');
   const [userList, setUserList] = useState<{ id: number; email: string; full_name: string | null; username: string }[]>([]);
 
   useEffect(() => {
@@ -192,6 +194,8 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
         business_area: businessArea.trim() || null,
         owner_name: ownerName.trim() || null,
         owner_email: ownerEmail.trim() || null,
+        reviewer: reviewer.trim() || null,
+        contributors: contributors.trim() || null,
       });
       const newProductId: number = productRes.data.id;
 
@@ -284,7 +288,7 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
         </DialogHeader>
 
         {/* ── Step content ── */}
-        <div className="py-2 min-h-[160px]">
+        <div className="py-2 min-h-[160px] max-h-[60vh] overflow-y-auto">
 
           {/* Step 1: Product */}
           {step === 1 && (
@@ -454,6 +458,28 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                       onChange={(e) => setApplicationUrl(e.target.value)}
                     />
                   </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="wiz-reviewer">Reviewer</FieldLabel>
+                    <Input
+                      id="wiz-reviewer"
+                      placeholder="e.g. Jane Smith, Security Lead"
+                      value={reviewer}
+                      onChange={(e) => setReviewer(e.target.value)}
+                    />
+                    <FieldDescription>Person who reviewed and approved this threat model.</FieldDescription>
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="wiz-contributors">Contributors</FieldLabel>
+                    <Input
+                      id="wiz-contributors"
+                      placeholder="e.g. Alice, Bob, Charlie"
+                      value={contributors}
+                      onChange={(e) => setContributors(e.target.value)}
+                    />
+                    <FieldDescription>Team members who contributed to this threat model (comma-separated).</FieldDescription>
+                  </Field>
                 </div>
               )}
             </div>
@@ -462,7 +488,7 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
           {/* Step 2: Diagram — choose type */}
           {step === 2 && diagramMode === 'choose' && (
             <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">Start with a blank canvas or import an existing Draw.io file.</p>
+              <p className="text-xs text-muted-foreground">Start with a blank canvas or import an existing Draw.io/JSON file.</p>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -487,8 +513,8 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                     <Upload className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm text-center">Import Draw.io</p>
-                    <p className="text-xs text-muted-foreground text-center mt-0.5">.drawio or .xml file</p>
+                    <p className="font-semibold text-sm text-center">Import Draw.io or JSON</p>
+                    <p className="text-xs text-muted-foreground text-center mt-0.5">.drawio, .xml or .json file</p>
                   </div>
                 </button>
               </div>

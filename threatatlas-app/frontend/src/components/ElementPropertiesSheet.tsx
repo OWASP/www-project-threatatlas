@@ -302,7 +302,7 @@ export default function ElementPropertiesSheet({
                     activeModelId={activeModelId}
                     modelFrameworkId={activeModelFrameworkId}
                     elementId={selectedElement.id}
-                    elementType={selectedElement.type}
+                    elementType={selectedElement.nodeType ?? selectedElement.type}
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center py-16 text-center">

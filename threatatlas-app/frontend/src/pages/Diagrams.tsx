@@ -8,7 +8,6 @@ import {
   Background,
   useNodesState,
   useEdgesState,
-  addEdge,
   type Connection,
   type Edge,
   type Node,
@@ -17,6 +16,7 @@ import {
   BackgroundVariant,
   ReactFlowProvider,
   useReactFlow,
+  reconnectEdge,
 } from '@xyflow/react';
 import {
   ContextMenu,
@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/context-menu';
 import '@xyflow/react/dist/style.css';
 import { productsApi, diagramsApi, diagramThreatsApi, diagramMitigationsApi } from '@/lib/api';
+import { toJpeg } from 'html-to-image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBreadcrumb } from '@/contexts/BreadcrumbContext';
 import { Button } from '@/components/ui/button';
@@ -80,6 +81,7 @@ import {
   Map,
   ZoomIn,
   PanelRight,
+  ImageIcon,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -185,14 +187,34 @@ export function DiagramsContent() {
   // ── Boundary attach state ──────────────────────────────────────────────────
   const [dragOverBoundaryId, setDragOverBoundaryId] = useState<string | null>(null);
 
-  const handleExportJson = () => {
+  const handleExportJson = async () => {
+    // Fetch threats and mitigations for the current diagram
+    let threats: unknown[] = [];
+    let mitigations: unknown[] = [];
+    if (selectedDiagram) {
+      try {
+        const params: Record<string, number> = { diagram_id: selectedDiagram };
+        if (activeModelId) params.model_id = activeModelId;
+        const [threatsRes, mitsRes] = await Promise.all([
+          diagramThreatsApi.list(params),
+          diagramMitigationsApi.list(params),
+        ]);
+        threats = threatsRes.data;
+        mitigations = mitsRes.data;
+      } catch {
+        // Export without threats/mitigations if fetch fails
+      }
+    }
+
     const data = {
       name: diagramName,
       nodes,
       edges,
       productId: selectedProduct,
       exportedAt: new Date().toISOString(),
-      version: '1.0'
+      version: '1.1',
+      threats,
+      mitigations,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -204,6 +226,74 @@ export function DiagramsContent() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  const handleExportJpg = useCallback(async () => {
+    const rfEl = document.querySelector('.react-flow') as HTMLElement | null;
+    if (!rfEl) { toast.error('Cannot export — diagram not found.'); return; }
+
+    try {
+      toast.info('Exporting diagram...');
+
+      // Temporarily inline SVG styles on edge paths (html-to-image doesn't read CSS for SVG)
+      const edgePaths = rfEl.querySelectorAll('.react-flow__edge path, .react-flow__edge line');
+      const originalStyles: { el: HTMLElement | SVGElement; style: string }[] = [];
+      edgePaths.forEach((path) => {
+        const el = path as SVGElement;
+        originalStyles.push({ el, style: el.getAttribute('style') ?? '' });
+        const computed = window.getComputedStyle(el);
+        el.style.stroke = computed.stroke || '#b1b1b7';
+        el.style.strokeWidth = computed.strokeWidth || '1';
+        el.style.fill = computed.fill || 'none';
+        if (computed.strokeDasharray && computed.strokeDasharray !== 'none') {
+          el.style.strokeDasharray = computed.strokeDasharray;
+        }
+        if (computed.markerEnd) {
+          el.style.markerEnd = computed.markerEnd;
+        }
+      });
+
+      // Also inline styles on markers
+      const markers = rfEl.querySelectorAll('marker path, marker polygon');
+      markers.forEach((m) => {
+        const el = m as SVGElement;
+        originalStyles.push({ el, style: el.getAttribute('style') ?? '' });
+        el.style.fill = window.getComputedStyle(el).fill || '#b1b1b7';
+      });
+
+      const dataUrl = await toJpeg(rfEl, {
+        quality: 0.95,
+        pixelRatio: 2,
+        backgroundColor: '#0f0f14',
+        filter: (node) => {
+          const el = node as HTMLElement;
+          if (el.classList) {
+            if (el.classList.contains('react-flow__controls')) return false;
+            if (el.classList.contains('react-flow__minimap')) return false;
+            if (el.classList.contains('react-flow__panel')) return false;
+            if (el.classList.contains('react-flow__attribution')) return false;
+            if (el.classList.contains('react-flow__background')) return false;
+          }
+          return true;
+        },
+      });
+
+      // Restore original styles
+      originalStyles.forEach(({ el, style }) => {
+        if (style) el.setAttribute('style', style);
+        else el.removeAttribute('style');
+      });
+
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `${diagramName.replace(/\s+/g, '_') || 'diagram'}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('JPG export error:', err);
+      toast.error('JPG export failed.');
+    }
+  }, [diagramName]);
 
   // ── Create-diagram wizard state ────────────────────────────────────────────
   // The wizard UI/creation logic lives in the shared <NewDiagramWizard/>.
@@ -472,6 +562,55 @@ export function DiagramsContent() {
       // Snapshot current node IDs so newly added nodes can be detected after next edit
       setSavedNodeIds(new Set(nodes.map(n => n.id)));
 
+      // Capture pixel-perfect snapshot for reports (async, non-blocking)
+      try {
+        const rfEl = document.querySelector('.react-flow') as HTMLElement | null;
+        if (rfEl) {
+          // Inline SVG edge styles before capture
+          const edgePaths = rfEl.querySelectorAll('.react-flow__edge path, .react-flow__edge line');
+          const origStyles: { el: SVGElement; style: string }[] = [];
+          edgePaths.forEach((path) => {
+            const el = path as SVGElement;
+            origStyles.push({ el, style: el.getAttribute('style') ?? '' });
+            const computed = window.getComputedStyle(el);
+            el.style.stroke = computed.stroke || '#b1b1b7';
+            el.style.strokeWidth = computed.strokeWidth || '1';
+            el.style.fill = computed.fill || 'none';
+            if (computed.strokeDasharray && computed.strokeDasharray !== 'none') {
+              el.style.strokeDasharray = computed.strokeDasharray;
+            }
+          });
+
+          const snapshot = await toJpeg(rfEl, {
+            quality: 0.85,
+            pixelRatio: 2,
+            backgroundColor: '#ffffff',
+            filter: (node) => {
+              const el = node as HTMLElement;
+              if (el.classList) {
+                if (el.classList.contains('react-flow__controls')) return false;
+                if (el.classList.contains('react-flow__minimap')) return false;
+                if (el.classList.contains('react-flow__panel')) return false;
+                if (el.classList.contains('react-flow__attribution')) return false;
+                if (el.classList.contains('react-flow__background')) return false;
+              }
+              return true;
+            },
+          });
+
+          // Restore styles
+          origStyles.forEach(({ el, style }) => {
+            if (style) el.setAttribute('style', style);
+            else el.removeAttribute('style');
+          });
+
+          // Send snapshot to backend (non-blocking)
+          diagramsApi.update(selectedDiagram, { snapshot } as any).catch(() => {});
+        }
+      } catch {
+        // Snapshot failure is non-critical
+      }
+
       // Reload diagram to get updated version number
       await loadDiagram(selectedDiagram);
       // Notify collaborators that the diagram was saved
@@ -487,7 +626,24 @@ export function DiagramsContent() {
   };
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, type: 'custom', animated: true, label: 'Data Flow' } as Edge, eds)),
+    (params: Connection) => setEdges((eds) => {
+      const newEdge: Edge = {
+        id: `edge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        source: params.source,
+        target: params.target,
+        sourceHandle: params.sourceHandle,
+        targetHandle: params.targetHandle,
+        type: 'custom',
+        animated: true,
+        label: 'Data Flow',
+      };
+      return [...eds, newEdge];
+    }),
+    [setEdges]
+  );
+
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds)),
     [setEdges]
   );
 
@@ -918,7 +1074,7 @@ export function DiagramsContent() {
       <Dialog open={showImportChoice} onOpenChange={setShowImportChoice}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Import Draw.io</DialogTitle>
+            <DialogTitle>Import Draw.io or JSON</DialogTitle>
             <DialogDescription>
               {nodes.length === 0
                 ? 'The current diagram is empty — it will be replaced with your import.'
@@ -1093,7 +1249,7 @@ export function DiagramsContent() {
       style={{ colorScheme: 'light dark' }}
     >
       {/* ── Toolbar (h-12) ── */}
-      <div className="h-12 border-b bg-background flex items-center justify-between px-3 z-20 shadow-sm relative shrink-0">
+      <div className="h-12 border-b bg-background flex items-center justify-between px-3 z-20 shadow-sm relative shrink-0 overflow-x-auto">
 
         {/* Left: collab presence + save status */}
         <div className="flex items-center gap-2 min-w-0">
@@ -1192,6 +1348,15 @@ export function DiagramsContent() {
 
                 <Tooltip>
                   <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExportJpg}>
+                      <ImageIcon className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Download (JPG)</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setVersionHistoryOpen(true)}>
                       <History className="h-4 w-4" />
                     </Button>
@@ -1254,7 +1419,7 @@ export function DiagramsContent() {
                       <Upload className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Import Draw.io</TooltipContent>
+                  <TooltipContent>Import Draw.io or JSON</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -1372,6 +1537,8 @@ export function DiagramsContent() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onReconnect={onReconnect}
+            edgesReconnectable
             onNodeClick={handleNodeClick}
             onEdgeClick={handleEdgeClick}
             onNodeDrag={onNodeDrag}

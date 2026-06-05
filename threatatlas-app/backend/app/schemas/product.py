@@ -26,6 +26,8 @@ class ProductBase(BaseModel):
     owner_name: str | None = Field(default=None, max_length=200)
     owner_email: EmailStr | None = None
     jira_project_key: str | None = Field(default=None, max_length=50)
+    reviewer: str | None = Field(default=None, max_length=500)
+    contributors: str | None = None
 
     @field_validator("repository_url", "confluence_url", "application_url", "owner_email", "jira_project_key", mode="before")
     @classmethod

@@ -143,7 +143,7 @@ export default function NewDiagramWizard({
           <>
             <DialogHeader>
               <DialogTitle>New Diagram</DialogTitle>
-              <DialogDescription>Start with a blank canvas, a template, or import an existing Draw.io file.</DialogDescription>
+              <DialogDescription>Start with a blank canvas, a template, or import an existing Draw.io/JSON file.</DialogDescription>
             </DialogHeader>
 
             <div className="grid grid-cols-3 gap-3 py-2">
@@ -181,8 +181,8 @@ export default function NewDiagramWizard({
                   <Upload className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-xs text-center">Import Draw.io</p>
-                  <p className="text-[10px] text-muted-foreground text-center mt-0.5">.drawio or .xml</p>
+                  <p className="font-semibold text-xs text-center">Import Draw.io or JSON</p>
+                  <p className="text-[10px] text-muted-foreground text-center mt-0.5">.drawio, .xml or .json</p>
                 </div>
               </button>
             </div>

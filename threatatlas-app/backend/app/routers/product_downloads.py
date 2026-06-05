@@ -34,6 +34,7 @@ from app.models import (
 )
 from app.auth.dependencies import get_current_user
 from app.auth.permissions import PermissionDenied, can_access_product
+from app.utils.diagram_svg import render_diagram_svg
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -192,11 +193,19 @@ def _html_report(product: ProductModel, threats: list[dict], mitigations: list[d
     threats_html = "".join(threat_row(t) for t in threats) or '<tr><td colspan="8">No threats recorded.</td></tr>'
     mitigations_html = "".join(mit_row(m) for m in mitigations) or '<tr><td colspan="6">No mitigations recorded.</td></tr>'
 
-    diagrams_html = "".join(
-        f"<li><strong>{esc(d.name)}</strong> — {esc(d.description) if d.description else 'no description'} "
-        f"<em>(v{d.current_version})</em></li>"
-        for d in product.diagrams
-    ) or "<li>No diagrams.</li>"
+    diagrams_html = ""
+    for d in product.diagrams:
+        diagrams_html += f'<li><strong>{esc(d.name)}</strong> — {esc(d.description) if d.description else "no description"} <em>(v{d.current_version})</em></li>'
+        if d.snapshot:
+            # Use stored pixel-perfect snapshot
+            diagrams_html += f'<div style="margin:12px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;"><img src="{d.snapshot}" style="width:100%;display:block;" alt="{esc(d.name)}"/></div>'
+        else:
+            # Fallback to SVG renderer
+            diagram_svg = render_diagram_svg(d.diagram_data)
+            if diagram_svg:
+                diagrams_html += f'<div style="margin:12px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;overflow-x:auto;">{diagram_svg}</div>'
+    if not diagrams_html:
+        diagrams_html = "<li>No diagrams.</li>"
 
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
@@ -422,6 +431,40 @@ def _docx_report(product: ProductModel, threats: list[dict], mitigations: list[d
     total = len(threats)
     by_sev = {s: sum(1 for t in threats if t.get("severity") == s) for s in ("critical", "high", "medium", "low")}
     mitigated = sum(1 for t in threats if t.get("status") == "mitigated")
+
+    # Diagrams section
+    doc.add_heading("Diagrams", level=1)
+    if product.diagrams:
+        for d in product.diagrams:
+            doc.add_heading(d.name, level=2)
+            if d.description:
+                doc.add_paragraph(d.description)
+            doc.add_paragraph(f"Version: {d.current_version}").italic = True
+            # List elements in diagram
+            diagram_data = d.diagram_data or {}
+            nodes_list = diagram_data.get("nodes", [])
+            edges_list = diagram_data.get("edges", [])
+            if nodes_list:
+                doc.add_paragraph(f"Elements: {len(nodes_list)} nodes, {len(edges_list)} data flows")
+                elements_table = doc.add_table(rows=1, cols=3)
+                elements_table.style = "Light Grid Accent 1"
+                for i, header in enumerate(["Element", "Type", "ID"]):
+                    run = elements_table.rows[0].cells[i].paragraphs[0].add_run(header)
+                    run.bold = True
+                for node in nodes_list:
+                    data = node.get("data", {})
+                    cells = elements_table.add_row().cells
+                    cells[0].text = str(data.get("label", ""))
+                    cells[1].text = str(data.get("type", ""))
+                    cells[2].text = str(node.get("id", ""))
+            doc.add_paragraph("")  # spacing
+        note = doc.add_paragraph()
+        note_run = note.add_run("Note: Visual diagrams are available in the HTML report export.")
+        note_run.font.size = Pt(9)
+        note_run.font.color.rgb = RGBColor(0x6B, 0x72, 0x80)
+    else:
+        doc.add_paragraph("No diagrams.")
+
     doc.add_heading("Summary", level=1)
     summary = doc.add_table(rows=0, cols=2)
     summary.style = "Light Grid Accent 1"
