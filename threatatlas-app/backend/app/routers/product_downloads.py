@@ -151,23 +151,20 @@ def _threats_mitigations_rows(product: ProductModel) -> tuple[list[dict], list[d
 
 def _threats_csv(threats: list[dict], mitigations: list[dict]) -> str:
     buf = io.StringIO()
-    # Combined threats & mitigations CSV
-    fieldnames = ["Diagram", "Data Flow / Element", "Threat", "Category", "Status", "Severity", "Risk Score", "Description", "Mitigations"]
-    w = csv.DictWriter(buf, fieldnames=fieldnames)
-    w.writeheader()
 
-    # Sort threats by element name (leading number)
     def _csv_sort_key(t):
         name = t.get("element_name", "")
         match = re.match(r'^(\d+)', name)
         return int(match.group(1)) if match else 9999
 
+    buf.write("# Threats\n")
+    threat_fields = ["Diagram", "Data Flow / Element", "Threat", "Category", "Status", "Severity", "Risk Score", "Description", "Mitigations"]
+    tw = csv.DictWriter(buf, fieldnames=threat_fields)
+    tw.writeheader()
     for t in sorted(threats, key=_csv_sort_key):
-        # Find linked mitigations
         linked_mits = [m for m in mitigations if m.get("linked_threat_id") == t.get("diagram_threat_id")]
         mits_text = "; ".join(f'{m["mitigation_name"]} ({m["status"]})' for m in linked_mits) if linked_mits else "None"
-
-        w.writerow({
+        tw.writerow({
             "Diagram": t.get("diagram", ""),
             "Data Flow / Element": t.get("element_name", t.get("element_id", "")),
             "Threat": t.get("threat_name", ""),
@@ -178,12 +175,26 @@ def _threats_csv(threats: list[dict], mitigations: list[dict]) -> str:
             "Description": t.get("description", ""),
             "Mitigations": mits_text,
         })
-
     if not threats:
         buf.write("(no threats)\n")
 
-    return buf.getvalue()
+    buf.write("\n# Mitigations\n")
+    mit_fields = ["Diagram", "Data Flow / Element", "Mitigation", "Category", "Status", "Description"]
+    mw = csv.DictWriter(buf, fieldnames=mit_fields)
+    mw.writeheader()
+    for m in mitigations:
+        mw.writerow({
+            "Diagram": m.get("diagram", ""),
+            "Data Flow / Element": m.get("element_name", m.get("element_id", "")),
+            "Mitigation": m.get("mitigation_name", ""),
+            "Category": m.get("category", ""),
+            "Status": m.get("status", ""),
+            "Description": m.get("description", ""),
+        })
+    if not mitigations:
+        buf.write("(no mitigations)\n")
 
+    return buf.getvalue()
 
 def _html_report(product: ProductModel, threats: list[dict], mitigations: list[dict]) -> str:
     def esc(v):
