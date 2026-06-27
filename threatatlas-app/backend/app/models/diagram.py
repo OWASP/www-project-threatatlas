@@ -18,6 +18,7 @@ class Diagram(Base):
     diagram_data = Column(JSON, nullable=True)  # Stores ReactFlow nodes and edges
     current_version = Column(Integer, default=0, nullable=False)  # Track latest version number
     auto_version = Column(Boolean, default=True, nullable=False)  # Enable/disable auto-versioning
+    snapshot = Column(Text, nullable=True)  # Base64 JPEG screenshot for reports
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { DOMParser as XmlDOMParser } from 'linkedom';
 import { Upload, FileWarning, Cpu, Database, Users, Box, ArrowRight, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,10 +21,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { diagramsApi, aiConversationsApi } from '@/lib/api';
+import { diagramsApi, aiConversationsApi, threatsApi, mitigationsApi, diagramThreatsApi, diagramMitigationsApi, modelsApi, frameworksApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { getElementColor } from '@/lib/designSystem';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -443,7 +441,7 @@ async function decompress(b64: string): Promise<string> {
 /** Decompress if not already XML. */
 async function maybeDecompress(text: string): Promise<string> {
   const t = text.replace(/\s+/g, ''); // strip possible whitespace
-  if (text.trimStart().startsWith('<')) return text;
+  if (t.startsWith('<')) return text;
   try { return await decompress(t); } catch { return text; }
 }
 
@@ -455,24 +453,32 @@ async function maybeDecompress(text: string): Promise<string> {
  * For multi-page files we merge all pages into one flat cell list.
  */
 async function resolveDoc(xmlStr: string): Promise<Document> {
-  // linkedom parses non-HTML MIME types as XML only (no HTML reinterpretation);
-  // avoids CodeQL js/dom-text-reinterpreted-as-html on the browser DOMParser sink.
-  const parser = new XmlDOMParser();
+  const parser = new DOMParser();
   const parse = (s: string): Document => {
     const d = parser.parseFromString(s, 'text/xml');
     if (d.querySelector('parsererror')) throw new Error('XML parse error — file may be corrupt or not a draw.io export.');
     if (!d.documentElement) throw new Error('XML parse error — file may be corrupt or not a draw.io export.');
-    return d as unknown as Document;
+    return d;
   };
 
   let doc = parse(xmlStr);
+
+  // Serialize element inner content — uses XMLSerializer for child elements
+  // (uncompressed XML) and falls back to textContent for plain text (base64).
+  const serializer = new XMLSerializer();
+  const innerContent = (el: Element): string => {
+    if (el.children.length > 0) {
+      return Array.from(el.childNodes).map(n => serializer.serializeToString(n)).join('');
+    }
+    return el.textContent?.trim() ?? '';
+  };
 
   // ── <mxfile> wrapper (standard .drawio format) ──
   const diagramEls = Array.from(doc.querySelectorAll('mxfile > diagram'));
 
   if (diagramEls.length === 1) {
     // Single page — decompress and return directly (no merging overhead)
-    const pageXml = await maybeDecompress(diagramEls[0].textContent?.trim() ?? '');
+    const pageXml = await maybeDecompress(innerContent(diagramEls[0]));
     return parse(pageXml);
   }
 
@@ -482,7 +488,7 @@ async function resolveDoc(xmlStr: string): Promise<Document> {
     const root   = merged.querySelector('root')!;
 
     for (let pageIdx = 0; pageIdx < diagramEls.length; pageIdx++) {
-      const pageXml = await maybeDecompress(diagramEls[pageIdx].textContent?.trim() ?? '');
+      const pageXml = await maybeDecompress(innerContent(diagramEls[pageIdx]));
       const pageDoc = parse(pageXml);
       const suffix  = pageIdx === 0 ? '' : `_p${pageIdx}`;
 
@@ -515,8 +521,8 @@ async function resolveDoc(xmlStr: string): Promise<Document> {
 
   // ── Compressed single-page: <mxGraphModel>BASE64</mxGraphModel> ──
   const model = doc.querySelector('mxGraphModel');
-  if (model && !model.querySelector('root') && model.textContent?.trim()) {
-    return parse(await maybeDecompress(model.textContent.trim()));
+  if (model && !model.querySelector('root') && innerContent(model)) {
+    return parse(await maybeDecompress(innerContent(model)));
   }
 
   return doc;
@@ -676,10 +682,245 @@ async function parseDrawioXml(xmlStr: string): Promise<{ nodes: ParsedNode[]; ed
 
   // Boundaries behind everything else
   const nodes = Array.from(nodeMap.values())
-    .sort((a, b) => (a.layoutType === 'boundary' ? -1 : 1) - (b.layoutType === 'boundary' ? -1 : 1));
+    .sort((a, b) => (a.layoutType === 'boundary' ? 0 : 1) - (b.layoutType === 'boundary' ? 0 : 1));
 
   if (nodes.length === 0) throw new Error('No diagram elements found in file.');
   return { nodes, edges };
+}
+
+// ── Threat Dragon JSON parser ─────────────────────────────────────────────
+
+interface ThreatDragonThreat {
+  title?: string;
+  type?: string;
+  status?: string;
+  severity?: string;
+  description?: string;
+  mitigation?: string;
+}
+
+interface ThreatDragonCell {
+  type?: string;
+  shape?: string;
+  attrs?: Record<string, { text?: string }>;
+  position?: { x: number; y: number };
+  size?: { width: number; height: number };
+  data?: { name?: string; type?: string; threats?: ThreatDragonThreat[] };
+  source?: { cell?: string; id?: string; x?: number; y?: number };
+  target?: { cell?: string; id?: string; x?: number; y?: number };
+  id?: string;
+  labels?: string[];
+}
+
+/**
+ * Map Threat Dragon shape types to DFD node types.
+ */
+function mapTdType(cell: ThreatDragonCell): NodeType {
+  const shape = (typeof cell.shape === 'string' ? cell.shape : '').toLowerCase();
+  const dataType = (cell.data?.type ?? '').toLowerCase();
+
+  if (shape.includes('trust-boundary') || dataType.includes('boundarybox')) return 'boundary';
+  if (shape === 'process' || dataType.includes('process')) return 'process';
+  if (shape === 'store' || dataType.includes('store')) return 'datastore';
+  if (shape === 'actor' || dataType.includes('actor')) return 'external';
+  return 'external';
+}
+
+/**
+ * Parse Threat Dragon JSON (v1 and v2 formats).
+ * Returns parsed nodes, edges, and extracted threats per element.
+ */
+function parseThreatDragonJson(json: Record<string, unknown>): {
+  nodes: ParsedNode[];
+  edges: ParsedEdge[];
+  threats: { elementId: string; threats: ThreatDragonThreat[] }[];
+  diagramName: string;
+} {
+  // v2: cells directly on diagram; v1: diagramJson.cells
+  let cells: ThreatDragonCell[] = [];
+  let diagramName = 'Threat Dragon Import';
+
+  if (json.detail && typeof json.detail === 'object') {
+    // v2 format: { detail: { diagrams: [{ cells, ... }] } }
+    const detail = json.detail as { diagrams?: { cells?: ThreatDragonCell[]; title?: string }[] };
+    if (detail.diagrams?.[0]) {
+      cells = detail.diagrams[0].cells ?? [];
+      diagramName = detail.diagrams[0].title ?? diagramName;
+    }
+  } else if (json.cells && Array.isArray(json.cells)) {
+    // v2 direct format
+    cells = json.cells as ThreatDragonCell[];
+    diagramName = (json.title as string) ?? diagramName;
+  } else if (json.diagramJson && typeof json.diagramJson === 'object') {
+    // v1 format
+    const dj = json.diagramJson as { cells?: ThreatDragonCell[] };
+    cells = dj.cells ?? [];
+    diagramName = (json.title as string) ?? diagramName;
+  }
+
+  const nodes: ParsedNode[] = [];
+  const edges: ParsedEdge[] = [];
+  const threats: { elementId: string; threats: ThreatDragonThreat[] }[] = [];
+  const ts = Date.now();
+
+  // Track edges between same source/target for fan-out
+  const edgePairs = new Map<string, number>();
+
+  // Find min Y for coordinate normalization
+  let minY = 0;
+  for (const cell of cells) {
+    if (cell.position?.y !== undefined && cell.position.y < minY) {
+      minY = cell.position.y;
+    }
+  }
+  const yOffset = minY < 0 ? -minY + 50 : 0;
+
+  for (const cell of cells) {
+    const cellType = (cell.shape ?? cell.type ?? '').toLowerCase();
+    const id = cell.id ?? `td-${ts}-${Math.random().toString(36).slice(2, 8)}`;
+
+    // Skip trust-boundary-curve (decorative lines with x/y source/target, not cell references)
+    if (cellType === 'trust-boundary-curve') continue;
+
+    // Flows → edges
+    if (cellType === 'flow') {
+      // TD flows use { cell: "uuid", port: "uuid" } for source/target
+      const sourceId = (cell.source as { cell?: string })?.cell;
+      const targetId = (cell.target as { cell?: string })?.cell;
+      if (sourceId && targetId) {
+        const pairKey = [sourceId, targetId].sort().join('-');
+        const pairCount = edgePairs.get(pairKey) ?? 0;
+        edgePairs.set(pairKey, pairCount + 1);
+
+        const label = cell.labels?.[0]
+          ?? cell.data?.name
+          ?? 'Data Flow';
+
+        edges.push({
+          id: `td-edge-${id}-${ts}`,
+          source: `td-${sourceId}`,
+          target: `td-${targetId}`,
+          label: typeof label === 'string' ? label : 'Data Flow',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
+          edgeStyle: pairCount > 0 ? `curvature=${0.3 * pairCount}` : '',
+        });
+
+        // Collect threats from data flows too
+        if (cell.data?.threats?.length) {
+          threats.push({ elementId: `td-edge-${id}-${ts}`, threats: cell.data.threats });
+        }
+      }
+      continue;
+    }
+
+    // Nodes (processes, actors, stores, boundaries)
+    const position = cell.position ?? { x: 0, y: 0 };
+    const size = cell.size ?? { width: 100, height: 60 };
+    const label = cell.data?.name
+      ?? cell.attrs?.text?.text
+      ?? (cell.attrs as Record<string, { text?: string }>)?.label?.text
+      ?? `Element ${id}`;
+    const nodeType = mapTdType(cell);
+
+    nodes.push({
+      id: `td-${id}`,
+      label: label.replace(/\n/g, ' ').trim(),
+      type: nodeType,
+      layoutType: nodeType,
+      x: position.x,
+      y: position.y + yOffset,
+      width: size.width,
+      height: size.height,
+      originalStyle: cellType,
+    });
+
+    // Collect threats from this element
+    if (cell.data?.threats?.length) {
+      threats.push({ elementId: `td-${id}`, threats: cell.data.threats });
+    }
+  }
+
+  // Re-compute edge handles — all parallel edges use same best handles but get curvature offsets
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+  // Group edges by undirected node pair
+  const pairGroups = new Map<string, ParsedEdge[]>();
+  for (const edge of edges) {
+    const key = [edge.source, edge.target].sort().join('|');
+    const group = pairGroups.get(key) ?? [];
+    group.push(edge);
+    pairGroups.set(key, group);
+  }
+
+  for (const [, group] of pairGroups) {
+    const edge0 = group[0];
+    const src = nodeMap.get(edge0.source);
+    const tgt = nodeMap.get(edge0.target);
+
+    // All edges in the group use the same handles (best geometric)
+    const handles = src && tgt ? bestHandles(src, tgt, '') : { sourceHandle: 'source-right', targetHandle: 'target-left' };
+
+    for (let i = 0; i < group.length; i++) {
+      const edge = group[i];
+      edge.sourceHandle = handles.sourceHandle;
+      edge.targetHandle = handles.targetHandle;
+      // Store parallel info for curvature fan-out in DiagramEdge
+      if (group.length > 1) {
+        edge.edgeStyle = `parallelIndex=${i};parallelCount=${group.length}`;
+      }
+    }
+  }
+
+  if (nodes.length === 0) throw new Error('No diagram elements found in Threat Dragon file.');
+  return { nodes, edges, threats, diagramName };
+}
+
+// ── ThreatAtlas export JSON parser ────────────────────────────────────────
+
+interface ThreatAtlasExportDiagram {
+  name: string;
+  nodes: { id: string; type: string; position: { x: number; y: number }; data: { label: string; type: string }; width?: number; height?: number; zIndex?: number }[];
+  edges: { id: string; source: string; target: string; sourceHandle?: string; targetHandle?: string; label?: string; animated?: boolean }[];
+}
+
+/**
+ * Parse a ThreatAtlas product-level export JSON.
+ * Format: { product, exported_at, diagrams: [...] }
+ */
+function parseThreatAtlasExport(json: Record<string, unknown>): {
+  nodes: ParsedNode[];
+  edges: ParsedEdge[];
+  diagramName: string;
+} {
+  const diagrams = json.diagrams as ThreatAtlasExportDiagram[];
+  if (!diagrams?.length) throw new Error('No diagrams found in ThreatAtlas export.');
+
+  // Import first diagram (user can re-import to get others)
+  const diagram = diagrams[0];
+  const nodes: ParsedNode[] = diagram.nodes.map(n => ({
+    id: n.id,
+    label: n.data.label,
+    type: (n.data.type as NodeType) ?? 'external',
+    layoutType: (n.data.type as NodeType) ?? 'external',
+    x: n.position.x,
+    y: n.position.y,
+    width: n.width ?? 100,
+    height: n.height ?? 60,
+    originalStyle: '',
+  }));
+
+  const edges: ParsedEdge[] = diagram.edges.map(e => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    label: e.label ?? 'Data Flow',
+    sourceHandle: e.sourceHandle ?? 'source-right',
+    targetHandle: e.targetHandle ?? 'target-left',
+    edgeStyle: '',
+  }));
+
+  return { nodes, edges, diagramName: diagram.name };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -718,11 +959,12 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
   const [nodes, setNodes] = useState<ParsedNode[]>([]);
   const [edges, setEdges] = useState<ParsedEdge[]>([]);
   const [useAiAssist, setUseAiAssist] = useState(false);
+  const [importedThreats, setImportedThreats] = useState<{ elementId: string; threats: ThreatDragonThreat[] }[]>([]);
 
   const reset = () => {
     setStep('upload'); setFile(null); setName(initialName ?? '');
     setParseError(null); setNodes([]); setEdges([]);
-    setAiParsing(false);
+    setAiParsing(false); setImportedThreats([]);
   };
 
   const handleOpenChange = (v: boolean) => { if (!v) reset(); setOpen(v); };
@@ -731,7 +973,7 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
     const f = e.target.files?.[0];
     if (!f) return;
     setFile(f);
-    setName(f.name.replace(/\.(xml|drawio)$/i, ''));
+    setName(f.name.replace(/\.(xml|drawio|json)$/i, ''));
     setParseError(null);
   };
 
@@ -739,7 +981,91 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
     if (!file || !name.trim()) { setParseError('Please select a file and provide a diagram name.'); return; }
     try {
       setParsing(true); setParseError(null);
-      const { nodes: n, edges: e } = await parseDrawioXml(await file.text());
+
+      const rawText = await file.text();
+      const trimmed = rawText.trimStart();
+
+      // Detect JSON vs XML
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        // JSON import path
+        const json = JSON.parse(rawText) as Record<string, unknown>;
+
+        // Format 0: ThreatAtlas diagram-level export { name, nodes, edges, productId, exportedAt, version }
+        if (json.nodes && json.edges && json.exportedAt && json.version) {
+          const rawNodes = json.nodes as { id: string; position?: { x: number; y: number }; data?: { label?: string; type?: string }; width?: number; height?: number; x?: number; y?: number; label?: string; type?: string }[];
+          const n: ParsedNode[] = rawNodes.map(node => ({
+            id: node.id,
+            label: node.data?.label ?? node.label ?? `Element ${node.id}`,
+            type: (node.data?.type ?? node.type ?? 'external') as NodeType,
+            layoutType: (node.data?.type ?? node.type ?? 'external') as NodeType,
+            x: node.position?.x ?? node.x ?? 0,
+            y: node.position?.y ?? node.y ?? 0,
+            width: node.width ?? 100,
+            height: node.height ?? 60,
+            originalStyle: '',
+          }));
+          const rawEdges = json.edges as { id: string; source: string; target: string; label?: string; data?: { label?: string }; sourceHandle?: string; targetHandle?: string }[];
+          const e: ParsedEdge[] = rawEdges.map(edge => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            label: edge.label ?? edge.data?.label ?? 'Data Flow',
+            sourceHandle: edge.sourceHandle ?? 'source-right',
+            targetHandle: edge.targetHandle ?? 'target-left',
+            edgeStyle: '',
+          }));
+          setNodes(n);
+          setEdges(e);
+          // Restore threats and mitigations if present (v1.1)
+          const importThreats = (json.threats as unknown[]) ?? [];
+          const importMitigations = (json.mitigations as unknown[]) ?? [];
+          setImportedThreats([]);
+          if (!name.trim() || name === file.name.replace(/\.json$/i, '')) setName((json.name as string) ?? 'Imported Diagram');
+          setStep('remap');
+          if (importThreats.length > 0 || importMitigations.length > 0) {
+            toast.info(`Found ${importThreats.length} threats and ${importMitigations.length} mitigations — they will be restored on import.`);
+          }
+          return;
+        }
+
+        // Detect format: ThreatAtlas product-level export
+        if (json.product && json.exported_at && json.diagrams) {
+          const { nodes: n, edges: e, diagramName } = parseThreatAtlasExport(json);
+          setNodes(n);
+          setEdges(e);
+          if (!name.trim() || name === file.name.replace(/\.json$/i, '')) setName(diagramName);
+          setImportedThreats([]);
+          setStep('remap');
+          return;
+        }
+
+        // Detect format: Threat Dragon (v1 or v2)
+        const { nodes: n, edges: e, threats, diagramName } = parseThreatDragonJson(json);
+        setNodes(n);
+        setEdges(e);
+        setImportedThreats(threats);
+        if (!name.trim() || name === file.name.replace(/\.json$/i, '')) setName(diagramName);
+        setStep('remap');
+        return;
+      }
+
+      // XML import path (draw.io)
+      // Sniff XML encoding declaration and re-read with correct charset if needed
+      let xmlText = rawText;
+      const encodingMatch = xmlText.match(/^<\?xml[^?]*encoding=["']([^"']+)["']/i);
+      if (encodingMatch) {
+        const declared = encodingMatch[1].toLowerCase();
+        if (declared !== 'utf-8' && declared !== 'utf8') {
+          xmlText = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsText(file, encodingMatch[1]);
+          });
+        }
+      }
+
+      const { nodes: n, edges: e } = await parseDrawioXml(xmlText);
 
       if (useAiAssist && n.length > 0) {
         setParsing(false);
@@ -752,7 +1078,7 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
           const enriched = n.map(node => {
             // Trust-zone shapes from the file: keep DFD + layout as boundary so the canvas matches the upload.
             if (node.layoutType === 'boundary') {
-              return { ...node, type: 'boundary', aiSuggestedType: 'boundary' };
+              return { ...node, type: 'boundary' as NodeType, aiSuggestedType: 'boundary' as NodeType };
             }
             const ai = aiMap.get(node.id);
             if (!ai) return node;
@@ -846,15 +1172,26 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
             zIndex:   10,
           };
         }),
-        edges: finalEdges.map(e => ({
-          id:           e.id,
-          source:       e.source,
-          target:       e.target,
-          sourceHandle: e.sourceHandle,
-          targetHandle: e.targetHandle,
-          animated:     true,
-          label:        e.label,
-        })),
+        edges: finalEdges.map(e => {
+          // Parse parallel edge info if present
+          const parallelMatch = e.edgeStyle?.match(/parallelIndex=(\d+);parallelCount=(\d+)/);
+          const data: Record<string, unknown> = {};
+          if (parallelMatch) {
+            data.parallelIndex = parseInt(parallelMatch[1]);
+            data.parallelCount = parseInt(parallelMatch[2]);
+          }
+          return {
+            id:           e.id,
+            source:       e.source,
+            target:       e.target,
+            sourceHandle: e.sourceHandle,
+            targetHandle: e.targetHandle,
+            animated:     true,
+            label:        e.label,
+            type:         'custom',
+            data,
+          };
+        }),
       };
 
       if (isReplaceMode) {
@@ -864,9 +1201,127 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
         onImportSuccess(targetDiagramId!);
       } else {
         const res = await diagramsApi.create({ product_id: productId, name: name.trim(), diagram_data: diagramData });
-        toast.success(`"${name}" imported — ${nodes.length} elements, ${edges.length} flows`);
+        const diagramId = res.data.id;
+
+        // Import threats and mitigations from Threat Dragon
+        let threatCount = 0;
+        let mitigationCount = 0;
+        if (importedThreats.length > 0) {
+          // Ensure we have a model — create one if the diagram doesn't come with one
+          let modelId: number | null = res.data.model_id ?? null;
+          let frameworkId: number = (res.data.framework_id as number) ?? 0;
+
+          if (!modelId) {
+            try {
+              // Get or create a framework to attach threats to
+              if (!frameworkId) {
+                const fwRes = await frameworksApi.list();
+                const customFw = fwRes.data.find((fw: { name: string; id: number }) => fw.name.toLowerCase().includes('custom'));
+                frameworkId = customFw?.id ?? fwRes.data[0]?.id ?? 0;
+              }
+
+              // Create a model for this diagram
+              const modelRes = await modelsApi.create({
+                diagram_id: diagramId,
+                framework_id: frameworkId,
+                name: `${name.trim()} — Imported Threats`,
+              });
+              modelId = modelRes.data.id;
+            } catch {
+              // If model creation fails, skip threat import
+              modelId = null;
+            }
+          }
+
+          if (modelId) {
+            for (const { elementId, threats: tdThreats } of importedThreats) {
+              const node = nodes.find(n => n.id === elementId);
+              const elementType = node?.type ?? 'process';
+
+              for (const t of tdThreats) {
+                try {
+                  // Create the threat as a custom knowledge base entry
+                  const threatRes = await threatsApi.create({
+                    framework_id: frameworkId,
+                    name: t.title ?? 'Imported Threat',
+                    description: t.description ?? '',
+                    category: t.type ?? 'imported',
+                    is_custom: true,
+                  });
+                  const threatId = threatRes.data.id;
+
+                  // Link threat to the element — map TD severity to likelihood/impact
+                  const severityMap: Record<string, { likelihood: number; impact: number }> = {
+                    critical: { likelihood: 5, impact: 5 },
+                    high: { likelihood: 4, impact: 4 },
+                    medium: { likelihood: 3, impact: 3 },
+                    low: { likelihood: 2, impact: 2 },
+                  };
+                  const sev = severityMap[(t.severity ?? '').toLowerCase()] ?? null;
+
+                  // Map TD status to ThreatAtlas status
+                  const tdStatus = (t.status ?? 'open').toLowerCase();
+                  const statusMap: Record<string, string> = {
+                    open: 'identified',
+                    mitigated: 'mitigated',
+                    'not applicable': 'accepted',
+                    accepted: 'accepted',
+                    closed: 'mitigated',
+                  };
+                  const mappedStatus = statusMap[tdStatus] ?? 'identified';
+
+                  const dtRes = await diagramThreatsApi.create({
+                    diagram_id: diagramId,
+                    model_id: modelId,
+                    threat_id: threatId,
+                    element_id: elementId,
+                    element_type: elementType,
+                    status: mappedStatus,
+                    likelihood: sev?.likelihood ?? null,
+                    impact: sev?.impact ?? null,
+                  });
+                  const diagramThreatId = dtRes.data.id;
+                  threatCount++;
+
+                  // Create mitigation if present
+                  if (t.mitigation) {
+                    try {
+                      const mitRes = await mitigationsApi.create({
+                        framework_id: frameworkId,
+                        name: `Mitigate: ${t.title ?? 'Imported Threat'}`,
+                        description: t.mitigation,
+                        category: t.type ?? 'imported',
+                        is_custom: true,
+                      });
+
+                      await diagramMitigationsApi.create({
+                        diagram_id: diagramId,
+                        model_id: modelId,
+                        mitigation_id: mitRes.data.id,
+                        element_id: elementId,
+                        element_type: elementType,
+                        threat_id: diagramThreatId,
+                        status: 'proposed',
+                      });
+                      mitigationCount++;
+                    } catch (mitErr) {
+                      console.warn('[TD Import] Mitigation creation failed:', mitErr);
+                    }
+                  }
+              } catch {
+                // Continue with remaining threats if one fails
+              }
+            }
+          }
+          } // end if (modelId)
+        }
+
+        const parts = [`${nodes.length} elements`, `${edges.length} flows`];
+        if (threatCount > 0) parts.push(`${threatCount} threats`);
+        if (mitigationCount > 0) parts.push(`${mitigationCount} mitigations`);
+        toast.success(`"${name}" imported — ${parts.join(', ')}`);
         handleOpenChange(false);
-        onImportSuccess(res.data.id);
+        onImportSuccess(diagramId);
       }
     } catch {
       toast.error('Import failed. Please try again.');
@@ -880,7 +1335,7 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
       {!isControlled && (
         <Button variant="outline" size="sm" className="h-10 px-3" onClick={() => setOpen(true)}>
           <Upload className="h-4 w-4 mr-2" />
-          Import Draw.io
+          Import Draw.io or JSON
         </Button>
       )}
 
@@ -891,11 +1346,11 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
           {step === 'upload' && (
             <>
               <DialogHeader>
-                <DialogTitle>{isReplaceMode ? 'Replace Current Diagram' : 'Import Draw.io Diagram'}</DialogTitle>
+                <DialogTitle>{isReplaceMode ? 'Replace Current Diagram' : 'Import Draw.io or JSON'}</DialogTitle>
                 <DialogDescription>
                   {isReplaceMode
-                    ? 'Upload a Draw.io file to replace the content of this diagram. The existing elements will be overwritten.'
-                    : <>Supports <code className="font-mono text-xs">.xml</code> and{' '}<code className="font-mono text-xs">.drawio</code> files — including multi-page, compressed, and cloud-exported formats. Shapes are auto-detected and you can remap any element before importing.</>
+                    ? 'Upload a Draw.io or JSON file to replace the content of this diagram. The existing elements will be overwritten.'
+                    : <>Supports <code className="font-mono text-xs">.drawio</code>, <code className="font-mono text-xs">.xml</code> or <code className="font-mono text-xs">.json</code> files — including Threat Dragon exports, ThreatAtlas exports, multi-page, compressed, and cloud-exported formats.</>
                   }
                 </DialogDescription>
               </DialogHeader>
@@ -903,7 +1358,7 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
               <div className="space-y-4 py-2">
                 <div className="space-y-2">
                   <Label htmlFor="drawio-file">File</Label>
-                  <Input id="drawio-file" type="file" accept=".xml,.drawio" onChange={handleFileChange} disabled={parsing} />
+                  <Input id="drawio-file" type="file" accept=".xml,.drawio,.json" onChange={handleFileChange} disabled={parsing} />
                   {file && <p className="text-xs text-muted-foreground">{file.name} — {(file.size / 1024).toFixed(1)} KB</p>}
                 </div>
 
@@ -976,7 +1431,7 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
                   const Icon = t.icon;
                   return (
                     <Badge key={t.value} variant="outline" className="gap-1.5 font-normal">
-                      <Icon className={cn('h-3 w-3', t.color)} />
+                      <Icon className="h-3 w-3" style={{ color: t.colorVar }} />
                       {t.count} {t.label}{t.count !== 1 ? 's' : ''}
                     </Badge>
                   );
@@ -1020,7 +1475,7 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
                                 return (
                                   <SelectItem key={t.value} value={t.value}>
                                     <div className="flex items-center gap-2">
-                                      <Icon className={cn('h-3.5 w-3.5', t.color)} />
+                                      <Icon className="h-3.5 w-3.5" style={{ color: t.colorVar }} />
                                       {t.label}
                                     </div>
                                   </SelectItem>

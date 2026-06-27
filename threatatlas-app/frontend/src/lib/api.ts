@@ -196,6 +196,8 @@ export interface ProductInput {
   business_area?: string | null;
   owner_name?: string | null;
   owner_email?: string | null;
+  reviewer?: string | null;
+  contributors?: string | null;
 }
 
 export const productsApi = {

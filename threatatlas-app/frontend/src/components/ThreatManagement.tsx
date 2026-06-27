@@ -299,7 +299,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
 
   // ── Status counts for the stats bar ──
   const statusCounts = {
-    identified: attachedThreats.filter(t => t.status === 'identified').length,
+    identified: attachedThreats.filter(t => t.status === 'identified' || t.status === 'open').length,
     mitigated:  attachedThreats.filter(t => t.status === 'mitigated').length,
     accepted:   attachedThreats.filter(t => t.status === 'accepted').length,
   };

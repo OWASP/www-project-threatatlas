@@ -28,6 +28,8 @@ class Product(Base):
     owner_name = Column(String(200), nullable=True)
     owner_email = Column(String(255), nullable=True)
     jira_project_key = Column(String(50), nullable=True)
+    reviewer = Column(String(500), nullable=True)
+    contributors = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

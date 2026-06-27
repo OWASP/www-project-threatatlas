@@ -1051,6 +1051,25 @@ export default function ProductDetails() {
               Full report (HTML)
             </DropdownMenuItem>
             <DropdownMenuItem
+              onClick={async () => {
+                // Download the HTML report via authenticated API and open for print
+                try {
+                  const { default: api } = await import('@/lib/api');
+                  const res = await api.get(`/products/${product.id}/download/report`, { responseType: 'blob' });
+                  const blob = new Blob([res.data], { type: 'text/html' });
+                  const url = URL.createObjectURL(blob);
+                  const win = window.open(url, '_blank');
+                  if (win) {
+                    win.onload = () => setTimeout(() => { try { win.print(); } catch {} }, 500);
+                  }
+                  setTimeout(() => URL.revokeObjectURL(url), 30000);
+                } catch { toast.error('Failed to generate PDF report.'); }
+              }}
+            >
+              <FileReport className="mr-2 h-4 w-4" />
+              Full report (PDF)
+            </DropdownMenuItem>
+            <DropdownMenuItem
               onClick={() => triggerDownload(`/api/products/${product.id}/download/report.md`)}
             >
               <FileCode className="mr-2 h-4 w-4" />
@@ -1481,7 +1500,7 @@ export default function ProductDetails() {
             <>
               <DialogHeader>
                 <DialogTitle>New Diagram</DialogTitle>
-                <DialogDescription>Start with a blank canvas or import an existing Draw.io file.</DialogDescription>
+                <DialogDescription>Start with a blank canvas or import an existing Draw.io/JSON file.</DialogDescription>
               </DialogHeader>
 
               <div className="grid grid-cols-2 gap-3 py-2">
@@ -1506,8 +1525,8 @@ export default function ProductDetails() {
                     <Upload className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm text-center">Import Draw.io</p>
-                    <p className="text-xs text-muted-foreground text-center mt-0.5">.drawio or .xml file</p>
+                    <p className="font-semibold text-sm text-center">Import Draw.io or JSON</p>
+                    <p className="text-xs text-muted-foreground text-center mt-0.5">.drawio, .xml or .json file</p>
                   </div>
                 </button>
               </div>
@@ -1570,7 +1589,7 @@ export default function ProductDetails() {
 
                 {newDiagramStep === 2 && (
                   <div className="space-y-2">
-                    <div className="grid gap-2">
+                    <div className="grid gap-2 max-h-64 overflow-y-auto">
                       {frameworks.map((fw: any) => {
                         const selected = newDiagramFrameworks.includes(fw.id);
                         return (
