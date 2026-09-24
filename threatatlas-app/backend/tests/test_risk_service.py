@@ -1,4 +1,4 @@
-"""Unit tests for the risk scoring engine (app/services/risk_service.py)."""
+"""Unit tests for inherent and manually reassessed residual risk scoring."""
 
 import pytest
 
@@ -6,16 +6,14 @@ from app.services import risk_service as rs
 from app.routers.diagram_threats import calculate_risk_score_and_severity
 
 
-# ── Inherent risk + severity bands ───────────────────────────────────────────
-
 @pytest.mark.parametrize(
     "likelihood,impact,score,severity",
     [
         (5, 5, 25, "critical"),
-        (4, 5, 20, "critical"),   # boundary: 20 -> critical
+        (4, 5, 20, "critical"),
         (3, 5, 15, "high"),
-        (4, 3, 12, "high"),       # boundary: 12 -> high
-        (2, 3, 6, "medium"),      # boundary: 6 -> medium
+        (4, 3, 12, "high"),
+        (2, 3, 6, "medium"),
         (1, 5, 5, "low"),
         (1, 1, 1, "low"),
     ],
@@ -31,7 +29,6 @@ def test_calculate_risk_missing_inputs():
 
 
 def test_router_wrapper_matches_service():
-    """The router's public function must stay behaviourally identical."""
     for likelihood in range(1, 6):
         for impact in range(1, 6):
             assert calculate_risk_score_and_severity(likelihood, impact) == rs.calculate_risk(likelihood, impact)
@@ -46,63 +43,18 @@ def test_severity_for_score_standalone():
     assert rs.severity_for_score(None) is None
 
 
-# ── Residual fraction ─────────────────────────────────────────────────────────
-
-def test_residual_fraction_no_mitigations():
-    assert rs.residual_fraction([]) == 1.0
-    assert rs.residual_fraction(None) == 1.0
-
-
-def test_residual_fraction_inactive_statuses_have_no_effect():
-    assert rs.residual_fraction(["proposed", "rejected"]) == 1.0
-
-
-def test_residual_fraction_single_active():
-    assert rs.residual_fraction(["implemented"]) == 0.6   # 1 - 0.4
-    assert rs.residual_fraction(["verified"]) == pytest.approx(0.4)  # 1 - 0.6
-
-
-def test_residual_fraction_compounds():
-    # implemented (0.6 remaining) * verified (0.4 remaining) = 0.24
-    assert rs.residual_fraction(["implemented", "verified"]) == pytest.approx(0.24)
-
-
-# ── Residual risk ─────────────────────────────────────────────────────────────
-
-def test_residual_risk_reduces_score_and_severity():
-    # inherent 25 (critical); one verified mitigation -> 25 * 0.4 = 10 -> medium
-    score, sev = rs.residual_risk(5, 5, ["verified"])
-    assert score == 10
-    assert sev == "medium"
-
-
-def test_residual_risk_no_mitigation_equals_inherent():
-    assert rs.residual_risk(4, 5, []) == (20, "critical")
-
-
-def test_residual_risk_floored_at_one():
-    # inherent 2, heavy mitigation would round below 1 -> floored to 1
-    score, _ = rs.residual_risk(1, 2, ["verified", "verified"])
-    assert score == 1
-
-
-def test_residual_risk_missing_inputs():
-    assert rs.residual_risk(None, 3, ["verified"]) == (None, None)
-
-
-# ── assess() aggregate ────────────────────────────────────────────────────────
-
-def test_assess_full_shape():
-    result = rs.assess(5, 5, ["implemented", "proposed"])
+def test_assess_keeps_inherent_and_residual_independent():
+    result = rs.assess(5, 5, 2, 4)
     assert result["inherent_score"] == 25
     assert result["inherent_severity"] == "critical"
-    assert result["residual_score"] == 15  # 25 * 0.6
-    assert result["residual_severity"] == "high"
-    assert result["active_mitigations"] == 1  # only "implemented" is active
+    assert result["residual_likelihood"] == 2
+    assert result["residual_impact"] == 4
+    assert result["residual_score"] == 8
+    assert result["residual_severity"] == "medium"
 
 
-def test_assess_unscored_threat():
-    result = rs.assess(None, None, [])
-    assert result["inherent_score"] is None
+def test_assess_does_not_infer_residual_from_mitigations():
+    result = rs.assess(5, 5)
+    assert result["inherent_score"] == 25
     assert result["residual_score"] is None
-    assert result["active_mitigations"] == 0
+    assert result["residual_severity"] is None

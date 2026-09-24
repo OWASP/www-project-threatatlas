@@ -41,6 +41,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertTriangle, Shield, ExternalLink, Plus, Trash2, Search, X, MessageSquare, Target, CalendarClock, UserCheck, FileText } from 'lucide-react';
 import { RiskSelector } from '@/components/RiskSelector';
+import { ResidualRiskAssessment } from '@/components/ResidualRiskAssessment';
 import { diagramMitigationsApi, mitigationsApi, frameworksApi } from '@/lib/api';
 import { AcceptRiskDialog } from '@/components/AcceptRiskDialog';
 import { getSeverity, getSeverityClasses, getSeverityVariant, getStatusClasses } from '@/lib/risk';
@@ -92,7 +93,13 @@ interface ThreatDetailsSheetProps {
   onUpdateStatus: (status: string, acceptanceData?: { justification: string; approver_id?: number; review_date?: string }) => void;
   onUpdateNotes: (comments: string) => void;
   onNavigateToDiagram: (item: any) => void;
-  onUpdateRisk?: (threatId: number, data: { likelihood?: number; impact?: number }) => void;
+  onUpdateRisk?: (threatId: number, data: {
+    likelihood?: number;
+    impact?: number;
+    residual_likelihood?: number | null;
+    residual_impact?: number | null;
+    residual_comments?: string | null;
+  }) => void | Promise<void>;
   onMitigationsChange?: () => void;
 }
 
@@ -435,7 +442,7 @@ export default function ThreatDetailsSheet({
 
                   {itemType === 'threat' && (currentRiskScore !== null || currentSeverity) && (
                     <div>
-                      <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">SEVERITY / RISK</p>
+                      <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">INHERENT SEVERITY / RISK</p>
                       <div className="flex items-center gap-2 h-9">
                         {currentSeverity && (
                           <Badge variant={getSeverityVariant(currentSeverity)} className="capitalize text-[10px]">
@@ -455,7 +462,7 @@ export default function ThreatDetailsSheet({
                 {/* Risk Assessment — threats only */}
                 {itemType === 'threat' && (
                   <div>
-                    <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">RISK ASSESSMENT</p>
+                    <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">INHERENT RISK (BEFORE MITIGATIONS)</p>
                     <RiskSelector
                       likelihood={localLikelihood}
                       impact={localImpact}
@@ -463,6 +470,18 @@ export default function ThreatDetailsSheet({
                       onImpactChange={handleImpactChange}
                     />
                   </div>
+                )}
+
+                {itemType === 'threat' && (
+                  <ResidualRiskAssessment
+                    itemId={selectedItem.id}
+                    inherentComplete={localLikelihood != null && localImpact != null}
+                    residual_likelihood={selectedItem.residual_likelihood ?? null}
+                    residual_impact={selectedItem.residual_impact ?? null}
+                    residual_comments={selectedItem.residual_comments ?? null}
+                    disabled={!canWrite}
+                    onSave={(values) => onUpdateRisk?.(selectedItem.id, values)}
+                  />
                 )}
 
                 {/* Mitigation coverage bar — threats with mitigations */}

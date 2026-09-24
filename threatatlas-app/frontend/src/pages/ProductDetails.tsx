@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Label as RechartsLabel } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Label as RechartsLabel, Legend } from 'recharts';
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import {
   Dialog,
@@ -112,6 +112,11 @@ interface DiagramThreat {
   likelihood: number | null;
   impact: number | null;
   risk_score: number | null;
+  residual_likelihood: number | null;
+  residual_impact: number | null;
+  residual_risk_score: number | null;
+  residual_severity: 'low' | 'medium' | 'high' | 'critical' | null;
+  residual_comments: string | null;
   threat: {
     id: number;
     name: string;
@@ -141,12 +146,21 @@ interface DiagramMitigation {
 
 // ── Product Analytics Charts ──
 function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; mitigations: DiagramMitigation[] }) {
+  const residualAssessedThreats = useMemo(
+    () => threats.filter(t => t.risk_score != null && t.residual_risk_score != null),
+    [threats]
+  );
+  const inherentAssessedThreats = useMemo(
+    () => threats.filter(t => t.likelihood != null && t.impact != null),
+    [threats]
+  );
   const severityData = useMemo(() => [
-    { severity: 'Critical', count: threats.filter(t => t.severity === 'critical').length, fill: 'var(--chart-1)' },
-    { severity: 'High', count: threats.filter(t => t.severity === 'high').length, fill: 'var(--chart-5)' },
-    { severity: 'Medium', count: threats.filter(t => t.severity === 'medium').length, fill: 'var(--chart-3)' },
-    { severity: 'Low', count: threats.filter(t => t.severity === 'low').length, fill: 'var(--chart-2)' },
-  ], [threats]);
+    { severity: 'Critical', inherent: residualAssessedThreats.filter(t => t.severity === 'critical').length, residual: residualAssessedThreats.filter(t => t.residual_severity === 'critical').length },
+    { severity: 'High', inherent: residualAssessedThreats.filter(t => t.severity === 'high').length, residual: residualAssessedThreats.filter(t => t.residual_severity === 'high').length },
+    { severity: 'Medium', inherent: residualAssessedThreats.filter(t => t.severity === 'medium').length, residual: residualAssessedThreats.filter(t => t.residual_severity === 'medium').length },
+    { severity: 'Low', inherent: residualAssessedThreats.filter(t => t.severity === 'low').length, residual: residualAssessedThreats.filter(t => t.residual_severity === 'low').length },
+    { severity: 'Unscored', inherent: residualAssessedThreats.filter(t => t.severity == null).length, residual: residualAssessedThreats.filter(t => t.residual_severity == null).length },
+  ], [residualAssessedThreats]);
 
   const threatStatusData = useMemo(() => [
     { status: 'Identified', count: threats.filter(t => t.status === 'identified').length, fill: 'var(--chart-1)' },
@@ -176,10 +190,8 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
   }, [threats]);
 
   const severityConfig = {
-    Critical: { label: "Critical", color: "var(--risk-critical)" },
-    High: { label: "High", color: "var(--risk-high)" },
-    Medium: { label: "Medium", color: "var(--risk-medium)" },
-    Low: { label: "Low", color: "var(--risk-low)" },
+    inherent: { label: "Inherent", color: "var(--chart-1)" },
+    residual: { label: "Residual", color: "var(--chart-2)" },
   } satisfies ChartConfig;
 
   const threatStatusConfig = {
@@ -200,6 +212,20 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
   } satisfies ChartConfig;
 
   const totalMitigations = mitigations.length;
+  const inherentRiskTotal = residualAssessedThreats.reduce((total, threat) => total + (threat.risk_score ?? 0), 0);
+  const residualRiskTotal = residualAssessedThreats.reduce((total, threat) => total + (threat.residual_risk_score ?? 0), 0);
+  const averageScoreReduction = residualAssessedThreats.length
+    ? (inherentRiskTotal - residualRiskTotal) / residualAssessedThreats.length
+    : null;
+  const levels = [1, 2, 3, 4, 5];
+  const levelLabels: Record<number, string> = { 1: 'Very Low', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Very High' };
+  const getCellStyle = (likelihood: number, impact: number, filled: boolean) => {
+    const score = likelihood * impact;
+    const tier = score >= 20 ? 'risk-critical' : score >= 12 ? 'risk-high' : score >= 6 ? 'risk-medium' : 'risk-low';
+    return filled
+      ? { backgroundColor: `var(--${tier})`, color: '#fff' }
+      : { backgroundColor: `var(--${tier}-muted)` };
+  };
 
   if (threats.length === 0 && mitigations.length === 0) {
     return (
@@ -217,46 +243,48 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
     );
   }
 
-  const levelLabels: Record<number, string> = { 1: 'Very Low', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Very High' };
-  const levels = [1, 2, 3, 4, 5];
-
-  const riskMatrix = useMemo(() => {
-    const m: Record<string, DiagramThreat[]> = {};
-    threats.forEach(t => {
-      if (t.likelihood != null && t.impact != null) {
-        const key = `${t.likelihood}-${t.impact}`;
-        if (!m[key]) m[key] = [];
-        m[key].push(t);
-      }
-    });
-    return m;
-  }, [threats]);
-
-  const getCellStyle = (lik: number, imp: number, filled: boolean) => {
-    const score = lik * imp;
-    let v: string;
-    if (score >= 20) v = 'risk-critical';
-    else if (score >= 12) v = 'risk-high';
-    else if (score >= 6) v = 'risk-medium';
-    else v = 'risk-low';
-    return filled
-      ? { backgroundColor: `var(--${v})`, color: '#fff' }
-      : { backgroundColor: `var(--${v}-muted)` };
-  };
-
-  const threatsWithRisk = threats.filter(t => t.likelihood != null && t.impact != null);
-
   return (
     <div className="space-y-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <Card className="rounded-xl border-border/60 shadow-xs">
+        <CardHeader className="pb-2"><CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Average Score Reduction</CardTitle></CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{averageScoreReduction == null ? '—' : `${averageScoreReduction > 0 ? '+' : ''}${averageScoreReduction.toFixed(1)} pts`}</div>
+          <p className="text-xs text-muted-foreground mt-1">Inherent minus residual score; positive = lower, negative = higher residual score</p>
+        </CardContent>
+      </Card>
+      <Card className="rounded-xl border-border/60 shadow-xs">
+        <CardHeader className="pb-2"><CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Paired Assessments</CardTitle></CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{residualAssessedThreats.length}</div>
+          <p className="text-xs text-muted-foreground mt-1">of {threats.length} threats have both scores</p>
+        </CardContent>
+      </Card>
+      <Card className="rounded-xl border-border/60 shadow-xs">
+        <CardHeader className="pb-2"><CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Inherent Score Total</CardTitle></CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{residualAssessedThreats.length ? inherentRiskTotal : '—'}</div>
+          <p className="text-xs text-muted-foreground mt-1">Score points across paired assessments</p>
+        </CardContent>
+      </Card>
+      <Card className="rounded-xl border-border/60 shadow-xs">
+        <CardHeader className="pb-2"><CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Residual Score Total</CardTitle></CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{residualAssessedThreats.length ? residualRiskTotal : '—'}</div>
+          <p className="text-xs text-muted-foreground mt-1">Score points across paired assessments</p>
+        </CardContent>
+      </Card>
+    </div>
+
     <div className="grid gap-4 md:grid-cols-2">
       {/* Severity Distribution */}
       <Card className="rounded-xl border-border/60 shadow-xs">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
             <Activity className="h-4 w-4" style={{ color: 'var(--risk-critical)' }} />
-            Risk Severity
+            Inherent vs Residual Severity
           </CardTitle>
-          <CardDescription className="text-xs">Threats by severity level</CardDescription>
+          <CardDescription className="text-xs">Both series use the same {residualAssessedThreats.length} threats with paired assessments</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[220px] w-full">
@@ -266,7 +294,9 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
                 <XAxis dataKey="severity" tickLine={false} axisLine={false} tickMargin={8} />
                 <YAxis tickLine={false} axisLine={false} tickMargin={8} />
                 <ChartTooltip cursor={{ fill: 'var(--color-muted)' }} content={<ChartTooltipContent hideLabel />} />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                <Legend />
+                <Bar dataKey="inherent" fill="var(--color-inherent)" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                <Bar dataKey="residual" fill="var(--color-residual)" radius={[4, 4, 0, 0]} maxBarSize={50} />
               </BarChart>
             </ChartContainer>
           </div>
@@ -394,23 +424,24 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
       </Card>
     </div>
 
-    {/* Risk Matrix */}
+    {/* Inherent and residual risk matrices */}
+    <div className="grid gap-4 xl:grid-cols-2">
     <Card className="rounded-xl border-border/60 shadow-xs">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
           <Grid3x3 className="h-4 w-4 text-primary" />
-          Risk Matrix
+          Inherent Risk Matrix
         </CardTitle>
         <CardDescription className="text-xs">
-          Likelihood vs Impact heatmap ({threatsWithRisk.length} threats with risk scores)
+          Likelihood vs impact before mitigations ({inherentAssessedThreats.length} assessed threats).
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {threatsWithRisk.length === 0 ? (
+        {inherentAssessedThreats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <Grid3x3 className="h-7 w-7 mb-2 opacity-50" />
-            <p className="text-sm">No threats with risk assessments yet.</p>
-            <p className="text-xs mt-1">Assign likelihood and impact to threats to populate the matrix.</p>
+            <p className="text-sm">No inherent risk assessments yet.</p>
+            <p className="text-xs mt-1">Set likelihood and impact before mitigations to populate this matrix.</p>
           </div>
         ) : (
           <div className="overflow-hidden px-2">
@@ -441,7 +472,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
                     <div key={lik} className="flex gap-1">
                       {levels.map(imp => {
                         const key = `${lik}-${imp}`;
-                        const cellThreats = riskMatrix[key] || [];
+                        const cellThreats = inherentAssessedThreats.filter(t => t.likelihood === lik && t.impact === imp);
                         const count = cellThreats.length;
                         return (
                           <Tooltip key={key}>
@@ -494,7 +525,91 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
         )}
       </CardContent>
     </Card>
+    <ProductResidualRiskMatrix threats={threats} />
     </div>
+    </div>
+  );
+}
+
+function ProductResidualRiskMatrix({ threats }: { threats: DiagramThreat[] }) {
+  const levels = [1, 2, 3, 4, 5];
+  const levelLabels: Record<number, string> = { 1: 'Very Low', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Very High' };
+  const assessed = threats.filter(t => t.residual_likelihood != null && t.residual_impact != null);
+  const getCellStyle = (likelihood: number, impact: number, filled: boolean) => {
+    const score = likelihood * impact;
+    const tier = score >= 20 ? 'risk-critical' : score >= 12 ? 'risk-high' : score >= 6 ? 'risk-medium' : 'risk-low';
+    return filled
+      ? { backgroundColor: `var(--${tier})`, color: '#fff' }
+      : { backgroundColor: `var(--${tier}-muted)` };
+  };
+
+  return (
+    <Card className="rounded-xl border-border/60 shadow-xs">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          <Grid3x3 className="h-4 w-4 text-primary" />
+          Residual Risk Matrix
+        </CardTitle>
+        <CardDescription className="text-xs">Manually reassessed likelihood and impact after controls ({assessed.length} threats)</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {assessed.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Grid3x3 className="h-7 w-7 mb-2 opacity-50" />
+            <p className="text-sm">No residual risk assessments yet.</p>
+            <p className="text-xs mt-1">Reassess likelihood and impact after controls are in place.</p>
+          </div>
+        ) : (
+          <div className="overflow-hidden px-2">
+            <div className="flex items-end mb-1">
+              <div className="w-20 shrink-0" />
+              <div className="flex-1 text-center text-[10px] font-bold text-muted-foreground tracking-wider mb-1">IMPACT</div>
+            </div>
+            <div className="flex items-center mb-1">
+              <div className="w-20 shrink-0" />
+              {levels.map(impact => <div key={impact} className="flex-1 text-center text-[10px] text-muted-foreground font-medium">{levelLabels[impact]}</div>)}
+            </div>
+            <div className="flex">
+              <div className="w-5 shrink-0 flex items-center justify-center"><span className="text-[10px] font-bold text-muted-foreground tracking-wider -rotate-90 whitespace-nowrap">LIKELIHOOD</span></div>
+              <div className="flex flex-col gap-1 w-15 shrink-0 justify-center">
+                {[...levels].reverse().map(likelihood => <div key={likelihood} className="h-12 flex items-center justify-end pr-2"><span className="text-[10px] text-muted-foreground font-medium text-right">{levelLabels[likelihood]}</span></div>)}
+              </div>
+              <div className="flex-1 flex flex-col gap-1">
+                {[...levels].reverse().map(likelihood => (
+                  <div key={likelihood} className="flex gap-1">
+                    {levels.map(impact => {
+                      const cellThreats = assessed.filter(t => t.residual_likelihood === likelihood && t.residual_impact === impact);
+                      const count = cellThreats.length;
+                      return (
+                        <Tooltip key={`${likelihood}-${impact}`}>
+                          <TooltipTrigger asChild>
+                            <div className={cn('flex-1 h-12 rounded-lg flex items-center justify-center transition-all cursor-default border', count > 0 ? 'hover:brightness-110 hover:shadow-md font-bold border-transparent' : 'border-border/20')} style={getCellStyle(likelihood, impact, count > 0)}>
+                              {count > 0 && <span className="text-sm font-bold">{count}</span>}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="font-semibold text-xs mb-1">Likelihood: {levelLabels[likelihood]} / Impact: {levelLabels[impact]}</p>
+                            {count === 0 ? <p className="text-xs text-muted-foreground">No threats</p> : <ul className="text-xs space-y-0.5">{cellThreats.slice(0, 5).map(t => <li key={t.id} className="truncate">- {t.threat?.name}</li>)}{count > 5 && <li className="text-muted-foreground">+{count - 5} more</li>}</ul>}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-muted-foreground">
+              {[
+                { label: 'Low (1–5)', color: '--risk-low' },
+                { label: 'Medium (6–11)', color: '--risk-medium' },
+                { label: 'High (12–19)', color: '--risk-high' },
+                { label: 'Critical (20–25)', color: '--risk-critical' },
+              ].map(item => <div key={item.label} className="flex items-center gap-1.5"><div className="h-3 w-3 rounded-sm" style={{ backgroundColor: `var(${item.color})` }} /><span>{item.label}</span></div>)}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -888,7 +1003,13 @@ export default function ProductDetails() {
     }
   };
 
-  const handleUpdateRisk = async (threatId: number, data: { likelihood?: number; impact?: number }) => {
+  const handleUpdateRisk = async (threatId: number, data: {
+    likelihood?: number;
+    impact?: number;
+    residual_likelihood?: number | null;
+    residual_impact?: number | null;
+    residual_comments?: string | null;
+  }) => {
     try {
       setSelectedItem((prev: any) => prev && prev.id === threatId ? { ...prev, ...data } : prev);
       await diagramThreatsApi.update(threatId, data);

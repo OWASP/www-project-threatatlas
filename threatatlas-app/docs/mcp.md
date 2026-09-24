@@ -130,7 +130,7 @@ same routers, RBAC, and audit logging as the REST API and web UI.
 | `list_threats(framework_id?, is_custom?)` | Browse the knowledge-base threat catalog |
 | `create_custom_threat(framework_id, name, description?, category?)` | Add a custom threat when nothing in the KB fits |
 | `identify_threat_on_diagram(diagram_id, model_id, threat_id, element_id, element_type, likelihood?, impact?, status?, comments?)` | Identify a threat on a diagram element — set `likelihood`/`impact` (1-5) to measure its `risk_score`/`severity` |
-| `update_diagram_threat(diagram_threat_id, status?, comments?, likelihood?, impact?)` | Update a diagram threat's status/comments and/or (re)measure its risk |
+| `update_diagram_threat(diagram_threat_id, status?, comments?, likelihood?, impact?, residual_likelihood?, residual_impact?, residual_comments?)` | Update status/comments, inherent risk, or a separate manual residual-risk assessment |
 | `delete_diagram_threat(diagram_threat_id)` | Remove a threat from a diagram element |
 
 ### Mitigations

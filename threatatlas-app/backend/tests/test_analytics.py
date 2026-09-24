@@ -56,6 +56,11 @@ def _seed(
             status=t.get("status", "identified"), severity=t.get("severity"),
             likelihood=t.get("likelihood"), impact=t.get("impact"),
             risk_score=t.get("likelihood") * t.get("impact") if t.get("likelihood") and t.get("impact") else None,
+            residual_likelihood=t.get("residual_likelihood"),
+            residual_impact=t.get("residual_impact"),
+            residual_risk_score=t.get("residual_likelihood") * t.get("residual_impact") if t.get("residual_likelihood") and t.get("residual_impact") else None,
+            residual_severity=t.get("residual_severity"),
+            residual_comments=t.get("residual_comments"),
         ))
     for i, m in enumerate(mitigations or []):
         mit = Mitigation(framework_id=fw.id, name=f"Mi{i}", category="Control")
@@ -80,6 +85,7 @@ def test_portfolio_empty_for_user_with_no_products(client: TestClient, user_head
     data = resp.json()
     assert data["totals"]["products"] == 0
     assert data["mitigation_ratio"] == 1.0
+    assert data["average_score_reduction"] is None
 
 
 def test_portfolio_aggregates_severity(client: TestClient, standard_user: User, user_headers: dict, db: Session):
@@ -163,26 +169,115 @@ def test_fresh_diagrams_not_flagged_stale(client: TestClient, standard_user: Use
     assert all(d["product_name"] != "fresh" for d in data["stale_diagrams"])
 
 
-def test_residual_risk_lowers_severity_distribution(client: TestClient, standard_user: User, user_headers: dict, db: Session):
-    # Critical threat (5x5=25) on element n1 with a verified mitigation on n1.
-    # Inherent: critical. Residual: 25 * 0.4 = 10 -> medium.
+def test_mitigation_status_does_not_infer_residual_risk(client: TestClient, standard_user: User, user_headers: dict, db: Session):
     _seed(
-        db, standard_user, name="resid",
+        db, standard_user, name="unassessed-residual",
         threats=[{"severity": "critical", "likelihood": 5, "impact": 5, "element_id": "n1", "status": "identified"}],
         mitigations=[{"status": "verified", "element_id": "n1"}],
     )
     data = client.get("/api/analytics/portfolio", headers=user_headers).json()
     assert data["threats_by_severity"]["critical"] == 1
-    assert data["residual_by_severity"]["medium"] == 1
-    assert data["residual_by_severity"]["critical"] == 0
-    assert data["risk_reduction"] == pytest.approx(0.6)
-
-
-def test_risk_reduction_zero_without_active_mitigations(client: TestClient, standard_user: User, user_headers: dict, db: Session):
-    _seed(db, standard_user, name="nored",
-          threats=[{"severity": "high", "likelihood": 4, "impact": 4, "element_id": "n1"}])
-    data = client.get("/api/analytics/portfolio", headers=user_headers).json()
+    assert data["residual_by_severity"]["unscored"] == 1
+    assert data["residual_assessed_count"] == 0
     assert data["risk_reduction"] == 0.0
+
+
+def test_manual_residual_risk_drives_analytics(client: TestClient, standard_user: User, user_headers: dict, db: Session):
+    _seed(
+        db, standard_user, name="manual-residual",
+        threats=[
+            {
+                "severity": "critical", "likelihood": 5, "impact": 5,
+                "residual_likelihood": 2, "residual_impact": 5,
+                "residual_severity": "medium", "residual_comments": "Rate limiting reduces likelihood.",
+                "element_id": "n1", "status": "identified",
+            },
+            {"severity": "high", "likelihood": 4, "impact": 4, "element_id": "n2"},
+        ],
+    )
+    data = client.get("/api/analytics/portfolio", headers=user_headers).json()
+    assert data["residual_by_severity"]["medium"] == 1
+    assert data["paired_inherent_by_severity"]["critical"] == 1
+    assert data["paired_residual_by_severity"]["medium"] == 1
+    assert data["residual_assessed_count"] == 1
+    assert data["paired_inherent_by_severity"]["high"] == 0
+    assert data["paired_residual_by_severity"]["high"] == 0
+    assert data["average_score_reduction"] == 15.0
+    assert data["risk_reduction"] == pytest.approx(0.6)
+    assert data["residual_risk_matrix"] == [{"likelihood": 2, "impact": 5, "count": 1}]
+
+
+def test_risk_reduction_zero_when_manual_residual_matches_inherent(client: TestClient, standard_user: User, user_headers: dict, db: Session):
+    _seed(db, standard_user, name="unchanged-residual",
+          threats=[{
+              "severity": "high", "likelihood": 4, "impact": 4,
+              "residual_likelihood": 4, "residual_impact": 4,
+              "residual_severity": "high", "element_id": "n1",
+          }])
+    data = client.get("/api/analytics/portfolio", headers=user_headers).json()
+    assert data["residual_assessed_count"] == 1
+    assert data["average_score_reduction"] == 0.0
+    assert data["risk_reduction"] == 0.0
+
+
+def test_score_increase_is_reported_as_negative_reduction(client: TestClient, standard_user: User, user_headers: dict, db: Session):
+    _seed(db, standard_user, name="increased-residual", threats=[{
+        "severity": "low", "likelihood": 2, "impact": 2,
+        "residual_likelihood": 5, "residual_impact": 5,
+        "residual_severity": "critical", "element_id": "n1",
+    }])
+    data = client.get("/api/analytics/portfolio", headers=user_headers).json()
+    assert data["average_score_reduction"] == -21.0
+
+
+def test_update_threat_persists_manual_residual_assessment(client: TestClient, standard_user: User, user_headers: dict, db: Session):
+    _seed(db, standard_user, name="residual-update", threats=[{
+        "severity": "critical", "likelihood": 5, "impact": 5, "element_id": "n1",
+    }])
+    diagram_threat = db.query(DiagramThreat).filter(DiagramThreat.element_id == "n1").first()
+
+    response = client.put(f"/api/diagram-threats/{diagram_threat.id}", headers=user_headers, json={
+        "residual_likelihood": 2,
+        "residual_impact": 4,
+        "residual_comments": "A verified rate limit reduces likelihood.",
+    })
+
+    assert response.status_code == 200
+    assert response.json()["likelihood"] == 5
+    assert response.json()["risk_score"] == 25
+    assert response.json()["residual_risk_score"] == 8
+    assert response.json()["residual_severity"] == "medium"
+    assert response.json()["residual_comments"] == "A verified rate limit reduces likelihood."
+
+
+def test_changing_inherent_baseline_clears_stale_residual_assessment(client: TestClient, standard_user: User, user_headers: dict, db: Session):
+    _seed(db, standard_user, name="stale-residual", threats=[{
+        "severity": "critical", "likelihood": 5, "impact": 5,
+        "residual_likelihood": 2, "residual_impact": 4,
+        "residual_severity": "medium", "residual_comments": "Previous assessment.",
+        "element_id": "n1",
+    }])
+    diagram_threat = db.query(DiagramThreat).filter(DiagramThreat.element_id == "n1").first()
+
+    response = client.put(f"/api/diagram-threats/{diagram_threat.id}", headers=user_headers, json={"impact": 4})
+
+    assert response.status_code == 200
+    assert response.json()["risk_score"] == 20
+    assert response.json()["residual_risk_score"] is None
+    assert response.json()["residual_comments"] is None
+
+
+def test_residual_assessment_requires_inherent_baseline(client: TestClient, standard_user: User, user_headers: dict, db: Session):
+    _seed(db, standard_user, name="missing-baseline", threats=[{"element_id": "n1"}])
+    diagram_threat = db.query(DiagramThreat).filter(DiagramThreat.element_id == "n1").first()
+
+    response = client.put(f"/api/diagram-threats/{diagram_threat.id}", headers=user_headers, json={
+        "residual_likelihood": 2,
+        "residual_impact": 4,
+        "residual_comments": "Control rationale.",
+    })
+
+    assert response.status_code == 422
 
 
 def test_mitigations_by_status(client: TestClient, standard_user: User, user_headers: dict, db: Session):

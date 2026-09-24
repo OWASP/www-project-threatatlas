@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Release notes are kept in sync with the in-app changelog (`threatatlas-app/frontend/src/data/changelog.json`).
 
+## [0.9.0] - 2026-09-24
+
+### Added
+
+- Separate residual-risk assessments for threats: record post-control likelihood and impact with a required rationale while preserving the original inherent-risk score.
+- Residual assessments in threat details, threat management, diagram version history, and analytics. Global and product analytics compare inherent and manually assessed residual severity and risk matrices.
+
+### Changed
+
+- Mitigation status no longer applies an assumed risk-reduction factor. Global and product analytics compare paired inherent and manually assessed residual scores, reporting the average score-point change rather than a percentage; changing an inherent score clears the stale residual assessment.
+- MCP threat updates support manual residual likelihood, impact, and rationale.
+
 ## [0.8.0] - 2026-07-19
 
 ### Added

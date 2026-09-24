@@ -140,11 +140,12 @@ Click any threat card in the side panel to open the **Threat Details Sheet**.
 
 The sheet shows:
 - Threat name, description, and category
-- **Severity** (Low / Medium / High / Critical) based on the risk score
+- **Inherent risk** (likelihood × impact before mitigations)
+- **Residual risk** (a separate, manually reassessed likelihood × impact after controls are implemented)
 - **Status** (Identified / Mitigated / Accepted)
 - **Linked Mitigations**
 
-You can update the threat's status and notes directly in the sheet.
+Set the inherent likelihood and impact first. After controls are implemented, reassess residual likelihood and impact and provide a short rationale. Changing a mitigation's status does not automatically change either risk score.
 
 #### Managing Mitigations for a Threat
 

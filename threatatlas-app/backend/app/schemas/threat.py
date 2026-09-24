@@ -67,6 +67,9 @@ class DiagramThreatUpdate(BaseModel):
     comments: str | None = None
     likelihood: int | None = None
     impact: int | None = None
+    residual_likelihood: int | None = None
+    residual_impact: int | None = None
+    residual_comments: str | None = None
     acceptance_justification: str | None = None
     acceptance_approver_id: int | None = None
     acceptance_review_date: str | None = None
@@ -75,7 +78,7 @@ class DiagramThreatUpdate(BaseModel):
     acceptance_review_note: str | None = None
     acceptance_reviewed_at: datetime | None = None
 
-    @field_validator('likelihood', 'impact')
+    @field_validator('likelihood', 'impact', 'residual_likelihood', 'residual_impact')
     @classmethod
     def validate_score(cls, v):
         if v is not None and (v < 1 or v > 5):
@@ -91,6 +94,11 @@ class DiagramThreat(DiagramThreatBase):
     threat_id: int
     risk_score: int | None = None
     severity: str | None = None
+    residual_likelihood: int | None = None
+    residual_impact: int | None = None
+    residual_risk_score: int | None = None
+    residual_severity: str | None = None
+    residual_comments: str | None = None
     acceptance_justification: str | None = None
     acceptance_approver_id: int | None = None
     acceptance_review_date: datetime | None = None

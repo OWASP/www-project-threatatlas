@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { AlertTriangle, Plus, Trash2, Search, X, Shield, ChevronDown, Layers, Target, Sparkles } from 'lucide-react';
 import { RiskSelector } from '@/components/RiskSelector';
+import { ResidualRiskAssessment } from '@/components/ResidualRiskAssessment';
 import { getSeverityVariant, getSeverityStripeClass, getStatusClasses } from '@/lib/risk';
 import { CommentSection } from '@/components/CommentSection';
 import { useAuth } from '@/contexts/AuthContext';
@@ -62,6 +63,11 @@ interface DiagramThreat {
   likelihood: number | null;
   impact: number | null;
   risk_score: number | null;
+  residual_likelihood: number | null;
+  residual_impact: number | null;
+  residual_risk_score: number | null;
+  residual_severity: 'low' | 'medium' | 'high' | 'critical' | null;
+  residual_comments: string | null;
   severity: 'low' | 'medium' | 'high' | 'critical' | null;
   element_id: string;
   threat: Threat;
@@ -73,6 +79,9 @@ interface DiagramThreatUpdate {
   comments?: string;
   likelihood?: number | null;
   impact?: number | null;
+  residual_likelihood?: number | null;
+  residual_impact?: number | null;
+  residual_comments?: string | null;
 }
 
 interface DiagramMitigationUpdate {
@@ -480,7 +489,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
                       </div>
                       {(dt.risk_score !== null || dt.severity) && (
                         <div>
-                          <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1.5">SEVERITY / RISK</p>
+                          <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1.5">INHERENT SEVERITY / RISK</p>
                           <div className="flex items-center gap-2 h-8">
                             {dt.severity && (
                               <Badge variant={getSeverityVariant(dt.severity)} className="capitalize text-[10px]">{dt.severity}</Badge>
@@ -497,7 +506,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
 
                     {/* Risk assessment */}
                     <div>
-                      <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">RISK ASSESSMENT</p>
+                      <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">INHERENT RISK (BEFORE MITIGATIONS)</p>
                       <RiskSelector
                         likelihood={dt.likelihood}
                         impact={dt.impact}
@@ -506,6 +515,16 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
                         disabled={!canWrite}
                       />
                     </div>
+
+                    <ResidualRiskAssessment
+                      itemId={dt.id}
+                      inherentComplete={dt.likelihood != null && dt.impact != null}
+                      residual_likelihood={dt.residual_likelihood}
+                      residual_impact={dt.residual_impact}
+                      residual_comments={dt.residual_comments}
+                      disabled={!canWrite}
+                      onSave={(values) => handleUpdateThreat(dt.id, values)}
+                    />
 
                     {/* Comments */}
                     <CommentSection

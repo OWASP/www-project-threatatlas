@@ -66,7 +66,12 @@ class VersionService:
                 likelihood=threat.likelihood,
                 impact=threat.impact,
                 risk_score=threat.risk_score,
-                severity=threat.severity
+                severity=threat.severity,
+                residual_likelihood=threat.residual_likelihood,
+                residual_impact=threat.residual_impact,
+                residual_risk_score=threat.residual_risk_score,
+                residual_severity=threat.residual_severity,
+                residual_comments=threat.residual_comments,
             )
             db.add(threat_version)
 
@@ -312,6 +317,11 @@ class VersionService:
                     threat_from.impact != threat_to.impact or
                     threat_from.risk_score != threat_to.risk_score or
                     threat_from.severity != threat_to.severity or
+                    threat_from.residual_likelihood != threat_to.residual_likelihood or
+                    threat_from.residual_impact != threat_to.residual_impact or
+                    threat_from.residual_risk_score != threat_to.residual_risk_score or
+                    threat_from.residual_severity != threat_to.residual_severity or
+                    threat_from.residual_comments != threat_to.residual_comments or
                     threat_from.comments != threat_to.comments):
 
                     threat_to_snapshot = DiagramThreatVersionSnapshot.model_validate(threat_to)

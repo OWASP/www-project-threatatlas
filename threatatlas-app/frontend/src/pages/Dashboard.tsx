@@ -287,7 +287,13 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpdateRisk = async (threatId: number, data: { likelihood?: number; impact?: number }) => {
+  const handleUpdateRisk = async (threatId: number, data: {
+    likelihood?: number;
+    impact?: number;
+    residual_likelihood?: number | null;
+    residual_impact?: number | null;
+    residual_comments?: string | null;
+  }) => {
     try {
       setSelectedItem((prev: any) => prev && prev.id === threatId ? { ...prev, ...data } : prev);
       await diagramThreatsApi.update(threatId, data);

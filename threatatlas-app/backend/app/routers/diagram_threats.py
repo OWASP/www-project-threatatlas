@@ -271,13 +271,62 @@ def update_diagram_threat(
 
     update_data = diagram_threat.model_dump(exclude_unset=True)
 
-    # Recalculate risk score when likelihood or impact changes
+    # Recalculate inherent risk when likelihood or impact changes. A changed
+    # baseline invalidates an earlier residual assessment unless the caller
+    # submits a new residual assessment in the same update.
+    inherent_changed = any(
+        field in update_data and update_data[field] != getattr(db_diagram_threat, field)
+        for field in ('likelihood', 'impact')
+    )
     if 'likelihood' in update_data or 'impact' in update_data:
         likelihood = update_data.get('likelihood', db_diagram_threat.likelihood)
         impact = update_data.get('impact', db_diagram_threat.impact)
         risk_score, severity = calculate_risk_score_and_severity(likelihood, impact)
         update_data['risk_score'] = risk_score
         update_data['severity'] = severity
+        if inherent_changed and 'residual_likelihood' not in update_data and 'residual_impact' not in update_data:
+            update_data.update({
+                'residual_likelihood': None,
+                'residual_impact': None,
+                'residual_risk_score': None,
+                'residual_severity': None,
+                'residual_comments': None,
+            })
+
+    # Residual risk is a separate manual reassessment, never inferred from
+    # mitigation status. Require an inherent baseline and a rationale for any
+    # complete residual assessment.
+    residual_fields = {'residual_likelihood', 'residual_impact', 'residual_comments'}
+    if residual_fields.intersection(update_data):
+        inherent_likelihood = update_data.get('likelihood', db_diagram_threat.likelihood)
+        inherent_impact = update_data.get('impact', db_diagram_threat.impact)
+        residual_likelihood = update_data.get('residual_likelihood', db_diagram_threat.residual_likelihood)
+        residual_impact = update_data.get('residual_impact', db_diagram_threat.residual_impact)
+        residual_comments = update_data.get('residual_comments', db_diagram_threat.residual_comments)
+        if (residual_likelihood is not None or residual_impact is not None) and (inherent_likelihood is None or inherent_impact is None):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Set inherent likelihood and impact before assessing residual risk",
+            )
+        if (residual_likelihood is None) != (residual_impact is None):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Set both residual likelihood and impact, or clear both",
+            )
+        if residual_likelihood is not None and (
+            not (residual_comments or '').strip()
+            or (inherent_changed and 'residual_comments' not in update_data)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Provide a rationale for the residual risk assessment",
+            )
+        if residual_likelihood is None:
+            update_data.setdefault('residual_comments', None)
+        if 'residual_likelihood' in update_data or 'residual_impact' in update_data:
+            residual_score, residual_severity = calculate_risk_score_and_severity(residual_likelihood, residual_impact)
+            update_data['residual_risk_score'] = residual_score
+            update_data['residual_severity'] = residual_severity
 
     # Parse date/datetime strings
     if 'acceptance_review_date' in update_data and update_data['acceptance_review_date']:

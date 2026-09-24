@@ -434,12 +434,16 @@ def update_diagram_threat(
     comments: str | None = None,
     likelihood: int | None = None,
     impact: int | None = None,
+    residual_likelihood: int | None = None,
+    residual_impact: int | None = None,
+    residual_comments: str | None = None,
 ) -> dict:
-    """Update a diagram threat's status/comments, and/or (re)measure its risk.
+    """Update a diagram threat's status/comments and/or risk assessments.
 
-    Setting `likelihood`/`impact` (1-5 each) recalculates `risk_score` and
-    `severity` server-side. Acceptance/approval fields are intentionally not
-    exposed here — accepting risk is a governance action for a human approver."""
+    Setting `likelihood`/`impact` (1-5 each) recalculates inherent risk.
+    Residual risk is a separate manual reassessment after controls are in place;
+    mitigation statuses do not alter either score. Acceptance/approval fields
+    remain reserved for human approvers."""
     actor = get_mcp_actor()
     payload = _partial(
         DiagramThreatUpdate,
@@ -447,6 +451,9 @@ def update_diagram_threat(
         comments=comments,
         likelihood=likelihood,
         impact=impact,
+        residual_likelihood=residual_likelihood,
+        residual_impact=residual_impact,
+        residual_comments=residual_comments,
     )
     updated = _call(
         diagram_threats_router.update_diagram_threat,

@@ -1,5 +1,24 @@
 [
   {
+    "version": "0.9.0",
+    "date": "2026-09-24",
+    "tag": "feature",
+    "entries": [
+      {
+        "type": "added",
+        "text": "Separate residual-risk assessments: record post-control likelihood and impact with a required rationale while preserving the original inherent-risk score. Available from threat details and threat management, included in diagram version history, and compared with inherent risk in global and product analytics."
+      },
+      {
+        "type": "improved",
+        "text": "Mitigation status no longer applies an assumed risk-reduction factor. Global and product analytics compare paired inherent and manually assessed residual scores, reporting average score-point change rather than a percentage; changing an inherent score clears the stale residual assessment."
+      },
+      {
+        "type": "improved",
+        "text": "MCP threat updates support manual residual likelihood, impact, and rationale."
+      }
+    ]
+  },
+  {
     "version": "0.8.0",
     "date": "2026-07-19",
     "tag": "feature",

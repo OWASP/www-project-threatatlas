@@ -48,6 +48,11 @@ class DiagramThreatVersion(Base):
     impact = Column(Integer, nullable=True)  # 1-5
     risk_score = Column(Integer, nullable=True)  # likelihood × impact
     severity = Column(String(20), nullable=True)  # 'low', 'medium', 'high', 'critical'
+    residual_likelihood = Column(Integer, nullable=True)
+    residual_impact = Column(Integer, nullable=True)
+    residual_risk_score = Column(Integer, nullable=True)
+    residual_severity = Column(String(20), nullable=True)
+    residual_comments = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships

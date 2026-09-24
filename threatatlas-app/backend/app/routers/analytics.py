@@ -25,7 +25,6 @@ from app.models import (
 )
 from app.auth.dependencies import get_current_user
 from app.models.enums import UserRole
-from app.services import risk_service
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -75,12 +74,18 @@ def portfolio_analytics(
         "totals": {"products": 0, "diagrams": 0, "threats": 0, "mitigations": 0},
         "threats_by_severity": {"critical": 0, "high": 0, "medium": 0, "low": 0, "unscored": 0},
         "residual_by_severity": {"critical": 0, "high": 0, "medium": 0, "low": 0, "unscored": 0},
+        "paired_inherent_by_severity": {"critical": 0, "high": 0, "medium": 0, "low": 0, "unscored": 0},
+        "paired_residual_by_severity": {"critical": 0, "high": 0, "medium": 0, "low": 0, "unscored": 0},
+        "residual_assessed_count": 0,
+        "average_score_reduction": None,
         "threats_by_status": {},
         "mitigations_by_status": {},
         "threats_by_category": [],
         "risk_matrix": [],
+        "residual_risk_matrix": [],
         "by_product": [],
         "mitigation_ratio": 1.0,
+        "mitigated_threat_count": 0,
         "risk_reduction": 0.0,
         "unmitigated_high_critical": 0,
         "top_risk_products": [],
@@ -103,11 +108,14 @@ def portfolio_analytics(
 
     by_severity = {"critical": 0, "high": 0, "medium": 0, "low": 0, "unscored": 0}
     residual_by_severity = {"critical": 0, "high": 0, "medium": 0, "low": 0, "unscored": 0}
+    paired_inherent_by_severity = {"critical": 0, "high": 0, "medium": 0, "low": 0, "unscored": 0}
+    paired_residual_by_severity = {"critical": 0, "high": 0, "medium": 0, "low": 0, "unscored": 0}
     by_status: dict[str, int] = {}
     mitigations_by_status: dict[str, int] = {}
     by_category: dict[str, int] = {}
     # Risk matrix keyed by (likelihood, impact) -> count.
     risk_matrix: dict[tuple[int, int], int] = {}
+    residual_risk_matrix: dict[tuple[int, int], int] = {}
     total_threats = 0
     total_mitigations = 0
     total_diagrams = 0
@@ -115,6 +123,7 @@ def portfolio_analytics(
     unmitigated_high_critical = 0
     inherent_score_total = 0
     residual_score_total = 0
+    residual_assessed_count = 0
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=stale_days)
     stale_diagrams: list[dict] = []
@@ -137,11 +146,6 @@ def portfolio_analytics(
             for dm in diagram.diagram_mitigations:
                 mitigations_by_status[dm.status] = mitigations_by_status.get(dm.status, 0) + 1
 
-            # Map element -> active mitigation statuses, for residual risk.
-            element_mitigation_statuses: dict[str, list[str]] = {}
-            for dm in diagram.diagram_mitigations:
-                if dm.status in _ACTIVE_MITIGATION_STATUSES:
-                    element_mitigation_statuses.setdefault(dm.element_id, []).append(dm.status)
 
             for dt in diagram.diagram_threats:
                 total_threats += 1
@@ -157,13 +161,21 @@ def portfolio_analytics(
                     cell = (dt.likelihood, dt.impact)
                     risk_matrix[cell] = risk_matrix.get(cell, 0) + 1
 
-                # Residual risk after active mitigations on the same element.
-                statuses = element_mitigation_statuses.get(dt.element_id, [])
-                res_score, res_sev = risk_service.residual_risk(dt.likelihood, dt.impact, statuses)
-                residual_by_severity[res_sev or "unscored"] = residual_by_severity.get(res_sev or "unscored", 0) + 1
-                if dt.risk_score is not None:
+                # Residual risk is only reported when a user has explicitly
+                # reassessed the threat; mitigation statuses never infer a score.
+                residual_sev = dt.residual_severity or "unscored"
+                residual_by_severity[residual_sev] = residual_by_severity.get(residual_sev, 0) + 1
+                if dt.residual_likelihood is not None and dt.residual_impact is not None:
+                    residual_cell = (dt.residual_likelihood, dt.residual_impact)
+                    residual_risk_matrix[residual_cell] = residual_risk_matrix.get(residual_cell, 0) + 1
+                if dt.risk_score is not None and dt.residual_risk_score is not None:
                     inherent_score_total += dt.risk_score
-                    residual_score_total += res_score if res_score is not None else dt.risk_score
+                    residual_score_total += dt.residual_risk_score
+                    paired_inherent_sev = dt.severity or "unscored"
+                    paired_residual_sev = dt.residual_severity or "unscored"
+                    paired_inherent_by_severity[paired_inherent_sev] = paired_inherent_by_severity.get(paired_inherent_sev, 0) + 1
+                    paired_residual_by_severity[paired_residual_sev] = paired_residual_by_severity.get(paired_residual_sev, 0) + 1
+                    residual_assessed_count += 1
 
                 is_mitigated = dt.status == "mitigated" or dt.element_id in active_mitigated_elements
                 if is_mitigated:
@@ -231,6 +243,10 @@ def portfolio_analytics(
         },
         "threats_by_severity": by_severity,
         "residual_by_severity": residual_by_severity,
+        "paired_inherent_by_severity": paired_inherent_by_severity,
+        "paired_residual_by_severity": paired_residual_by_severity,
+        "residual_assessed_count": residual_assessed_count,
+        "average_score_reduction": round((inherent_score_total - residual_score_total) / residual_assessed_count, 2) if residual_assessed_count else None,
         "threats_by_status": by_status,
         "mitigations_by_status": mitigations_by_status,
         "threats_by_category": top_categories,
@@ -238,8 +254,13 @@ def portfolio_analytics(
             {"likelihood": lik, "impact": imp, "count": count}
             for (lik, imp), count in sorted(risk_matrix.items())
         ],
+        "residual_risk_matrix": [
+            {"likelihood": lik, "impact": imp, "count": count}
+            for (lik, imp), count in sorted(residual_risk_matrix.items())
+        ],
         "by_product": by_product,
         "mitigation_ratio": round(mitigated_threats / total_threats, 4) if total_threats else 1.0,
+        "mitigated_threat_count": mitigated_threats,
         "risk_reduction": round(1 - residual_score_total / inherent_score_total, 4) if inherent_score_total else 0.0,
         "unmitigated_high_critical": unmitigated_high_critical,
         "top_risk_products": top_risk_products,

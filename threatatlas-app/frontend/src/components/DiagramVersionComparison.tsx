@@ -445,8 +445,8 @@ export default function DiagramVersionComparison({
                       <p className="text-xs text-muted-foreground">Element: {getThreatElementLabel(change)}</p>
                       {change.after && (
                         <div className="mt-2 text-xs">
-                          <div>Risk Score: {change.after.risk_score || 'N/A'}</div>
-                          <div>Severity: {change.after.severity || 'N/A'}</div>
+                          <div>Inherent risk: {change.after.risk_score ?? 'N/A'} ({change.after.severity || 'unscored'})</div>
+                          <div>Residual risk: {change.after.residual_risk_score ?? 'N/A'} ({change.after.residual_severity || 'unscored'})</div>
                         </div>
                       )}
                     </div>
@@ -465,8 +465,8 @@ export default function DiagramVersionComparison({
                       <p className="text-xs text-muted-foreground">Element: {getThreatElementLabel(change)}</p>
                       {change.before && (
                         <div className="mt-2 text-xs">
-                          <div>Risk Score: {change.before.risk_score || 'N/A'}</div>
-                          <div>Severity: {change.before.severity || 'N/A'}</div>
+                          <div>Inherent risk: {change.before.risk_score ?? 'N/A'} ({change.before.severity || 'unscored'})</div>
+                          <div>Residual risk: {change.before.residual_risk_score ?? 'N/A'} ({change.before.residual_severity || 'unscored'})</div>
                         </div>
                       )}
                     </div>
@@ -488,8 +488,8 @@ export default function DiagramVersionComparison({
                           <div className="font-medium mb-1">Before:</div>
                           {change.before && (
                             <>
-                              <div>Risk: {change.before.risk_score || 'N/A'}</div>
-                              <div>Severity: {change.before.severity || 'N/A'}</div>
+                              <div>Inherent risk: {change.before.risk_score ?? 'N/A'} ({change.before.severity || 'unscored'})</div>
+                              <div>Residual risk: {change.before.residual_risk_score ?? 'N/A'} ({change.before.residual_severity || 'unscored'})</div>
                             </>
                           )}
                         </div>
@@ -497,8 +497,8 @@ export default function DiagramVersionComparison({
                           <div className="font-medium mb-1">After:</div>
                           {change.after && (
                             <>
-                              <div>Risk: {change.after.risk_score || 'N/A'}</div>
-                              <div>Severity: {change.after.severity || 'N/A'}</div>
+                              <div>Inherent risk: {change.after.risk_score ?? 'N/A'} ({change.after.severity || 'unscored'})</div>
+                              <div>Residual risk: {change.after.residual_risk_score ?? 'N/A'} ({change.after.residual_severity || 'unscored'})</div>
                             </>
                           )}
                         </div>

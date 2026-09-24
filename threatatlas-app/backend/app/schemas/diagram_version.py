@@ -15,6 +15,11 @@ class DiagramThreatVersionSnapshot(BaseModel):
     impact: int | None = None
     risk_score: int | None = None
     severity: str | None = None
+    residual_likelihood: int | None = None
+    residual_impact: int | None = None
+    residual_risk_score: int | None = None
+    residual_severity: str | None = None
+    residual_comments: str | None = None
     threat_name: str | None = None
     node_label: str | None = None
 

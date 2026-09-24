@@ -82,14 +82,9 @@ export default function Analytics() {
 
   // ====== METRICS (all server-aggregated) ======
   const totalThreats = data?.totals.threats ?? 0;
-  const criticalThreats = data?.threats_by_severity.critical ?? 0;
   const totalMitigations = data?.totals.mitigations ?? 0;
-  const activeMitigations = (data?.mitigations_by_status.implemented ?? 0) + (data?.mitigations_by_status.verified ?? 0);
-
   const mitigateRatio = Math.round((data?.mitigation_ratio ?? 0) * 100);
-  const mitigatedThreats = Math.round((data?.mitigation_ratio ?? 0) * totalThreats);
-  const activeRatio = totalMitigations > 0 ? Math.round((activeMitigations / totalMitigations) * 100) : 0;
-  const riskReduction = Math.round((data?.risk_reduction ?? 0) * 100);
+  const mitigatedThreatCount = data?.mitigated_threat_count ?? 0;
   const unmitigatedHighCritical = data?.unmitigated_high_critical ?? 0;
 
   // ====== CHART DATA ======
@@ -113,12 +108,14 @@ export default function Analytics() {
   }, [data]);
 
   const severityData = useMemo(() => {
-    const s = data?.threats_by_severity;
+    const inherent = data?.paired_inherent_by_severity;
+    const residual = data?.paired_residual_by_severity;
     return [
-      { severity: 'critical', count: s?.critical ?? 0, fill: 'var(--risk-critical)' },
-      { severity: 'high', count: s?.high ?? 0, fill: 'var(--risk-high)' },
-      { severity: 'medium', count: s?.medium ?? 0, fill: 'var(--risk-medium)' },
-      { severity: 'low', count: s?.low ?? 0, fill: 'var(--risk-low)' },
+      { severity: 'critical', inherent: inherent?.critical ?? 0, residual: residual?.critical ?? 0 },
+      { severity: 'high', inherent: inherent?.high ?? 0, residual: residual?.high ?? 0 },
+      { severity: 'medium', inherent: inherent?.medium ?? 0, residual: residual?.medium ?? 0 },
+      { severity: 'low', inherent: inherent?.low ?? 0, residual: residual?.low ?? 0 },
+      { severity: 'unscored', inherent: inherent?.unscored ?? 0, residual: residual?.unscored ?? 0 },
     ];
   }, [data]);
 
@@ -143,10 +140,8 @@ export default function Analytics() {
   } satisfies ChartConfig;
 
   const severityConfig = {
-    critical: { label: "Critical", color: "var(--risk-critical)" },
-    high: { label: "High", color: "var(--risk-high)" },
-    medium: { label: "Medium", color: "var(--risk-medium)" },
-    low: { label: "Low", color: "var(--risk-low)" },
+    inherent: { label: "Inherent", color: "var(--chart-1)" },
+    residual: { label: "Residual", color: "var(--chart-2)" },
   } satisfies ChartConfig;
 
   const categoryConfig = {
@@ -180,42 +175,41 @@ export default function Analytics() {
 
         <Card className="animate-fadeInUp shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50" style={{ animationDelay: '60ms' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mitigation Ratio</CardTitle>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mitigation Coverage</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
               <CheckCircle2 className="h-4 w-4 text-primary" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mitigateRatio}%</div>
-            <Progress value={mitigateRatio} className="h-1.5 mt-2 mb-1" />
-            <p className="text-xs text-muted-foreground mt-1">{mitigatedThreats} fully mitigated</p>
+            <div className="text-2xl font-bold">{totalThreats > 0 ? `${mitigateRatio}%` : '—'}</div>
+            <Progress value={totalThreats > 0 ? mitigateRatio : 0} className="h-1.5 mt-2 mb-1" />
+            <p className="text-xs text-muted-foreground mt-1">{mitigatedThreatCount} of {totalThreats} threats marked mitigated or sharing an implemented/verified control</p>
           </CardContent>
         </Card>
 
         <Card className="animate-fadeInUp shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50" style={{ animationDelay: '120ms' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Critical Assets at Risk</CardTitle>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Unmitigated High / Critical</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
               <Target className="h-4 w-4" style={{ color: 'var(--risk-high)' }} />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{criticalThreats}</div>
-            <p className="text-xs text-muted-foreground mt-1">{unmitigatedHighCritical} high/critical unmitigated</p>
+            <div className="text-2xl font-bold">{unmitigatedHighCritical}</div>
+            <p className="text-xs text-muted-foreground mt-1">High/critical threats not marked mitigated and without an active control on the same element</p>
           </CardContent>
         </Card>
 
         <Card className="animate-fadeInUp shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50" style={{ animationDelay: '180ms' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Risk Reduction</CardTitle>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Average Score Reduction</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
               <TrendingDown className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{riskReduction}%</div>
-            <Progress value={riskReduction} className="h-1.5 mt-2 mb-1" />
-            <p className="text-xs text-muted-foreground mt-1">{activeMitigations} active controls ({activeRatio}%)</p>
+            <div className="text-2xl font-bold">{data?.average_score_reduction == null ? '—' : `${data.average_score_reduction > 0 ? '+' : ''}${data.average_score_reduction.toFixed(1)} pts`}</div>
+            <p className="text-xs text-muted-foreground mt-1">Inherent minus residual score; positive = lower, negative = higher residual score ({data?.residual_assessed_count ?? 0} paired assessments)</p>
           </CardContent>
         </Card>
       </div>
@@ -227,9 +221,9 @@ export default function Analytics() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Activity className="h-4 w-4" style={{ color: 'var(--risk-critical)' }} />
-              Risk Severities
+              Inherent vs Residual Severity
             </CardTitle>
-            <CardDescription className="text-sm">Identified threats by risk tier across all models</CardDescription>
+            <CardDescription className="text-sm">Both bars include only threats with paired inherent and manual residual assessments ({data?.residual_assessed_count ?? 0} threats)</CardDescription>
           </CardHeader>
           <CardContent className="flex-1">
             <div className="h-[280px] w-full pt-4">
@@ -239,7 +233,9 @@ export default function Analytics() {
                   <XAxis dataKey="severity" tickLine={false} axisLine={false} tickMargin={10} textAnchor="middle" tickFormatter={(val: string) => val.charAt(0).toUpperCase() + val.slice(1)} />
                   <YAxis tickLine={false} axisLine={false} tickMargin={8} />
                   <ChartTooltip cursor={{ fill: 'var(--color-muted)' }} content={<ChartTooltipContent hideLabel />} />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                  <Legend />
+                  <Bar dataKey="inherent" fill="var(--color-inherent)" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                  <Bar dataKey="residual" fill="var(--color-residual)" radius={[4, 4, 0, 0]} maxBarSize={60} />
                 </BarChart>
               </ChartContainer>
             </div>
@@ -350,8 +346,21 @@ export default function Analytics() {
         <StaleDiagrams diagrams={data?.stale_diagrams ?? []} />
       </div>
 
-      {/* Risk Matrix */}
-      <RiskMatrix cells={data?.risk_matrix ?? []} />
+      {/* Inherent and residual risk matrices */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <RiskMatrix
+          cells={data?.risk_matrix ?? []}
+          title="Inherent Risk Matrix"
+          assessmentLabel="inherent"
+          description="Likelihood and impact before mitigations."
+        />
+        <RiskMatrix
+          cells={data?.residual_risk_matrix ?? []}
+          title="Residual Risk Matrix"
+          assessmentLabel="residual"
+          description="Manually reassessed likelihood and impact after controls."
+        />
+      </div>
 
       {/* Risk Trend Over Time */}
       <RiskTrend diagrams={diagrams} />
@@ -434,7 +443,17 @@ function StaleDiagrams({ diagrams }: { diagrams: PortfolioAnalytics['stale_diagr
 }
 
 // ── Risk Matrix (Likelihood x Impact heatmap) ──
-function RiskMatrix({ cells }: { cells: PortfolioAnalytics['risk_matrix'] }) {
+function RiskMatrix({
+  cells,
+  title,
+  assessmentLabel,
+  description,
+}: {
+  cells: PortfolioAnalytics['risk_matrix'];
+  title: string;
+  assessmentLabel: 'inherent' | 'residual';
+  description: string;
+}) {
   const levels = [1, 2, 3, 4, 5];
   const levelLabels: Record<number, string> = { 1: 'Very Low', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Very High' };
 
@@ -465,18 +484,22 @@ function RiskMatrix({ cells }: { cells: PortfolioAnalytics['risk_matrix'] }) {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <Grid3x3 className="h-4 w-4 text-primary" />
-          Risk Matrix
+          {title}
         </CardTitle>
         <CardDescription className="text-sm">
-          Likelihood vs Impact heatmap ({totalScored} threats with risk scores)
+          {description} {totalScored} threats assessed.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {totalScored === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
             <Grid3x3 className="h-8 w-8 mb-2 opacity-50" />
-            <p className="text-sm">No threats with risk assessments yet.</p>
-            <p className="text-xs mt-1">Assign likelihood and impact to threats to populate the matrix.</p>
+            <p className="text-sm">No {assessmentLabel} risk assessments yet.</p>
+            <p className="text-xs mt-1">
+              {assessmentLabel === 'inherent'
+                ? 'Set likelihood and impact before mitigations.'
+                : 'Manually assess likelihood and impact after controls are in place.'}
+            </p>
           </div>
         ) : (
           <div className="overflow-hidden px-2">

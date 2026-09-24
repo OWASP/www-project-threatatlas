@@ -333,6 +333,9 @@ export const diagramThreatsApi = {
     comments?: string;
     likelihood?: number | null;
     impact?: number | null;
+    residual_likelihood?: number | null;
+    residual_impact?: number | null;
+    residual_comments?: string | null;
     acceptance_justification?: string | null;
     acceptance_approver_id?: number | null;
     acceptance_review_date?: string | null;
@@ -414,10 +417,15 @@ export interface PortfolioAnalytics {
   totals: { products: number; diagrams: number; threats: number; mitigations: number };
   threats_by_severity: SeverityCounts;
   residual_by_severity: SeverityCounts;
+  paired_inherent_by_severity: SeverityCounts;
+  paired_residual_by_severity: SeverityCounts;
+  residual_assessed_count: number;
+  average_score_reduction: number | null;
   threats_by_status: Record<string, number>;
   mitigations_by_status: Record<string, number>;
   threats_by_category: { category: string; count: number }[];
   risk_matrix: { likelihood: number; impact: number; count: number }[];
+  residual_risk_matrix: { likelihood: number; impact: number; count: number }[];
   by_product: {
     product_id: number;
     product_name: string;
@@ -431,6 +439,7 @@ export interface PortfolioAnalytics {
     mitigations: number;
   }[];
   mitigation_ratio: number;
+  mitigated_threat_count: number;
   risk_reduction: number;
   unmitigated_high_critical: number;
   top_risk_products: { product_id: number; product_name: string; open_high_critical: number }[];
