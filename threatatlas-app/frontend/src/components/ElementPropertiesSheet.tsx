@@ -55,6 +55,7 @@ interface ElementPropertiesSheetProps {
     description?: string;
   } | null;
   diagramId: number | null;
+  productId?: number | null;
   activeModelId: number | null;
   activeModelFrameworkId: number | null;
   onRename: (name: string) => void;
@@ -97,6 +98,7 @@ export default function ElementPropertiesSheet({
   onOpenChange,
   selectedElement,
   diagramId,
+  productId,
   activeModelId,
   activeModelFrameworkId,
   onRename,
@@ -299,6 +301,7 @@ export default function ElementPropertiesSheet({
                 {diagramId ? (
                   <ThreatManagement
                     diagramId={diagramId}
+                    productId={productId}
                     activeModelId={activeModelId}
                     modelFrameworkId={activeModelFrameworkId}
                     elementId={selectedElement.id}

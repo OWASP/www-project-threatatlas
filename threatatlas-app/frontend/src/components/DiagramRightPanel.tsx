@@ -43,6 +43,7 @@ export interface DiagramRightPanelProps {
   onTabChange: (tab: 'inspector' | 'ai') => void;
   // AI chat props
   diagramId: number | null;
+  productId: number | null;
   activeModelId: number | null;
   frameworkId: number | null;
   unanalyzedNodes: DiagramNodeRef[];
@@ -910,11 +911,12 @@ function getNodeColorStyle(nodeType?: string): React.CSSProperties {
 }
 
 function InspectorPanel({
-  selectedElement, diagramId, activeModelId, activeModelFrameworkId, canWrite,
+  selectedElement, diagramId, productId, activeModelId, activeModelFrameworkId, canWrite,
   onRename, onDescriptionChange, onChangeNodeType, onDeleteElement,
 }: {
   selectedElement: DiagramRightPanelProps['selectedElement'];
   diagramId: number | null;
+  productId: number | null;
   activeModelId: number | null;
   activeModelFrameworkId: number | null;
   canWrite: boolean;
@@ -1095,6 +1097,7 @@ function InspectorPanel({
           {diagramId ? (
             <ThreatManagement
               diagramId={diagramId}
+              productId={productId}
               activeModelId={activeModelId}
               modelFrameworkId={activeModelFrameworkId}
               elementId={selectedElement.id}
@@ -1140,7 +1143,7 @@ function InspectorPanel({
 
 export default function DiagramRightPanel({
   activeTab, onTabChange,
-  diagramId, activeModelId, frameworkId,
+  diagramId, productId, activeModelId, frameworkId,
   unanalyzedNodes, newNodesSinceSave,
   focusedNodeIds, focusedNodeLabels, onClearFocus,
   onModelCreated, onProposalApproved,
@@ -1197,6 +1200,7 @@ export default function DiagramRightPanel({
             selectedElement={selectedElement}
             diagramId={diagramId}
             activeModelId={activeModelId}
+            productId={productId}
             activeModelFrameworkId={frameworkId}
             canWrite={canWrite}
             onRename={onRename}

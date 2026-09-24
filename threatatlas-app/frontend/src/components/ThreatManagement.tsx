@@ -37,6 +37,7 @@ import { RiskSelector } from '@/components/RiskSelector';
 import { ResidualRiskAssessment } from '@/components/ResidualRiskAssessment';
 import { getSeverityVariant, getSeverityStripeClass, getStatusClasses } from '@/lib/risk';
 import { CommentSection } from '@/components/CommentSection';
+import { AcceptRiskDialog } from '@/components/AcceptRiskDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -82,6 +83,9 @@ interface DiagramThreatUpdate {
   residual_likelihood?: number | null;
   residual_impact?: number | null;
   residual_comments?: string | null;
+  acceptance_justification?: string | null;
+  acceptance_approver_id?: number | null;
+  acceptance_review_date?: string | null;
 }
 
 interface DiagramMitigationUpdate {
@@ -91,6 +95,7 @@ interface DiagramMitigationUpdate {
 }
 
 interface ThreatManagementProps {
+  productId?: number | null;
   diagramId: number | null;
   activeModelId: number | null;
   modelFrameworkId: number | null;
@@ -142,7 +147,7 @@ function StatusPill({ status, type = 'threat' }: { status: string; type?: 'threa
   );
 }
 
-export default function ThreatManagement({ diagramId, activeModelId, modelFrameworkId, elementId, elementType, canEdit }: ThreatManagementProps) {
+export default function ThreatManagement({ diagramId, productId, activeModelId, modelFrameworkId, elementId, elementType, canEdit }: ThreatManagementProps) {
   const { user, canWrite: globalCanWrite } = useAuth();
   const canWrite = canEdit ?? globalCanWrite;
   const authorName = user?.full_name || user?.email || 'Unknown User';
@@ -160,6 +165,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
   const [mitigationSearchQuery, setMitigationSearchQuery] = useState('');
 
   const [threatToDelete, setThreatToDelete] = useState<DiagramThreat | null>(null);
+  const [threatPendingAcceptance, setThreatPendingAcceptance] = useState<DiagramThreat | null>(null);
   const [mitigationToDelete, setMitigationToDelete] = useState<any>(null);
 
   const [createThreatDialogOpen, setCreateThreatDialogOpen] = useState(false);
@@ -176,6 +182,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
       setCreateThreatDialogOpen(false);
       setCreateMitigationDialogOpen(false);
       setThreatToDelete(null);
+      setThreatPendingAcceptance(null);
       setMitigationToDelete(null);
     }
   }, [canWrite]);
@@ -229,13 +236,48 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
     }
   };
 
-  const handleUpdateThreat = async (diagramThreatId: number, updates: DiagramThreatUpdate) => {
-    if (!canWrite) return;
+  const updateThreat = async (diagramThreatId: number, updates: DiagramThreatUpdate) => {
+    if (!canWrite) return false;
     try {
       await diagramThreatsApi.update(diagramThreatId, updates);
-      loadData();
+      await loadData();
+      return true;
     } catch {
       toast.error('Failed to update threat');
+      return false;
+    }
+  };
+  const handleUpdateThreat = (diagramThreatId: number, updates: DiagramThreatUpdate) => {
+    void updateThreat(diagramThreatId, updates);
+  };
+
+
+  const handleThreatStatusChange = (threat: DiagramThreat, status: string) => {
+    if (status === 'accepted' && threat.status !== 'accepted') {
+      setThreatPendingAcceptance(threat);
+      return;
+    }
+
+    void handleUpdateThreat(threat.id, { status });
+  };
+
+  const handleAcceptRisk = async (data: {
+    justification: string;
+    approver_id?: number;
+    review_date?: string;
+  }) => {
+    if (!threatPendingAcceptance) return;
+
+    const updated = await updateThreat(threatPendingAcceptance.id, {
+      status: 'accepted',
+      acceptance_justification: data.justification,
+      acceptance_approver_id: data.approver_id ?? null,
+      acceptance_review_date: data.review_date ?? null,
+    });
+
+    if (updated) {
+      setThreatPendingAcceptance(null);
+      toast.success('Risk acceptance submitted');
     }
   };
 
@@ -476,7 +518,7 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1.5">STATUS</p>
-                        <Select value={dt.status} onValueChange={(v) => handleUpdateThreat(dt.id, { status: v })} disabled={!canWrite}>
+                        <Select value={dt.status} onValueChange={(v) => handleThreatStatusChange(dt, v)} disabled={!canWrite}>
                           <SelectTrigger className="h-8 text-xs rounded-lg">
                             <SelectValue />
                           </SelectTrigger>
@@ -811,6 +853,18 @@ export default function ThreatManagement({ diagramId, activeModelId, modelFramew
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {threatPendingAcceptance && diagramId && (
+        <AcceptRiskDialog
+          open
+          threatName={threatPendingAcceptance.threat.name}
+          diagramThreatId={threatPendingAcceptance.id}
+          diagramId={diagramId}
+          productId={productId ?? 0}
+          onConfirm={(data) => { void handleAcceptRisk(data); }}
+          onCancel={() => setThreatPendingAcceptance(null)}
+        />
+      )}
 
       {/* ── Create custom threat ── */}
       <Dialog open={createThreatDialogOpen} onOpenChange={setCreateThreatDialogOpen}>

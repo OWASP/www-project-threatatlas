@@ -1712,6 +1712,7 @@ export function DiagramsContent() {
           activeTab={rightPanelTab}
           onTabChange={setRightPanelTab}
           diagramId={selectedDiagram}
+          productId={selectedProduct}
           activeModelId={activeModelId}
           frameworkId={activeModel?.framework_id ?? null}
           unanalyzedNodes={unanalyzedNodes}
