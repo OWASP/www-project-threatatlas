@@ -19,7 +19,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { AlertTriangle } from 'lucide-react';
-import { usersApi } from '@/lib/api';
+import { productMembersApi } from '@/lib/api';
 import { toast } from 'sonner';
 
 interface Member {
@@ -64,13 +64,22 @@ export function AcceptRiskDialog({
       return;
     }
 
+    if (!productId) {
+      setMembers([]);
+      toast.error('Cannot load approvers because the product could not be identified.');
+      return;
+    }
+
     setLoadingMembers(true);
-    usersApi
-      .list()
+    productMembersApi
+      .list(productId)
       .then((res) => setMembers(res.data))
-      .catch(() => setMembers([]))
+      .catch(() => {
+        setMembers([]);
+        toast.error('Failed to load eligible approvers for this product.');
+      })
       .finally(() => setLoadingMembers(false));
-  }, [open]);
+  }, [open, productId]);
 
   const isValid = justification.trim().length >= 10;
 

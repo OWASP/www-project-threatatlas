@@ -94,6 +94,54 @@ def test_editor_and_viewer_collaborators_receive_distinct_capabilities(
     assert editor_response.json()["can_edit"] is True
 
 
+def test_product_members_only_returns_eligible_approvers(
+    client: TestClient,
+    standard_user: User,
+    other_user: User,
+    admin_user: User,
+    user_headers: dict,
+    db: Session,
+):
+    product = _create_product(db, standard_user)
+    viewer = _create_user(db, "viewer@test.com")
+    read_only_editor = _create_user(db, "readonly-editor@test.com", role=UserRole.READ_ONLY.value)
+    inactive_editor = _create_user(db, "inactive-editor@test.com")
+    inactive_editor.is_active = False
+    db.add_all([
+        ProductCollaborator(
+            product_id=product.id,
+            user_id=other_user.id,
+            role="editor",
+            added_by=standard_user.id,
+        ),
+        ProductCollaborator(
+            product_id=product.id,
+            user_id=viewer.id,
+            role="viewer",
+            added_by=standard_user.id,
+        ),
+        ProductCollaborator(
+            product_id=product.id,
+            user_id=read_only_editor.id,
+            role="editor",
+            added_by=standard_user.id,
+        ),
+        ProductCollaborator(
+            product_id=product.id,
+            user_id=inactive_editor.id,
+            role="editor",
+            added_by=standard_user.id,
+        ),
+    ])
+    db.flush()
+
+    response = client.get(f"/api/products/{product.id}/members", headers=user_headers)
+
+    assert response.status_code == 200
+    returned_ids = {member["id"] for member in response.json()}
+    assert returned_ids == {standard_user.id, other_user.id, admin_user.id}
+
+
 def test_global_read_only_role_cannot_edit_owned_diagram(
     client: TestClient, db: Session
 ):

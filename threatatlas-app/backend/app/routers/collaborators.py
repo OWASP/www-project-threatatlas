@@ -70,17 +70,23 @@ def list_product_members(
             detail="Not authorized to view product members"
         )
 
-    # Collect owner + all collaborators
+    # Only return users who can submit an approval decision. Viewer
+    # collaborators and globally read-only users cannot edit diagram threats.
     user_ids = {product.user_id}
     for c in product.collaborators:
-        user_ids.add(c.user_id)
+        if c.role in (CollaboratorRole.OWNER.value, CollaboratorRole.EDITOR.value):
+            user_ids.add(c.user_id)
 
     # Include all admin users (admins can act as approvers for any product)
     admin_users = db.query(UserModel).filter(UserModel.role == UserRole.ADMIN.value).all()
     for admin in admin_users:
         user_ids.add(admin.id)
 
-    users = db.query(UserModel).filter(UserModel.id.in_(user_ids)).all()
+    users = db.query(UserModel).filter(
+        UserModel.id.in_(user_ids),
+        UserModel.role != UserRole.READ_ONLY.value,
+        UserModel.is_active.is_(True),
+    ).all()
     return [
         {
             "id": u.id,

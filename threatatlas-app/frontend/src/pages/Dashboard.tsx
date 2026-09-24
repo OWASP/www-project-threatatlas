@@ -578,6 +578,7 @@ export default function Dashboard() {
         onOpenChange={setSheetOpen}
         selectedItem={selectedItem}
         itemType="threat"
+        productId={diagrams.find(d => d.id === selectedItem?.diagram_id)?.product_id}
         onUpdateStatus={handleUpdateStatus}
         onUpdateNotes={handleUpdateItem}
         onNavigateToDiagram={navigateToDiagram}
