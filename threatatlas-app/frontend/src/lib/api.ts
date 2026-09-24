@@ -285,8 +285,30 @@ export const threatsApi = {
 };
 
 // Mitigation API
+const MITIGATION_PAGE_SIZE = 100;
+
+async function listAllMitigations(params?: { framework_id?: number; is_custom?: boolean }) {
+  const firstResponse = await api.get('/mitigations', {
+    params: { ...params, skip: 0, limit: MITIGATION_PAGE_SIZE },
+  });
+  const data = [...firstResponse.data];
+
+  while (data.length > 0 && data.length % MITIGATION_PAGE_SIZE === 0) {
+    const response = await api.get('/mitigations', {
+      params: { ...params, skip: data.length, limit: MITIGATION_PAGE_SIZE },
+    });
+    data.push(...response.data);
+
+    if (response.data.length < MITIGATION_PAGE_SIZE) break;
+  }
+
+  return { ...firstResponse, data };
+}
+
 export const mitigationsApi = {
-  list: (params?: { framework_id?: number; is_custom?: boolean }) => api.get('/mitigations', { params }),
+  // Mitigation search is performed client-side, so callers need the complete
+  // catalogue rather than the backend's default first page.
+  list: listAllMitigations,
   get: (id: number) => api.get(`/mitigations/${id}`),
   create: (data: { framework_id: number; name: string; description?: string; category?: string; is_custom?: boolean }) => api.post('/mitigations', data),
   update: (id: number, data: { name?: string; description?: string; category?: string }) => api.put(`/mitigations/${id}`, data),
