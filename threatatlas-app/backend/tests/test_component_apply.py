@@ -1,7 +1,6 @@
 """Tests for the transactional 'apply component template' endpoint
 (POST /component-templates/{id}/apply)."""
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -129,6 +128,67 @@ def test_apply_subset_via_ids(client: TestClient, standard_user: User, user_head
     data = resp.json()
     assert data["threats_added"] == 1
     assert data["mitigations_added"] == 0
+
+
+def test_apply_links_mitigations_to_imported_threats(
+    client: TestClient, standard_user: User, user_headers: dict, db: Session
+):
+    ids = _setup(db, standard_user)
+    links = [
+        {"threat_id": ids["threat_ids"][0], "mitigation_id": ids["mitigation_ids"][0]},
+        {"threat_id": ids["threat_ids"][1], "mitigation_id": ids["mitigation_ids"][1]},
+    ]
+
+    resp = client.post(
+        f"/api/component-templates/{ids['template_id']}/apply",
+        json=_body(ids, mitigation_links=links),
+        headers=user_headers,
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["mitigations_added"] == 2
+    diagram_threats = {
+        threat.threat_id: threat.id
+        for threat in db.query(DiagramThreat).filter(DiagramThreat.element_id == "node-1").all()
+    }
+    diagram_mitigations = db.query(DiagramMitigation).filter(
+        DiagramMitigation.element_id == "node-1"
+    ).all()
+    assert {
+        (mitigation.mitigation_id, mitigation.threat_id)
+        for mitigation in diagram_mitigations
+    } == {
+        (ids["mitigation_ids"][0], diagram_threats[ids["threat_ids"][0]]),
+        (ids["mitigation_ids"][1], diagram_threats[ids["threat_ids"][1]]),
+    }
+    assert all(mitigation.threat_id is not None for mitigation in diagram_mitigations)
+
+
+def test_apply_repairs_previously_unlinked_mitigation(
+    client: TestClient, standard_user: User, user_headers: dict, db: Session
+):
+    ids = _setup(db, standard_user)
+    url = f"/api/component-templates/{ids['template_id']}/apply"
+    selected = _body(
+        ids,
+        threat_ids=[ids["threat_ids"][0]],
+        mitigation_ids=[ids["mitigation_ids"][0]],
+    )
+    client.post(url, json=selected, headers=user_headers)
+    mitigation = db.query(DiagramMitigation).one()
+    assert mitigation.threat_id is None
+
+    selected["mitigation_links"] = [{
+        "threat_id": ids["threat_ids"][0],
+        "mitigation_id": ids["mitigation_ids"][0],
+    }]
+    resp = client.post(url, json=selected, headers=user_headers)
+
+    assert resp.status_code == 200
+    assert db.query(DiagramMitigation).count() == 1
+    db.refresh(mitigation)
+    diagram_threat = db.query(DiagramThreat).filter_by(threat_id=ids["threat_ids"][0]).one()
+    assert mitigation.threat_id == diagram_threat.id
 
 
 def test_apply_skips_foreign_framework(client: TestClient, standard_user: User, user_headers: dict, db: Session):

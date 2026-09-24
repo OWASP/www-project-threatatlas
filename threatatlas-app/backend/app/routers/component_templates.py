@@ -524,6 +524,12 @@ def remove_kb_mitigation_link(
 
 # ── KB browse endpoints (for form population) ─────────────────────────────────
 
+class ApplyMitigationLink(BaseModel):
+    """A KB mitigation associated with a KB threat in the import dialog."""
+    threat_id: int
+    mitigation_id: int
+
+
 class ApplyTemplateRequest(BaseModel):
     """Instantiate a component template's threats/mitigations onto a diagram element."""
     diagram_id: int
@@ -533,6 +539,7 @@ class ApplyTemplateRequest(BaseModel):
     # If omitted, every framework-matching linked threat/mitigation is applied.
     threat_ids: Optional[list[int]] = None
     mitigation_ids: Optional[list[int]] = None
+    mitigation_links: Optional[list[ApplyMitigationLink]] = None
 
 
 class ApplyTemplateResult(BaseModel):
@@ -601,44 +608,97 @@ def apply_template(
     threats_added = threats_skipped = 0
     mitigations_added = mitigations_skipped = 0
 
+    diagram_threats_by_kb_id: dict[int, DiagramThreatModel] = {}
     for threat in applicable_threats:
-        exists = db.query(DiagramThreatModel).filter(
+        diagram_threat = db.query(DiagramThreatModel).filter(
             DiagramThreatModel.model_id == payload.model_id,
             DiagramThreatModel.threat_id == threat.id,
             DiagramThreatModel.element_id == payload.element_id,
         ).first()
-        if exists:
+        if diagram_threat:
             threats_skipped += 1
-            continue
-        db.add(DiagramThreatModel(
-            diagram_id=payload.diagram_id,
-            model_id=payload.model_id,
-            threat_id=threat.id,
-            element_id=payload.element_id,
-            element_type=payload.element_type,
-            status="identified",
-        ))
-        threats_added += 1
+        else:
+            diagram_threat = DiagramThreatModel(
+                diagram_id=payload.diagram_id,
+                model_id=payload.model_id,
+                threat_id=threat.id,
+                element_id=payload.element_id,
+                element_type=payload.element_type,
+                status="identified",
+            )
+            db.add(diagram_threat)
+            db.flush()
+            threats_added += 1
+        diagram_threats_by_kb_id[threat.id] = diagram_threat
 
-    for mitigation in applicable_mits:
-        exists = db.query(DiagramMitigationModel).filter(
-            DiagramMitigationModel.model_id == payload.model_id,
-            DiagramMitigationModel.mitigation_id == mitigation.id,
-            DiagramMitigationModel.element_id == payload.element_id,
-            DiagramMitigationModel.threat_id.is_(None),
-        ).first()
-        if exists:
-            mitigations_skipped += 1
-            continue
-        db.add(DiagramMitigationModel(
-            diagram_id=payload.diagram_id,
-            model_id=payload.model_id,
-            mitigation_id=mitigation.id,
-            element_id=payload.element_id,
-            element_type=payload.element_type,
-            status="proposed",
-        ))
-        mitigations_added += 1
+    applicable_mits_by_id = {mitigation.id: mitigation for mitigation in applicable_mits}
+
+    if payload.mitigation_links is not None:
+        # The UI groups controls beneath threats. Persist those relationships
+        # using the diagram-threat IDs created (or found) above.
+        link_pairs = {
+            (link.threat_id, link.mitigation_id)
+            for link in payload.mitigation_links
+        }
+        for kb_threat_id, mitigation_id in sorted(link_pairs):
+            diagram_threat = diagram_threats_by_kb_id.get(kb_threat_id)
+            mitigation = applicable_mits_by_id.get(mitigation_id)
+            if not diagram_threat or not mitigation:
+                continue
+
+            exists = db.query(DiagramMitigationModel).filter(
+                DiagramMitigationModel.model_id == payload.model_id,
+                DiagramMitigationModel.mitigation_id == mitigation.id,
+                DiagramMitigationModel.element_id == payload.element_id,
+                DiagramMitigationModel.threat_id == diagram_threat.id,
+            ).first()
+            if exists:
+                mitigations_skipped += 1
+                continue
+
+            # Repair controls imported by the previous implementation, which
+            # stored them at element scope with no threat relationship.
+            standalone = db.query(DiagramMitigationModel).filter(
+                DiagramMitigationModel.model_id == payload.model_id,
+                DiagramMitigationModel.mitigation_id == mitigation.id,
+                DiagramMitigationModel.element_id == payload.element_id,
+                DiagramMitigationModel.threat_id.is_(None),
+            ).first()
+            if standalone:
+                standalone.threat_id = diagram_threat.id
+            else:
+                db.add(DiagramMitigationModel(
+                    diagram_id=payload.diagram_id,
+                    model_id=payload.model_id,
+                    mitigation_id=mitigation.id,
+                    element_id=payload.element_id,
+                    element_type=payload.element_type,
+                    threat_id=diagram_threat.id,
+                    status="proposed",
+                ))
+            mitigations_added += 1
+    else:
+        # Backwards compatibility for callers that do not provide explicit
+        # threat-control relationships.
+        for mitigation in applicable_mits:
+            exists = db.query(DiagramMitigationModel).filter(
+                DiagramMitigationModel.model_id == payload.model_id,
+                DiagramMitigationModel.mitigation_id == mitigation.id,
+                DiagramMitigationModel.element_id == payload.element_id,
+                DiagramMitigationModel.threat_id.is_(None),
+            ).first()
+            if exists:
+                mitigations_skipped += 1
+                continue
+            db.add(DiagramMitigationModel(
+                diagram_id=payload.diagram_id,
+                model_id=payload.model_id,
+                mitigation_id=mitigation.id,
+                element_id=payload.element_id,
+                element_type=payload.element_type,
+                status="proposed",
+            ))
+            mitigations_added += 1
 
     log_event(
         db,

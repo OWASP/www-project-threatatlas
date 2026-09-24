@@ -72,15 +72,32 @@ export default function ComponentThreatsPanel({
   const [applying, setApplying] = useState(false);
   const [expandedThreats, setExpandedThreats] = useState<Set<number>>(new Set());
 
+  const selectedMitigationLinks = threats
+    .filter(threat => selectedThreatIds.has(threat.id))
+    .flatMap(threat => getMitigationsForThreat(threat, mitigations)
+      .filter(mitigation => selectedMitIds.has(mitigation.id))
+      .map(mitigation => ({
+        threat_id: threat.id,
+        mitigation_id: mitigation.id,
+      })));
+  const selectedLinkedMitigationIds = new Set(
+    selectedMitigationLinks.map(link => link.mitigation_id),
+  );
+
   useEffect(() => {
     setLoading(true);
     componentTemplatesApi.get(componentId, frameworkId)
       .then(r => {
         setThreats(r.data.threats);
         setMitigations(r.data.mitigations);
-        // Pre-select all by default
+        // Pre-select every threat and every mitigation displayed beneath one.
         setSelectedThreatIds(new Set(r.data.threats.map(t => t.id)));
-        setSelectedMitIds(new Set(r.data.mitigations.map(m => m.id)));
+        const mappedMitigationIds = new Set<number>();
+        r.data.threats.forEach(threat => {
+          getMitigationsForThreat(threat, r.data.mitigations)
+            .forEach(mitigation => mappedMitigationIds.add(mitigation.id));
+        });
+        setSelectedMitIds(mappedMitigationIds);
         setExpandedThreats(new Set(r.data.threats.map(t => t.id)));
       })
       .catch(() => toast.error('Failed to load component threats'))
@@ -127,6 +144,7 @@ export default function ComponentThreatsPanel({
         element_type: nodeType,
         threat_ids: [...selectedThreatIds],
         mitigation_ids: [...selectedMitIds],
+        mitigation_links: selectedMitigationLinks,
       });
       const addedT = data.threats_added;
       const addedM = data.mitigations_added;
@@ -262,7 +280,7 @@ export default function ComponentThreatsPanel({
           <p className="text-[11px] text-muted-foreground">
             <span className="font-semibold text-destructive">{selectedThreatIds.size}T</span>
             {' · '}
-            <span className="font-semibold text-emerald-600">{selectedMitIds.size}M</span>
+            <span className="font-semibold text-emerald-600">{selectedLinkedMitigationIds.size}M</span>
             {' '}selected
           </p>
           <div className="flex gap-2">
@@ -271,7 +289,7 @@ export default function ComponentThreatsPanel({
               size="sm"
               className="h-7 text-xs gap-1.5"
               onClick={handleApply}
-              disabled={applying || noModel || (selectedThreatIds.size === 0 && selectedMitIds.size === 0)}
+              disabled={applying || noModel || (selectedThreatIds.size === 0 && selectedMitigationLinks.length === 0)}
             >
               {applying ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCheck className="h-3 w-3" />}
               {applying ? 'Adding…' : 'Add to diagram'}

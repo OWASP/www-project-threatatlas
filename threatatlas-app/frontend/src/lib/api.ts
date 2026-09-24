@@ -552,7 +552,7 @@ export const componentTemplatesApi = {
   update: (id: number, data: { name?: string; slug?: string; category?: string; node_type?: string; icon?: string; description?: string; threat_ids?: number[]; mitigation_ids?: number[] }) => api.put('/component-templates/' + id, data),
   remove: (id: number) => api.delete('/component-templates/' + id),
   revert: (id: number) => api.post(`/component-templates/${id}/revert`),
-  apply: (id: number, data: { diagram_id: number; model_id: number; element_id: string; element_type?: string; threat_ids?: number[]; mitigation_ids?: number[] }) =>
+  apply: (id: number, data: { diagram_id: number; model_id: number; element_id: string; element_type?: string; threat_ids?: number[]; mitigation_ids?: number[]; mitigation_links?: { threat_id: number; mitigation_id: number }[] }) =>
     api.post<{ threats_added: number; mitigations_added: number; threats_skipped: number; mitigations_skipped: number }>(`/component-templates/${id}/apply`, data),
   addKbLinks: (id: number, data: { threat_ids?: number[]; mitigation_ids?: number[] }) => api.post(`/component-templates/${id}/kb-links`, data),
   removeKbThreat: (id: number, threatId: number) => api.delete(`/component-templates/${id}/kb-links/threats/${threatId}`),
