@@ -7,9 +7,10 @@ exactly as they do for a normal web request, correctly attributed to the
 token's owning user.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import HTTPException
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.mcp.context import get_mcp_actor
 from app.mcp.server import mcp
@@ -44,6 +45,87 @@ from app.schemas import (
 )
 from app.schemas.model import ModelCreate, ModelWithFramework
 from app.schemas.threat import DiagramThreat, DiagramThreatCreate, DiagramThreatUpdate
+
+
+DiagramNodeSubtype = Literal["process", "datastore", "external", "boundary"]
+DiagramSourceHandle = Literal["source-top", "source-right", "source-bottom", "source-left"]
+DiagramTargetHandle = Literal["target-top", "target-right", "target-bottom", "target-left"]
+
+
+class MCPDiagramPosition(BaseModel):
+    """React Flow coordinates for a diagram node."""
+
+    x: float
+    y: float
+
+
+class MCPDiagramNodeData(BaseModel):
+    """ThreatAtlas-specific data rendered by the custom diagram node."""
+
+    label: str
+    type: DiagramNodeSubtype = Field(
+        description="Architecture subtype: process, datastore, external, or boundary.",
+    )
+
+    model_config = ConfigDict(extra="allow")
+
+
+class MCPDiagramNode(BaseModel):
+    """A React Flow node using ThreatAtlas's custom architecture renderer."""
+
+    id: str
+    type: Literal["custom"] = Field(
+        default="custom",
+        description='React Flow renderer type. Must be "custom"; put the architecture subtype in data.type.',
+    )
+    position: MCPDiagramPosition
+    data: MCPDiagramNodeData
+
+    model_config = ConfigDict(extra="allow")
+
+
+class MCPDiagramEdge(BaseModel):
+    """A connection between explicit handles on two architecture nodes."""
+
+    id: str
+    source: str
+    target: str
+    type: Literal["custom"] = Field(
+        default="custom",
+        description='React Flow edge renderer type. Must be "custom".',
+    )
+    source_handle: DiagramSourceHandle = Field(
+        alias="sourceHandle",
+        description=(
+            "Handle on the source node. Choose the side facing the target: for example, "
+            "use source-right when the target is to the right."
+        ),
+    )
+    target_handle: DiagramTargetHandle = Field(
+        alias="targetHandle",
+        description=(
+            "Handle on the target node. Choose the side facing the source: for example, "
+            "pair source-right with target-left."
+        ),
+    )
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+
+class MCPDiagramData(BaseModel):
+    """Complete React Flow graph accepted by the MCP diagram tools."""
+
+    nodes: list[MCPDiagramNode] = Field(default_factory=list)
+    edges: list[MCPDiagramEdge] = Field(
+        default_factory=list,
+        description=(
+            "Connections between explicit node handles. Select opposing handles from the "
+            "nodes' relative positions (right/left, left/right, bottom/top, or top/bottom), "
+            "and distribute multiple connections across suitable sides to reduce crossings."
+        ),
+    )
+
+    model_config = ConfigDict(extra="allow")
 
 
 def _call(fn, *args, **kwargs) -> Any:
@@ -210,19 +292,22 @@ def create_diagram(
     product_id: int,
     name: str,
     description: str | None = None,
-    diagram_data: dict[str, Any] | None = None,
+    diagram_data: MCPDiagramData | None = None,
 ) -> dict:
     """Create a new diagram for a product.
 
-    `diagram_data` is the ReactFlow graph — a dict with `nodes` and `edges`
-    lists — so an assistant can draw a diagram by generating this JSON
-    directly. Pass it now or fill it in later via update_diagram."""
+    `diagram_data` is the complete React Flow graph. Every node uses the
+    top-level renderer `type: "custom"` and must set `data.type` to exactly one
+    of `process`, `datastore`, `external`, or `boundary`. Every edge must use
+    `sourceHandle` and `targetHandle`; choose opposing sides based on node
+    positions and distribute connections to keep the diagram readable. Pass
+    the graph now or fill it in later via update_diagram."""
     actor = get_mcp_actor()
     payload = DiagramCreate(
         product_id=product_id,
         name=name,
         description=description,
-        diagram_data=diagram_data,
+        diagram_data=diagram_data.model_dump(mode="json", by_alias=True) if diagram_data is not None else None,
     )
     created = _call(diagrams_router.create_diagram, diagram=payload, current_user=actor.user, db=actor.db)
     return _dump(Diagram, created)
@@ -233,20 +318,25 @@ def update_diagram(
     diagram_id: int,
     name: str | None = None,
     description: str | None = None,
-    diagram_data: dict[str, Any] | None = None,
+    diagram_data: MCPDiagramData | None = None,
     version_comment: str | None = None,
 ) -> dict:
     """Update a diagram, including replacing its full diagram_data (nodes/edges).
 
-    This is the core "draw via AI" tool: compute the complete ReactFlow graph
-    you want and pass it as `diagram_data` to redraw the diagram. Passing
-    `version_comment` snapshots a version even if auto-versioning is off."""
+    This is the core "draw via AI" tool: compute the complete React Flow graph
+    and pass it as `diagram_data` to redraw the diagram. Every node uses
+    top-level `type: "custom"`; its architecture subtype belongs in `data.type`
+    and must be `process`, `datastore`, `external`, or `boundary`. Edges must
+    name their `sourceHandle` and `targetHandle`; select opposing sides based on
+    relative node positions and spread connections across suitable ports.
+    Passing `version_comment` snapshots a version even if auto-versioning is
+    off."""
     actor = get_mcp_actor()
     payload = _partial(
         DiagramUpdate,
         name=name,
         description=description,
-        diagram_data=diagram_data,
+        diagram_data=diagram_data.model_dump(mode="json", by_alias=True) if diagram_data is not None else None,
         version_comment=version_comment,
     )
     updated = _call(

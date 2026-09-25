@@ -171,6 +171,35 @@ def test_valid_token_lists_all_tools(client: TestClient, admin_headers: dict):
     }
 
 
+def test_diagram_tools_advertise_supported_nodes_and_edge_handles(client: TestClient, admin_headers: dict):
+    resp = rpc_post(
+        client,
+        admin_headers,
+        {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+    )
+    assert resp.status_code == 200
+    tools = resp.json()["result"]["tools"]
+
+    for tool_name in ("create_diagram", "update_diagram"):
+        tool = next(tool for tool in tools if tool["name"] == tool_name)
+        schema = tool["inputSchema"]
+        node_schema = schema["$defs"]["MCPDiagramNode"]
+        node_data_schema = schema["$defs"]["MCPDiagramNodeData"]
+        edge_schema = schema["$defs"]["MCPDiagramEdge"]
+        assert node_schema["properties"]["type"]["const"] == "custom"
+        assert node_data_schema["properties"]["type"]["enum"] == [
+            "process", "datastore", "external", "boundary",
+        ]
+        assert edge_schema["properties"]["sourceHandle"]["enum"] == [
+            "source-top", "source-right", "source-bottom", "source-left",
+        ]
+        assert edge_schema["properties"]["targetHandle"]["enum"] == [
+            "target-top", "target-right", "target-bottom", "target-left",
+        ]
+        assert {"sourceHandle", "targetHandle"} <= set(edge_schema["required"])
+        assert "pair source-right with target-left" in edge_schema["properties"]["targetHandle"]["description"]
+
+
 # ── Read tools ──────────────────────────────────────────────────────────────
 
 def test_list_products(client: TestClient, standard_user: User, user_headers: dict, db: Session):
@@ -458,7 +487,33 @@ def test_update_diagram_threat_rejected_for_read_only(client: TestClient, standa
 
 def test_create_diagram_with_data(client: TestClient, standard_user: User, user_headers: dict, db: Session):
     product = _create_product(db, standard_user)
-    graph = {"nodes": [{"id": "n1", "type": "process", "position": {"x": 0, "y": 0}, "data": {"label": "API"}}], "edges": []}
+    graph = {
+        "nodes": [
+            {
+                "id": "n1",
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {"label": "API", "type": "process"},
+            },
+            {
+                "id": "n2",
+                "type": "custom",
+                "position": {"x": 300, "y": 0},
+                "data": {"label": "Client", "type": "external"},
+            }
+        ],
+        "edges": [
+            {
+                "id": "e1",
+                "source": "n2",
+                "target": "n1",
+                "type": "custom",
+                "sourceHandle": "source-left",
+                "targetHandle": "target-right",
+                "animated": True,
+            }
+        ],
+    }
     result = call_tool(client, user_headers, "create_diagram", {
         "product_id": product.id,
         "name": "AI-drawn diagram",
@@ -467,6 +522,89 @@ def test_create_diagram_with_data(client: TestClient, standard_user: User, user_
     created = tool_value(result)
     assert created["name"] == "AI-drawn diagram"
     assert created["diagram_data"] == graph
+
+
+def test_create_diagram_rejects_plain_react_flow_node(
+    client: TestClient,
+    standard_user: User,
+    user_headers: dict,
+    db: Session,
+):
+    product = _create_product(db, standard_user)
+    graph = {
+        "nodes": [
+            {
+                "id": "n1",
+                "type": "default",
+                "position": {"x": 0, "y": 0},
+                "data": {"label": "API", "type": "process"},
+            }
+        ],
+        "edges": [],
+    }
+    result = call_tool(client, user_headers, "create_diagram", {
+        "product_id": product.id,
+        "name": "Invalid diagram",
+        "diagram_data": graph,
+    })
+    error = tool_error_text(result)
+    assert "diagram_data.nodes.0.type" in error
+    assert "custom" in error
+
+
+def test_create_diagram_requires_architecture_subtype(
+    client: TestClient,
+    standard_user: User,
+    user_headers: dict,
+    db: Session,
+):
+    product = _create_product(db, standard_user)
+    graph = {
+        "nodes": [
+            {
+                "id": "n1",
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {"label": "API"},
+            }
+        ],
+        "edges": [],
+    }
+    result = call_tool(client, user_headers, "create_diagram", {
+        "product_id": product.id,
+        "name": "Invalid diagram",
+        "diagram_data": graph,
+    })
+    assert "diagram_data.nodes.0.data.type" in tool_error_text(result)
+
+
+def test_create_diagram_requires_edge_handles(
+    client: TestClient,
+    standard_user: User,
+    user_headers: dict,
+    db: Session,
+):
+    product = _create_product(db, standard_user)
+    graph = {
+        "nodes": [
+            {
+                "id": node_id,
+                "type": "custom",
+                "position": {"x": x, "y": 0},
+                "data": {"label": node_id, "type": "process"},
+            }
+            for node_id, x in (("n1", 0), ("n2", 300))
+        ],
+        "edges": [{"id": "e1", "source": "n1", "target": "n2"}],
+    }
+    result = call_tool(client, user_headers, "create_diagram", {
+        "product_id": product.id,
+        "name": "Invalid edge handles",
+        "diagram_data": graph,
+    })
+    error = tool_error_text(result)
+    assert "diagram_data.edges.0.sourceHandle" in error
+    assert "diagram_data.edges.0.targetHandle" in error
 
 
 def test_create_diagram_rejected_for_unowned_product(client: TestClient, standard_user: User, other_user: User, db: Session):
@@ -481,7 +619,17 @@ def test_create_diagram_rejected_for_unowned_product(client: TestClient, standar
 def test_update_diagram_redraws_data(client: TestClient, standard_user: User, user_headers: dict, db: Session):
     product = _create_product(db, standard_user)
     diagram = _create_diagram(db, product)
-    graph = {"nodes": [{"id": "n1", "type": "datastore", "position": {"x": 1, "y": 1}, "data": {"label": "DB"}}], "edges": []}
+    graph = {
+        "nodes": [
+            {
+                "id": "n1",
+                "type": "custom",
+                "position": {"x": 1, "y": 1},
+                "data": {"label": "DB", "type": "datastore"},
+            }
+        ],
+        "edges": [],
+    }
     result = call_tool(client, user_headers, "update_diagram", {
         "diagram_id": diagram.id,
         "diagram_data": graph,
