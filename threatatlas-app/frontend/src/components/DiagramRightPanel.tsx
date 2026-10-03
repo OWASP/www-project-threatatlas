@@ -491,7 +491,7 @@ function StreamingBubble({ content, thinkingStep, thinkingHistory }: { content: 
                     <span className="h-1 w-1 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
                   </span>
                 ) : (
-                  <svg className="h-3 w-3 shrink-0 text-emerald-500" viewBox="0 0 12 12" fill="none">
+                  <svg className="h-3 w-3 shrink-0 text-success" viewBox="0 0 12 12" fill="none">
                     <path d="M2 6l2.5 2.5L10 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 )}
@@ -692,17 +692,17 @@ function AIPanel({
 
       {/* Focus bar */}
       {focusedNodeIds.length > 0 && (
-        <div className="flex items-center justify-between px-3 py-1.5 border-b border-blue-500/20 shrink-0 gap-2" style={{ backgroundColor: 'color-mix(in srgb, #3b82f6 8%, transparent)' }}>
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-info/20 shrink-0 gap-2" style={{ backgroundColor: 'color-mix(in srgb, #3b82f6 8%, transparent)' }}>
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-sm shrink-0">🎯</span>
-            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 truncate">
+            <span className="text-[11px] font-medium text-info truncate">
               Focused on {focusedNodeIds.length} element{focusedNodeIds.length !== 1 ? 's' : ''}
               {focusedNodeLabels.length > 0 && (
                 <> · {focusedNodeLabels.slice(0, 2).join(', ')}{focusedNodeLabels.length > 2 ? ` +${focusedNodeLabels.length - 2} more` : ''}</>
               )}
             </span>
           </div>
-          <button className="text-[11px] font-semibold shrink-0 px-1.5 py-0.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-500/15" onClick={onClearFocus}>
+          <button className="text-[11px] font-semibold shrink-0 px-1.5 py-0.5 rounded text-info hover:bg-info/15" onClick={onClearFocus}>
             Clear
           </button>
         </div>
@@ -710,7 +710,7 @@ function AIPanel({
 
       {/* Incremental analysis banners */}
       {newNodesSinceSave.length > 0 && !isStreaming && (
-        <div className="flex items-center justify-between px-3 py-1.5 border-b border-amber-500/20 shrink-0 gap-2" style={{ backgroundColor: 'color-mix(in srgb, var(--lemon-500) 6%, transparent)' }}>
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-warning/20 shrink-0 gap-2" style={{ backgroundColor: 'color-mix(in srgb, var(--lemon-500) 6%, transparent)' }}>
           <div className="flex items-center gap-1.5 min-w-0">
             <GitBranch className="h-3 w-3 shrink-0" style={{ color: 'var(--risk-medium)' }} />
             <span className="text-[11px] font-medium truncate" style={{ color: 'var(--risk-medium)' }}>

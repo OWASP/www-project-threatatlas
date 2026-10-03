@@ -32,10 +32,10 @@ function JiraIcon({ className }: { className?: string }) {
 // ── Priority badge colours ────────────────────────────────────────────────────
 
 const PRIORITY_BADGE: Record<string, string> = {
-  Critical: 'text-red-700 border-red-300 bg-red-500/8',
-  High:     'text-orange-700 border-orange-300 bg-orange-500/8',
-  Medium:   'text-amber-700 border-amber-300 bg-amber-500/8',
-  Low:      'text-emerald-700 border-emerald-300 bg-emerald-500/8',
+  Critical: 'text-destructive border-destructive/30 bg-destructive/8',
+  High:     'text-caution border-caution/30 bg-caution/8',
+  Medium:   'text-warning border-warning/30 bg-warning/8',
+  Low:      'text-success border-success/30 bg-success/8',
 };
 
 // ── Props ─────────────────────────────────────────────────────────────────────

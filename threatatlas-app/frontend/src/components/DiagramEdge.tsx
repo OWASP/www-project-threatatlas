@@ -182,7 +182,7 @@ function DiagramEdge({
             <div
               onMouseDown={onMidpointMouseDown}
               onDoubleClick={onMidpointDblClick}
-              className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-md cursor-grab active:cursor-grabbing hover:scale-125 transition-transform"
+              className="w-3 h-3 rounded-full bg-info border-2 border-white shadow-md cursor-grab active:cursor-grabbing transition-transform"
               title="Drag to reshape • Double-click to reset"
             />
           </div>

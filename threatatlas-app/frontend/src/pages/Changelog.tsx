@@ -70,7 +70,7 @@ const tagConfig: Record<ChangelogVersion['tag'], { label: string; badgeStyle: Re
   },
 };
 
-function VersionCard({ item, index }: { item: ChangelogVersion; index: number }) {
+function VersionCard({ item }: { item: ChangelogVersion }) {
   const tag = tagConfig[item.tag] ?? tagConfig.feature;
   const TagIcon = tag.icon;
   const isUnreleased = item.tag === 'unreleased';
@@ -87,12 +87,11 @@ function VersionCard({ item, index }: { item: ChangelogVersion; index: number })
 
   return (
     <div
-      className="relative pl-10 animate-slideUp"
-      style={{ animationDelay: `${index * 80}ms`, animationFillMode: 'backwards' }}
+      className="relative pl-10"
     >
       {/* Timeline dot */}
       <div
-        className="absolute left-0 top-1 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-sm transition-transform duration-200 hover:scale-110"
+        className="absolute left-0 top-1 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-sm transition-transform duration-200"
         style={isUnreleased
           ? { borderColor: 'var(--ube-300)', backgroundColor: 'color-mix(in srgb, var(--ube-800) 15%, transparent)' }
           : { borderColor: 'color-mix(in srgb, var(--primary) 40%, transparent)', backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)' }
@@ -160,7 +159,7 @@ function VersionCard({ item, index }: { item: ChangelogVersion; index: number })
                       {grouped[type].map((entry, i) => (
                         <li key={i} className="flex items-start gap-2.5 group">
                           <span
-                            className="mt-2 h-1.5 w-1.5 rounded-full shrink-0 transition-transform duration-200 group-hover:scale-125"
+                            className="mt-2 h-1.5 w-1.5 rounded-full shrink-0 transition-transform duration-200"
                             style={cfg.dotStyle}
                           />
                           <span className="text-sm text-foreground/80 leading-relaxed">{entry.text}</span>
@@ -181,15 +180,15 @@ export default function Changelog() {
   const data = changelogData as ChangelogVersion[];
 
   return (
-    <div className="flex-1 p-4 mx-auto w-full">
+    <div className="flex-1 w-full p-4 md:p-6 lg:p-8">
 
       {/* Timeline container */}
       <div className="relative space-y-6">
         {/* Vertical line */}
         <div className="absolute left-4 top-4 bottom-4 w-px bg-gradient-to-b from-primary/30 via-border to-transparent" />
 
-        {data.map((item, index) => (
-          <VersionCard key={item.version} item={item} index={index} />
+        {data.map((item) => (
+          <VersionCard key={item.version} item={item} />
         ))}
       </div>
     </div>

@@ -165,7 +165,7 @@ export default function ComponentThreatsPanel({
   threats.forEach(t => { fwNames[t.framework_id] = t.framework_name; });
 
   return (
-    <div className="fixed right-4 bottom-4 z-50 w-[380px] max-h-[70vh] flex flex-col rounded-xl border border-border/70 bg-background/98 backdrop-blur-sm shadow-2xl animate-in slide-in-from-bottom-4 duration-200">
+    <div className="fixed right-4 bottom-4 z-50 w-[380px] max-h-[70vh] flex flex-col rounded-xl border border-border/70 bg-background/98 backdrop-blur-sm shadow-2xl duration-200">
       {/* Header */}
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border/50 shrink-0">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 shrink-0">
@@ -188,7 +188,7 @@ export default function ComponentThreatsPanel({
 
       {/* No model warning */}
       {noModel && !loading && threats.length > 0 && (
-        <div className="px-4 py-2 bg-amber-500/8 border-b border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-400">
+        <div className="px-4 py-2 bg-warning/8 border-b border-warning/20 text-[11px] text-warning">
           No active model selected — create or select a threat model to add these to the diagram.
         </div>
       )}
@@ -234,7 +234,7 @@ export default function ComponentThreatsPanel({
                             <button
                               type="button"
                               onClick={() => toggleExpand(threat.id)}
-                              className="flex items-center gap-0.5 text-[9px] text-emerald-600 font-semibold shrink-0 hover:text-emerald-700 transition-colors"
+                              className="flex items-center gap-0.5 text-[9px] text-success font-semibold shrink-0 hover:text-success transition-colors"
                             >
                               <span>{relatedMits.length}M</span>
                               {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
@@ -244,9 +244,9 @@ export default function ComponentThreatsPanel({
 
                         {/* Mitigation rows */}
                         {isExpanded && relatedMits.length > 0 && (
-                          <div className="border-t border-border/30 bg-emerald-500/3 divide-y divide-border/20">
+                          <div className="border-t border-border/30 bg-success/3 divide-y divide-border/20">
                             {relatedMits.map(m => (
-                              <label key={m.id} className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-emerald-500/5 transition-colors">
+                              <label key={m.id} className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-success/5 transition-colors">
                                 <input
                                   type="checkbox"
                                   checked={selectedMitIds.has(m.id)}
@@ -254,12 +254,12 @@ export default function ComponentThreatsPanel({
                                   disabled={!isSelected}
                                   className="h-3 w-3 shrink-0 accent-emerald-600"
                                 />
-                                <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full shrink-0 bg-emerald-500/15">
-                                  <svg className="h-2 w-2 text-emerald-600" viewBox="0 0 10 10" fill="none">
+                                <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full shrink-0 bg-success/15">
+                                  <svg className="h-2 w-2 text-success" viewBox="0 0 10 10" fill="none">
                                     <path d="M1.5 5l2 2L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                                   </svg>
                                 </div>
-                                <span className="text-[11px] font-medium text-emerald-900 dark:text-emerald-200 leading-snug flex-1 min-w-0 truncate">{m.name}</span>
+                                <span className="text-[11px] font-medium text-success leading-snug flex-1 min-w-0 truncate">{m.name}</span>
                               </label>
                             ))}
                           </div>
@@ -280,7 +280,7 @@ export default function ComponentThreatsPanel({
           <p className="text-[11px] text-muted-foreground">
             <span className="font-semibold text-destructive">{selectedThreatIds.size}T</span>
             {' · '}
-            <span className="font-semibold text-emerald-600">{selectedLinkedMitigationIds.size}M</span>
+            <span className="font-semibold text-success">{selectedLinkedMitigationIds.size}M</span>
             {' '}selected
           </p>
           <div className="flex gap-2">

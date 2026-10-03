@@ -177,7 +177,7 @@ rejects a mismatched issuer). Set it in `backend/.env`:
 BACKEND_BASE_URL=https://your-threatatlas-instance.example.com
 ```
 
-This defaults to `http://localhost:8000`, which is fine for local dev but
+This defaults to `http://localhost:3001` (the frontend/nginx origin, which proxies `/mcp` and the OAuth endpoints to the backend), which is fine for local dev but
 **must** be updated to the real public origin before enabling MCP in
 production — the same idea as `FRONTEND_URL`.
 

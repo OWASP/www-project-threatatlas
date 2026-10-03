@@ -40,10 +40,10 @@ function getIcon(key: string | null) {
 
 // ── Severity color ────────────────────────────────────────────────────────────
 function severityColor(s?: string) {
-  if (s === 'critical') return 'text-red-500';
-  if (s === 'high') return 'text-orange-500';
-  if (s === 'medium') return 'text-amber-500';
-  return 'text-blue-500';
+  if (s === 'critical') return 'text-destructive';
+  if (s === 'high') return 'text-caution';
+  if (s === 'medium') return 'text-warning';
+  return 'text-info';
 }
 
 // ── Threat preview tooltip ─────────────────────────────────────────────────────

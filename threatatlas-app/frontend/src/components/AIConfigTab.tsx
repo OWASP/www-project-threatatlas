@@ -147,7 +147,7 @@ const PROVIDERS: Array<{
     description: 'GPT models via OpenAI API',
     logo: 'OA',
     logoPath: '/images/ai-providers/openai.svg',
-    logoClass: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+    logoClass: 'bg-success/15 text-success ',
   },
   {
     id: 'anthropic',
@@ -155,7 +155,7 @@ const PROVIDERS: Array<{
     description: 'Claude models via Anthropic API',
     logo: 'AN',
     logoPath: '/images/ai-providers/anthropic.svg',
-    logoClass: 'bg-orange-500/15 text-orange-700 dark:text-orange-300',
+    logoClass: 'bg-caution/15 text-caution ',
   },
   {
     id: 'openai_compatible',
@@ -163,9 +163,35 @@ const PROVIDERS: Array<{
     description: 'Custom endpoint (Ollama, LiteLLM, etc.)',
     logo: 'OC',
     logoPath: '/images/ai-providers/ollama.svg',
-    logoClass: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
+    logoClass: 'bg-info/15 text-info ',
   },
 ];
+
+interface TestErrorInfo { title: string; description: string; actionUrl?: string; actionLabel?: string; raw: string }
+
+/** Turn the raw provider error string into a short, readable explanation. */
+function parseTestError(raw: string): TestErrorInfo {
+  const text = raw.replace(/^Connection failed:\s*/i, '');
+  const status = text.match(/status_code:\s*(\d{3})/)?.[1];
+  const url = text.match(/https?:\/\/[^\s'"),]+/)?.[0]?.replace(/[.]+$/, '');
+  const has = (s: string) => text.toLowerCase().includes(s);
+
+  if (status === '429' && (has('insufficient_quota') || has('credit') || has('quota'))) {
+    return { title: 'No credits remaining', description: 'The provider account has run out of credits. Add credits or use a different API key to continue.', actionUrl: url, actionLabel: 'Open billing', raw: text };
+  }
+  if (status === '429') return { title: 'Rate limit reached', description: 'The provider is limiting requests. Wait a moment and try again.', raw: text };
+  if (status === '401' || has('invalid_api_key') || has('incorrect api key')) {
+    return { title: 'Invalid API key', description: 'The provider rejected this key. Check that it is correct and still active.', raw: text };
+  }
+  if (status === '403') return { title: 'Access denied', description: 'This key does not have permission to use the selected model.', raw: text };
+  if (status === '404' || has('model_not_found')) {
+    return { title: 'Model not found', description: 'The selected model is not available for this account or endpoint.', raw: text };
+  }
+  if (has('timeout') || has('timed out') || has('connect')) {
+    return { title: 'Could not reach the provider', description: 'Check the base URL and your network connection, then try again.', raw: text };
+  }
+  return { title: 'Connection failed', description: 'The provider returned an error. See the details below.', raw: text };
+}
 
 export default function AIConfigTab() {
   const [existing, setExisting] = useState<AIConfigData | null>(null);
@@ -484,17 +510,37 @@ export default function AIConfigTab() {
               {testStatus === 'testing' ? 'Testing…' : 'Test Connection'}
             </Button>
             {testStatus === 'ok' && (
-              <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--risk-low)' }}>
-                <CheckCircle2 className="h-4 w-4" />
-                {testMessage}
-              </span>
+              <div role="status" className="flex w-full basis-full items-start gap-3 rounded-lg border border-success/30 bg-success/10 p-3 text-sm">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                <div className="space-y-0.5">
+                  <p className="font-medium text-foreground">Connection successful</p>
+                  <p className="text-muted-foreground">The model responded and your settings are valid.</p>
+                </div>
+              </div>
             )}
-            {testStatus === 'error' && (
-              <span className="flex items-center gap-1.5 text-sm font-medium text-destructive">
-                <XCircle className="h-4 w-4" />
-                {testMessage}
-              </span>
-            )}
+            {testStatus === 'error' && (() => {
+              const info = parseTestError(testMessage);
+              return (
+                <div role="alert" className="flex w-full basis-full items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">
+                  <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="space-y-0.5">
+                      <p className="font-medium text-foreground">{info.title}</p>
+                      <p className="text-muted-foreground">{info.description}</p>
+                    </div>
+                    {info.actionUrl && (
+                      <Button asChild size="sm" variant="outline">
+                        <a href={info.actionUrl} target="_blank" rel="noopener noreferrer">{info.actionLabel}</a>
+                      </Button>
+                    )}
+                    <details className="group text-xs text-muted-foreground">
+                      <summary className="cursor-pointer select-none hover:text-foreground">Technical details</summary>
+                      <pre className="mt-2 whitespace-pre-wrap break-words rounded-md border bg-background p-2 font-mono">{info.raw}</pre>
+                    </details>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </CardContent>
       </Card>

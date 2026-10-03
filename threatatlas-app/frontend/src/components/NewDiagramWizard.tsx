@@ -149,7 +149,7 @@ export default function NewDiagramWizard({
             <div className="grid grid-cols-3 gap-3 py-2">
               <button
                 onClick={() => setStep('blank')}
-                className="flex flex-col items-center gap-2 rounded-xl border-2 border-border/60 bg-muted/30 p-4 text-left hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-4 text-left hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                   <Grid3x3 className="h-5 w-5 text-primary" />
@@ -162,7 +162,7 @@ export default function NewDiagramWizard({
 
               <button
                 onClick={() => setStep('template')}
-                className="flex flex-col items-center gap-2 rounded-xl border-2 border-primary/30 bg-primary/5 p-4 text-left hover:border-primary/60 hover:bg-primary/10 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="flex flex-col items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-4 text-left hover:border-primary/60 hover:bg-primary/10 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15">
                   <Package className="h-5 w-5 text-primary" />
@@ -175,7 +175,7 @@ export default function NewDiagramWizard({
 
               <button
                 onClick={() => { onOpenChange(false); onRequestImport(); }}
-                className="flex flex-col items-center gap-2 rounded-xl border-2 border-border/60 bg-muted/30 p-4 text-left hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-4 text-left hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                   <Upload className="h-5 w-5 text-primary" />
@@ -239,7 +239,7 @@ export default function NewDiagramWizard({
                 <button
                   key={t.id}
                   onClick={() => { setSelectedTemplate(t.id); if (!name.trim()) setName(t.name + ' DFD'); }}
-                  className={`flex items-start gap-3 rounded-xl border-2 p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                  className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                     selectedTemplate === t.id
                       ? 'border-primary bg-primary/8'
                       : 'border-border/60 bg-muted/30 hover:border-primary/40 hover:bg-muted/50'

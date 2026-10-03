@@ -55,7 +55,7 @@ services:
       SMTP_TLS: ${SMTP_TLS:-True}
       INVITATION_EXPIRE_HOURS: ${INVITATION_EXPIRE_HOURS:-168}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
-      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://localhost:8001}
+      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://localhost:3001}
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3001","http://localhost:5173","http://localhost:3000"]}
     ports:
       - "${BACKEND_PORT:-8001}:8000"

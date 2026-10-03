@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -25,8 +26,8 @@ import {
 } from '@/components/ui/table';
 import { toast } from 'sonner';
 import {
-  Plus, Search, MoreHorizontal, Pencil, Trash2, Eye, Shield, ChevronDown, ChevronRight,
-  Database, Cpu, Users, Box as BoxIcon, Package, Lock, X,
+  Plus, Search, MoreHorizontal, Pencil, Trash2, RotateCcw, Eye, Shield, ChevronDown, ChevronRight,
+  Database, Cpu, Users, Box as BoxIcon, Lock, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,10 +44,10 @@ const NODE_TYPE_ICON: Record<string, React.ElementType> = {
 };
 
 const SEVERITY_COLOR: Record<string, string> = {
-  critical: 'text-red-500 bg-red-500/10',
-  high: 'text-orange-500 bg-orange-500/10',
-  medium: 'text-amber-500 bg-amber-500/10',
-  low: 'text-blue-500 bg-blue-500/10',
+  critical: 'text-destructive bg-destructive/10',
+  high: 'text-caution bg-caution/10',
+  medium: 'text-warning bg-warning/10',
+  low: 'text-info bg-info/10',
 };
 
 // ── Detail Sheet ──────────────────────────────────────────────────────────────
@@ -162,7 +163,7 @@ function ComponentDetailDialog({
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/40 rounded-lg px-2 py-1">
               <span className="font-semibold text-destructive">{totalThreats}T</span>
               <span className="text-border">·</span>
-              <span className="font-semibold text-emerald-600">{totalMits}M</span>
+              <span className="font-semibold text-success">{totalMits}M</span>
             </div>
           </div>
         </div>
@@ -207,7 +208,7 @@ function ComponentDetailDialog({
                           <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                             <Badge variant="outline" className="text-[9px] h-4 px-1.5">{threat.category}</Badge>
                             {relatedMits.length > 0 && (
-                              <span className="text-[9px] font-medium text-emerald-600 bg-emerald-500/10 rounded px-1.5 py-0.5">
+                              <span className="text-[9px] font-medium text-success bg-success/10 rounded px-1.5 py-0.5">
                                 {relatedMits.length}M
                               </span>
                             )}
@@ -225,19 +226,19 @@ function ComponentDetailDialog({
                                   className={cn(
                                     'flex items-start gap-2.5 px-3 py-2',
                                     idx > 0 && 'border-t border-border/30',
-                                    'bg-emerald-500/3'
+                                    'bg-success/3'
                                   )}
                                 >
                                   <div className="flex-none w-5 flex justify-center pt-1">
-                                    <div className="w-px h-full min-h-[8px] bg-emerald-500/30" />
+                                    <div className="w-px h-full min-h-[8px] bg-success/30" />
                                   </div>
-                                  <div className="flex h-4 w-4 items-center justify-center rounded-full shrink-0 mt-0.5 bg-emerald-500/15 border border-emerald-500/25">
-                                    <svg className="h-2 w-2 text-emerald-600" viewBox="0 0 10 10" fill="none">
+                                  <div className="flex h-4 w-4 items-center justify-center rounded-full shrink-0 mt-0.5 bg-success/15 border border-success/25">
+                                    <svg className="h-2 w-2 text-success" viewBox="0 0 10 10" fill="none">
                                       <path d="M1.5 5l2 2L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                                     </svg>
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-medium text-emerald-900 dark:text-emerald-200 leading-snug">{m.name}</p>
+                                    <p className="text-xs font-medium text-success leading-snug">{m.name}</p>
                                     {m.description && (
                                       <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{m.description}</p>
                                     )}
@@ -267,14 +268,14 @@ function ComponentDetailDialog({
                 <div className="h-px flex-1 bg-border/40" />
               </div>
               {unmatchedMits.map(m => (
-                <div key={m.id} className="flex items-start gap-2.5 px-3 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/3">
-                  <div className="flex h-4 w-4 items-center justify-center rounded-full shrink-0 mt-0.5 bg-emerald-500/15 border border-emerald-500/25">
-                    <svg className="h-2 w-2 text-emerald-600" viewBox="0 0 10 10" fill="none">
+                <div key={m.id} className="flex items-start gap-2.5 px-3 py-2 rounded-lg border border-success/20 bg-success/3">
+                  <div className="flex h-4 w-4 items-center justify-center rounded-full shrink-0 mt-0.5 bg-success/15 border border-success/25">
+                    <svg className="h-2 w-2 text-success" viewBox="0 0 10 10" fill="none">
                       <path d="M1.5 5l2 2L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                 </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-emerald-900 dark:text-emerald-200">{m.name}</p>
+                    <p className="text-xs font-medium text-success">{m.name}</p>
                     {m.description && <p className="text-[11px] text-muted-foreground line-clamp-1">{m.description}</p>}
                   </div>
                   <Badge variant="secondary" className="text-[9px] h-4 px-1.5 shrink-0">{m.framework_name}</Badge>
@@ -445,7 +446,7 @@ function ComponentFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-6xl p-2 gap-0 max-h-[96vh] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-6xl p-2 gap-0 max-h-[96vh] flex flex-col overflow-hidden">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 shrink-0">
@@ -456,7 +457,7 @@ function ComponentFormDialog({
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5">
             <span className="font-semibold text-destructive">{selectedThreatIds.length}T</span>
             <span>·</span>
-            <span className="font-semibold text-emerald-600">{selectedMitIds.length}M</span>
+            <span className="font-semibold text-success">{selectedMitIds.length}M</span>
             <span className="text-muted-foreground/50">selected</span>
           </div>
         </div>
@@ -536,8 +537,8 @@ function ComponentFormDialog({
               </div>
               <div className="flex-1 min-w-0 flex flex-col">
                 <div className="px-3 py-2 border-b border-border/40 bg-muted/10 flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Mitigations</span>
-                  {selectedMitIds.length > 0 && <span className="text-[10px] text-emerald-700 font-semibold">{selectedMitIds.length} selected</span>}
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-success">Mitigations</span>
+                  {selectedMitIds.length > 0 && <span className="text-[10px] text-success font-semibold">{selectedMitIds.length} selected</span>}
                 </div>
                 <div className="flex-1 overflow-hidden">
                   <KBPicker label="" frameworkId={activeFw} type="mitigations" selectedIds={selectedMitIds} onChange={setSelectedMitIds} />
@@ -658,18 +659,11 @@ export default function ComponentLibrary() {
   const customCount = groups.reduce((s, g) => s + g.components.filter(c => c.is_custom).length, 0);
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-6 lg:p-8 animate-fadeIn">
+    <div className="flex-1 w-full space-y-4 p-4 md:p-6 lg:p-8">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Package className="h-6 w-6 text-primary" />
-            Component Library
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Pre-built components with known threats and mitigations. Drag them from the diagram editor sidebar.
-          </p>
-          <div className="flex items-center gap-3 mt-2">
+          <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground">{totalComponents} components across {groups.length} categories</span>
             {customCount > 0 && <Badge variant="secondary" className="text-[10px] h-4">{customCount} custom</Badge>}
           </div>
@@ -723,6 +717,7 @@ export default function ComponentLibrary() {
                           <TableHead className="text-xs">Component</TableHead>
                           <TableHead className="text-xs w-[110px]">Node Type</TableHead>
                           <TableHead className="text-xs text-center w-[70px]">Threats</TableHead>
+                          {isAdmin && <TableHead className="w-[120px] text-right"><span className="sr-only">Actions</span></TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -748,42 +743,6 @@ export default function ComponentLibrary() {
                                   {/* Name + inline action icons (appear right after the name) */}
                                   <div className="min-w-0 flex-1 flex items-center gap-1.5">
                                     <p className="text-sm font-medium truncate group-hover/row:text-primary transition-colors shrink-0 max-w-[180px]">{comp.name}</p>
-
-                                    {/* Action icons — inline, immediately after name, disappear instantly */}
-                                    {isAdmin && (
-                                      <div
-                                        className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity duration-75 shrink-0"
-                                        onClick={e => e.stopPropagation()}
-                                      >
-                                        <button
-                                          title="Edit"
-                                          onClick={() => handleEdit(comp.id)}
-                                          className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                                        >
-                                          <Pencil className="h-2.5 w-2.5" />
-                                        </button>
-                                        {!comp.is_custom && comp.is_modified && (
-                                          <button
-                                            title="Revert to original"
-                                            onClick={() => handleRevert(comp.id, comp.name)}
-                                            className="h-5 w-5 flex items-center justify-center rounded hover:bg-amber-500/10 transition-colors text-muted-foreground hover:text-amber-600"
-                                          >
-                                            <svg className="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none">
-                                              <path d="M3.5 7.5A4.5 4.5 0 1 1 3.5 8M3.5 7.5V4m0 3.5H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                            </svg>
-                                          </button>
-                                        )}
-                                        {comp.is_custom && (
-                                          <button
-                                            title="Delete"
-                                            onClick={() => setDeleteTarget({ id: comp.id, name: comp.name })}
-                                            className="h-5 w-5 flex items-center justify-center rounded hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
-                                          >
-                                            <Trash2 className="h-2.5 w-2.5" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    )}
                                   </div>
 
                                   {/* Status badge — right side */}
@@ -809,6 +768,41 @@ export default function ComponentLibrary() {
                                   {comp.threat_count}
                                 </Badge>
                               </TableCell>
+
+                              {isAdmin && (
+                                <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon-sm" aria-label={`Edit ${comp.name}`} onClick={() => handleEdit(comp.id)}>
+                                          <Pencil />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Edit</TooltipContent>
+                                    </Tooltip>
+                                    {!comp.is_custom && comp.is_modified && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button variant="ghost" size="icon-sm" aria-label={`Revert ${comp.name} to original`} onClick={() => handleRevert(comp.id, comp.name)}>
+                                            <RotateCcw />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Revert to original</TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                    {comp.is_custom && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button variant="ghost" size="icon-sm" aria-label={`Delete ${comp.name}`} className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget({ id: comp.id, name: comp.name })}>
+                                            <Trash2 />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Delete</TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              )}
                             </TableRow>
                           );
                         })}

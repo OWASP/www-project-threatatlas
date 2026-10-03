@@ -13,7 +13,7 @@ import {
   Target,
   Github,
 } from 'lucide-react';
-import { getSeverityClasses, getSeverityStripeClass, getStatusClasses } from '@/lib/risk';
+import { getSeverityClasses, getStatusClasses } from '@/lib/risk';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { jiraApi } from '@/lib/api';
@@ -173,12 +173,8 @@ export default function ThreatCard({
 
   return (
     <Card
-      className="animate-fadeInUp hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl relative overflow-hidden py-0"
-      style={{ animationDelay: `${index * 40}ms` }}
+      className="hover:shadow-md transition-shadow rounded-xl relative overflow-hidden py-0"
     >
-      {/* Severity stripe */}
-      <div aria-hidden="true" className={cn('absolute left-0 top-0 bottom-0 w-1', getSeverityStripeClass(threat.severity))} />
-
       <CardContent className="p-0">
         {/* ── Threat section ── */}
         <div className="px-5 pl-6 pt-2 pb-1 cursor-pointer group/threat" onClick={onOpen}>

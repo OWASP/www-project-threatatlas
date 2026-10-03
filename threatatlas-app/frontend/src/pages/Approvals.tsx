@@ -4,34 +4,17 @@ import { toast } from 'sonner';
 import { format, isPast } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   ShieldCheck, ShieldX, Clock, CheckCircle2, XCircle,
-  AlertTriangle, FileText, Calendar, ChevronRight,
+  AlertTriangle, FileText, Calendar, ChevronRight, ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function reviewStatusBadge(status: string | null) {
-  if (status === 'approved') return (
-    <Badge variant="outline" className="gap-1 text-emerald-700 border-emerald-300 bg-emerald-500/8">
-      <CheckCircle2 className="h-3 w-3" />Approved
-    </Badge>
-  );
-  if (status === 'rejected') return (
-    <Badge variant="outline" className="gap-1 text-destructive border-destructive/30 bg-destructive/8">
-      <XCircle className="h-3 w-3" />Rejected
-    </Badge>
-  );
-  return (
-    <Badge variant="outline" className="gap-1 text-amber-700 border-amber-300 bg-amber-500/8">
-      <Clock className="h-3 w-3" />Pending review
-    </Badge>
-  );
-}
 
 // ── Column skeleton ───────────────────────────────────────────────────────────
 
@@ -69,6 +52,8 @@ interface ReviewState { mode: 'idle' | 'approving' | 'rejecting'; note: string; 
 function ApprovalCard({ item, onReviewed }: { item: ApprovalItem; onReviewed: () => void }) {
   const [review, setReview] = useState<ReviewState>({ mode: 'idle', note: '', submitting: false });
   const isPending = !item.acceptance_review_status;
+  const [expanded, setExpanded] = useState(false);
+  const open = isPending || expanded;
   const reviewDate = item.acceptance_review_date ? new Date(item.acceptance_review_date) : null;
   const isOverdue = reviewDate ? isPast(reviewDate) : false;
 
@@ -89,12 +74,13 @@ function ApprovalCard({ item, onReviewed }: { item: ApprovalItem; onReviewed: ()
   }
 
   return (
-    <Card className="rounded-xl border-border/60 shadow-xs hover:shadow-sm transition-shadow animate-fadeInUp">
-      <CardHeader className="pb-3">
+    <Collapsible open={open} onOpenChange={(v) => !isPending && setExpanded(v)} asChild>
+    <Card className="rounded-xl border-border/60 shadow-sm hover:shadow-md transition-shadow">
+      <CardHeader className={open ? 'pb-3' : 'pb-4'}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+              <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: 'var(--risk-high)' }} />
               <span className="font-semibold text-sm truncate">{item.threat_name}</span>
             </div>
             {item.category && (
@@ -117,9 +103,17 @@ function ApprovalCard({ item, onReviewed }: { item: ApprovalItem; onReviewed: ()
               )}
             </div>
           </div>
+          {!isPending && (
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="icon-sm" className="shrink-0" aria-label={open ? 'Collapse details' : 'Expand details'}>
+                <ChevronDown className={cn('transition-transform', open && 'rotate-180')} />
+              </Button>
+            </CollapsibleTrigger>
+          )}
         </div>
       </CardHeader>
 
+      <CollapsibleContent>
       <CardContent className="space-y-3 pt-0">
         {/* Justification */}
         {item.acceptance_justification && (
@@ -167,29 +161,29 @@ function ApprovalCard({ item, onReviewed }: { item: ApprovalItem; onReviewed: ()
         {/* Pending actions */}
         {isPending && review.mode === 'idle' && (
           <div className="flex items-center gap-2 pt-1">
-            <Button size="sm" className="gap-1.5 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+            <Button size="sm"
               onClick={() => setReview({ mode: 'approving', note: '', submitting: false })}>
-              <ShieldCheck className="h-3.5 w-3.5" />Approve
+              <ShieldCheck />Approve
             </Button>
-            <Button size="sm" variant="destructive" className="gap-1.5 h-8 text-xs"
+            <Button size="sm" variant="destructive"
               onClick={() => setReview({ mode: 'rejecting', note: '', submitting: false })}>
-              <ShieldX className="h-3.5 w-3.5" />Reject
+              <ShieldX />Reject
             </Button>
           </div>
         )}
 
         {/* Approve confirmation */}
         {isPending && review.mode === 'approving' && (
-          <div className="space-y-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-3">
-            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Confirm approval</p>
+          <div className="space-y-2 rounded-lg border border-success/25 bg-success/5 p-3">
+            <p className="text-xs font-semibold text-success">Confirm approval</p>
             <Textarea placeholder="Optional note…" className="text-sm resize-none min-h-[60px]" rows={2}
               value={review.note} onChange={(e) => setReview((r) => ({ ...r, note: e.target.value }))} />
             <div className="flex gap-2">
-              <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+              <Button size="sm"
                 disabled={review.submitting} onClick={() => submit('approved')}>
                 {review.submitting ? 'Approving…' : 'Confirm'}
               </Button>
-              <Button size="sm" variant="ghost" className="h-7 text-xs"
+              <Button size="sm" variant="ghost"
                 disabled={review.submitting} onClick={() => setReview({ mode: 'idle', note: '', submitting: false })}>
                 Cancel
               </Button>
@@ -204,11 +198,11 @@ function ApprovalCard({ item, onReviewed }: { item: ApprovalItem; onReviewed: ()
             <Textarea placeholder="Explain why this acceptance is being rejected…" className="text-sm resize-none min-h-[72px]"
               rows={3} value={review.note} onChange={(e) => setReview((r) => ({ ...r, note: e.target.value }))} />
             <div className="flex gap-2">
-              <Button size="sm" variant="destructive" className="h-7 text-xs"
+              <Button size="sm" variant="destructive"
                 disabled={review.submitting || !review.note.trim()} onClick={() => submit('rejected')}>
                 {review.submitting ? 'Rejecting…' : 'Confirm Rejection'}
               </Button>
-              <Button size="sm" variant="ghost" className="h-7 text-xs"
+              <Button size="sm" variant="ghost"
                 disabled={review.submitting} onClick={() => setReview({ mode: 'idle', note: '', submitting: false })}>
                 Cancel
               </Button>
@@ -216,7 +210,9 @@ function ApprovalCard({ item, onReviewed }: { item: ApprovalItem; onReviewed: ()
           </div>
         )}
       </CardContent>
+      </CollapsibleContent>
     </Card>
+    </Collapsible>
   );
 }
 
@@ -243,7 +239,6 @@ function ColumnEmpty({ column }: { column: 'pending' | 'approved' | 'rejected' }
 interface ColumnConfig {
   key: 'pending' | 'approved' | 'rejected';
   label: string;
-  accent: string;
   headerBg: string;
   dotColor: string;
   countBg: string;
@@ -254,29 +249,26 @@ const COLUMNS: ColumnConfig[] = [
   {
     key: 'pending',
     label: 'Pending Review',
-    accent: 'border-t-amber-400',
-    headerBg: 'bg-amber-500/5',
-    dotColor: 'bg-amber-400',
-    countBg: 'bg-amber-500',
-    countText: 'text-white',
+    headerBg: 'bg-card',
+    dotColor: 'bg-warning',
+    countBg: 'bg-secondary',
+    countText: 'text-secondary-foreground',
   },
   {
     key: 'approved',
     label: 'Approved',
-    accent: 'border-t-emerald-400',
-    headerBg: 'bg-emerald-500/5',
-    dotColor: 'bg-emerald-400',
-    countBg: 'bg-emerald-500',
-    countText: 'text-white',
+    headerBg: 'bg-card',
+    dotColor: 'bg-success',
+    countBg: 'bg-secondary',
+    countText: 'text-secondary-foreground',
   },
   {
     key: 'rejected',
     label: 'Rejected',
-    accent: 'border-t-destructive/60',
-    headerBg: 'bg-destructive/5',
+    headerBg: 'bg-card',
     dotColor: 'bg-destructive/70',
-    countBg: 'bg-destructive',
-    countText: 'text-white',
+    countBg: 'bg-secondary',
+    countText: 'text-secondary-foreground',
   },
 ];
 
@@ -307,33 +299,24 @@ export default function Approvals() {
   const columnItems: Record<string, ApprovalItem[]> = { pending, approved, rejected };
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-6 lg:p-8 animate-fadeIn">
+    <div className="flex-1 w-full space-y-6 p-4 md:p-6 lg:p-8">
 
-      {/* Page header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2.5">
-            <ShieldCheck className="h-6 w-6 text-primary" />
-            My Approvals
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Risk acceptances assigned to you for formal review
-          </p>
-        </div>
-      </div>
-
-      {/* KPI strip */}
+      {/* ── KPI strip ── */}
       {!loading && items.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { label: 'Pending Review', value: pending.length, color: 'text-amber-600', bg: 'bg-amber-500/8 border-amber-500/20' },
-            { label: 'Overdue', value: overdueCount, color: 'text-destructive', bg: 'bg-destructive/8 border-destructive/20' },
-            { label: 'Reviewed', value: approved.length + rejected.length, color: 'text-emerald-600', bg: 'bg-emerald-500/8 border-emerald-500/20' },
-          ].map(({ label, value, color, bg }) => (
-            <Card key={label} className={cn('rounded-xl border shadow-xs', bg)}>
+            { label: 'Pending Review', value: pending.length, sub: pending.length > 0 ? 'Awaiting your decision' : 'All caught up', icon: Clock, iconColor: 'var(--warning)' },
+            { label: 'Overdue', value: overdueCount, sub: overdueCount > 0 ? 'Past review date' : 'None overdue', icon: AlertTriangle, iconColor: 'var(--risk-critical)' },
+            { label: 'Reviewed', value: approved.length + rejected.length, sub: `${approved.length} approved · ${rejected.length} rejected`, icon: CheckCircle2, iconColor: 'var(--success)' },
+          ].map(({ label, value, sub, icon: Icon, iconColor }) => (
+            <Card key={label} className="rounded-xl shadow-sm bg-card">
               <CardContent className="pt-3 pb-3">
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
-                <p className={cn('text-2xl font-bold mt-0.5', color)}>{value}</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</p>
+                  <Icon className="h-3.5 w-3.5" style={{ color: iconColor }} />
+                </div>
+                <p className="text-2xl font-bold">{value}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>
               </CardContent>
             </Card>
           ))}
@@ -347,13 +330,12 @@ export default function Approvals() {
 
             {/* Column header card */}
             <div className={cn(
-              'flex items-center justify-between px-4 py-3 rounded-xl border border-border/60 shadow-xs border-t-2',
-              col.accent,
+              'flex items-center justify-between px-4 py-3 rounded-xl border border-border/60 shadow-sm',
               col.headerBg,
             )}>
               <div className="flex items-center gap-2">
                 <span className={cn('h-2 w-2 rounded-full shrink-0', col.dotColor)} />
-                <CardTitle className="text-sm font-semibold">{col.label}</CardTitle>
+                <h2 className="text-sm font-semibold">{col.label}</h2>
               </div>
               {!loading && (
                 <span className={cn(

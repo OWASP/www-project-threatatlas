@@ -353,7 +353,7 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="flex-1 space-y-6 mx-auto p-4 animate-fadeIn">
+    <div className="w-full space-y-6">
       <div className="flex items-center justify-end">
         <div className="flex gap-3">
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>

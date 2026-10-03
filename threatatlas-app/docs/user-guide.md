@@ -24,7 +24,7 @@ Welcome to **ThreatAtlas** — a platform for community-driven threat modeling.
 ## First Login
 
 ### 1. Open ThreatAtlas
-Navigate to your hosted URL (default: **http://localhost:3000** for local installs).
+Navigate to your hosted URL (default: **http://localhost:3001** for local installs).
 
 ### 2. Log In
 
@@ -260,7 +260,7 @@ docker compose logs postgres
 docker compose logs frontend
 ```
 
-### Cannot connect to http://localhost:3000
+### Cannot connect to http://localhost:3001
 
 - Make sure Docker is running: `docker info`
 - Check that the frontend container is up: `docker compose ps`
@@ -307,7 +307,7 @@ docker compose up -d          # Rebuild and start fresh
 
 ### Viewing API Documentation
 
-The backend provides interactive API docs at **http://localhost:8000/docs** (Swagger UI). This is useful for verifying the API is working correctly.
+The backend provides interactive API docs at **http://localhost:8000/docs** (Scalar API reference). This is useful for verifying the API is working correctly.
 
 ---
 
@@ -321,4 +321,4 @@ The backend provides interactive API docs at **http://localhost:8000/docs** (Swa
 | Check status | `docker compose ps` |
 | Remove everything | `docker compose down -v` |
 
-Open **http://localhost:3000** to access ThreatAtlas after starting.
+Open **http://localhost:3001** to access ThreatAtlas after starting.

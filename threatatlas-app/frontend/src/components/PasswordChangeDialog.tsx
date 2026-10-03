@@ -157,12 +157,12 @@ export default function PasswordChangeDialog({ collapsed = false, trigger }: Pas
             </Field>
 
             {error && !error.includes('New password') && (
-              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg border border-destructive/20 animate-in fade-in zoom-in duration-200">
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg border border-destructive/20 duration-200">
                 {error}
               </div>
             )}
             {success && (
-              <div className="text-sm p-3 rounded-lg animate-in fade-in zoom-in duration-200" style={{
+              <div className="text-sm p-3 rounded-lg duration-200" style={{
                 color: 'var(--element-mitigation)',
                 backgroundColor: 'color-mix(in srgb, var(--element-mitigation) 5%, transparent)',
                 borderWidth: '1px',

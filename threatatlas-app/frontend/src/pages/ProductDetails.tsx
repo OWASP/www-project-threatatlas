@@ -229,7 +229,7 @@ function ProductAnalytics({ threats, mitigations }: { threats: DiagramThreat[]; 
 
   if (threats.length === 0 && mitigations.length === 0) {
     return (
-      <Card className="border-dashed border-2 rounded-xl">
+      <Card className="border-dashed rounded-xl">
         <CardContent className="flex flex-col items-center justify-center p-12">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/60 mb-3">
             <BarChart3 className="h-8 w-8 text-muted-foreground" />
@@ -615,7 +615,7 @@ function ProductResidualRiskMatrix({ threats }: { threats: DiagramThreat[] }) {
 
 function ProductDetailsSkeleton() {
   return (
-    <div className="flex-1 space-y-6 p-4 animate-fadeIn">
+    <div className="flex-1 w-full space-y-6 p-4 md:p-6 lg:p-8">
       {/* Back button */}
       <Skeleton className="h-9 w-40 rounded-lg" />
 
@@ -730,7 +730,7 @@ function MitigationsTab({
 
   if (mitigations.length === 0) {
     return (
-      <Card className="border-dashed border-2 rounded-xl">
+      <Card className="border-dashed rounded-xl">
         <CardContent className="flex flex-col items-center justify-center p-12">
           <div
             className="flex h-16 w-16 items-center justify-center rounded-2xl mb-3"
@@ -1109,8 +1109,8 @@ export default function ProductDetails() {
 
   if (!product) {
     return (
-      <div className="flex-1 space-y-6 p-4">
-        <Card className="border-dashed border-2 rounded-xl">
+      <div className="flex-1 w-full space-y-6 p-4 md:p-6 lg:p-8">
+        <Card className="border-dashed rounded-xl">
           <CardContent className="flex flex-col items-center justify-center p-16">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/60 to-muted/40 mb-4 shadow-xs">
               <Box className="h-8 w-8 text-muted-foreground" />
@@ -1130,158 +1130,140 @@ export default function ProductDetails() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-6 lg:p-8 mx-auto">
-      {/* ── Top navigation bar ── */}
-      <div className="flex items-center justify-between animate-fadeIn">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/products')}
-          className="-ml-2 hover:bg-muted/70 rounded-lg cursor-pointer transition-colors h-9"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Products
-        </Button>
+    <div className="flex-1 w-full space-y-4 p-4 md:p-6 lg:p-8">
+      {/* ── Header ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border bg-card shadow-sm">
+            <Box className="h-6 w-6 text-primary" />
+          </div>
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-bold tracking-tight truncate">{product.name}</h1>
+              {product.status && (
+                <Badge
+                  variant="outline"
+                  className={`capitalize font-semibold ${
+                    product.status === 'design' ? 'border-info/50 text-info bg-info/10' :
+                    product.status === 'development' ? 'border-violet/50 text-violet bg-violet/10' :
+                    product.status === 'testing' ? 'border-warning/50 text-warning bg-warning/10' :
+                    product.status === 'deployment' ? 'border-violet/50 text-violet bg-violet/10' :
+                    'border-success/50 text-success bg-success/10'
+                  }`}
+                >
+                  {product.status}
+                </Badge>
+              )}
+            </div>
+            {product.description ? (
+              <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{product.description}</p>
+            ) : (
+              <p className="text-sm italic text-muted-foreground">No description. Edit this product to add one.</p>
+            )}
+            <p className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                Created {new Date(product.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                Updated {new Date(product.updated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+              </span>
+            </p>
+          </div>
+        </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="shadow-xs h-9">
-              <Download className="mr-2 h-4 w-4" />
-              Download
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>Export this product</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => triggerDownload(`/api/products/${product.id}/download/diagrams`)}
-            >
-              <FileJson className="mr-2 h-4 w-4" />
-              Diagrams (JSON)
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => triggerDownload(`/api/products/${product.id}/download/threats-mitigations`)}
-            >
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Threats & Mitigations (CSV)
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => triggerDownload(`/api/products/${product.id}/download/report`)}
-            >
-              <FileReport className="mr-2 h-4 w-4" />
-              Full report (HTML)
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={async () => {
-                // Download the HTML report via authenticated API and open for print
-                try {
-                  const { default: api } = await import('@/lib/api');
-                  const res = await api.get(`/products/${product.id}/download/report`, { responseType: 'blob' });
-                  const blob = new Blob([res.data], { type: 'text/html' });
-                  const url = URL.createObjectURL(blob);
-                  const win = window.open(url, '_blank');
-                  if (win) {
-                    win.onload = () => setTimeout(() => { try { win.print(); } catch {} }, 500);
-                  }
-                  setTimeout(() => URL.revokeObjectURL(url), 30000);
-                } catch { toast.error('Failed to generate PDF report.'); }
-              }}
-            >
-              <FileReport className="mr-2 h-4 w-4" />
-              Full report (PDF)
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => triggerDownload(`/api/products/${product.id}/download/report.md`)}
-            >
-              <FileCode className="mr-2 h-4 w-4" />
-              Threat model report (Markdown)
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => triggerDownload(`/api/products/${product.id}/download/report.docx`)}
-            >
-              <FileReport className="mr-2 h-4 w-4" />
-              Full report (Word .docx)
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => triggerDownload(`/api/products/${product.id}/download/bundle`)}
-            >
-              <Package className="mr-2 h-4 w-4" />
-              All files (ZIP bundle)
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download />
+                Download
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Export this product</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => triggerDownload(`/api/products/${product.id}/download/diagrams`)}
+              >
+                <FileJson className="mr-2 h-4 w-4" />
+                Diagrams (JSON)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => triggerDownload(`/api/products/${product.id}/download/threats-mitigations`)}
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Threats & Mitigations (CSV)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => triggerDownload(`/api/products/${product.id}/download/report`)}
+              >
+                <FileReport className="mr-2 h-4 w-4" />
+                Full report (HTML)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={async () => {
+                  // Download the HTML report via authenticated API and open for print
+                  try {
+                    const { default: api } = await import('@/lib/api');
+                    const res = await api.get(`/products/${product.id}/download/report`, { responseType: 'blob' });
+                    const blob = new Blob([res.data], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const win = window.open(url, '_blank');
+                    if (win) {
+                      win.onload = () => setTimeout(() => { try { win.print(); } catch {} }, 500);
+                    }
+                    setTimeout(() => URL.revokeObjectURL(url), 30000);
+                  } catch { toast.error('Failed to generate PDF report.'); }
+                }}
+              >
+                <FileReport className="mr-2 h-4 w-4" />
+                Full report (PDF)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => triggerDownload(`/api/products/${product.id}/download/report.md`)}
+              >
+                <FileCode className="mr-2 h-4 w-4" />
+                Threat model report (Markdown)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => triggerDownload(`/api/products/${product.id}/download/report.docx`)}
+              >
+                <FileReport className="mr-2 h-4 w-4" />
+                Full report (Word .docx)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => triggerDownload(`/api/products/${product.id}/download/bundle`)}
+              >
+                <Package className="mr-2 h-4 w-4" />
+                All files (ZIP bundle)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
       </div>
 
-      {/* ── Product info card (compact) ── */}
-      <Card className="rounded-xl border-border/60 shadow-xs animate-fadeInUp" style={{ animationDelay: '50ms' }}>
-        <CardHeader className="py-3">
-          <div className="flex items-start gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-xs shrink-0">
-              <Box className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg font-bold tracking-tight">{product.name}</CardTitle>
-              {product.description && (
-                <CardDescription className="mt-0.5 text-sm leading-relaxed line-clamp-2">
-                  {product.description}
-                </CardDescription>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-
-        {!product.description && (
-          <CardContent className="pt-0 pb-3">
-            <Empty className="border rounded-xl py-6">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Box className="h-4 w-4 text-muted-foreground" />
-                </EmptyMedia>
-                <EmptyTitle>No description</EmptyTitle>
-                <EmptyDescription>Edit this product to add a description.</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          </CardContent>
-        )}
-
-        {(product.status ||
-          product.business_area ||
-          product.owner_name ||
-          product.owner_email ||
-          product.repository_url ||
-          product.confluence_url ||
-          product.application_url ||
-          product.jira_project_key) && (
-          <CardContent className="pt-0 pb-3">
-            <div className="p-3 border border-border/60 rounded-lg bg-muted/20 space-y-2 text-sm">
-              {product.status && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0">Status</span>
-                  <Badge
-                    variant="outline"
-                    className={`capitalize font-semibold ${
-                      product.status === 'design' ? 'border-sky-500/50 text-sky-700 dark:text-sky-300 bg-sky-500/10' :
-                      product.status === 'development' ? 'border-indigo-500/50 text-indigo-700 dark:text-indigo-300 bg-indigo-500/10' :
-                      product.status === 'testing' ? 'border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-500/10' :
-                      product.status === 'deployment' ? 'border-purple-500/50 text-purple-700 dark:text-purple-300 bg-purple-500/10' :
-                      'border-emerald-500/50 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10'
-                    }`}
-                  >
-                    {product.status}
-                  </Badge>
-                </div>
-              )}
+      {/* ── Details ── */}
+      {(product.business_area ||
+        product.owner_name ||
+        product.owner_email ||
+        product.jira_project_key ||
+        product.repository_url ||
+        product.confluence_url ||
+        product.application_url) && (
+        <Card className="rounded-xl border-border/60 shadow-sm">
+          <CardContent className="flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+            <dl className="grid flex-1 gap-x-8 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
               {product.business_area && (
-                <div className="flex items-start gap-2">
-                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Business area</span>
-                  <span>{product.business_area}</span>
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Business area</dt>
+                  <dd className="mt-0.5 text-sm">{product.business_area}</dd>
                 </div>
               )}
               {(product.owner_name || product.owner_email) && (
-                <div className="flex items-start gap-2">
-                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Owner</span>
-                  <span>
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Owner</dt>
+                  <dd className="mt-0.5 text-sm">
                     {product.owner_name}
                     {product.owner_name && product.owner_email && ' · '}
                     {product.owner_email && (
@@ -1289,128 +1271,74 @@ export default function ProductDetails() {
                         {product.owner_email}
                       </a>
                     )}
-                  </span>
-                </div>
-              )}
-              {product.repository_url && (
-                <div className="flex items-start gap-2">
-                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Repository</span>
-                  <a href={product.repository_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
-                    {product.repository_url}
-                  </a>
-                </div>
-              )}
-              {product.confluence_url && (
-                <div className="flex items-start gap-2">
-                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Confluence</span>
-                  <a href={product.confluence_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
-                    {product.confluence_url}
-                  </a>
-                </div>
-              )}
-              {product.application_url && (
-                <div className="flex items-start gap-2">
-                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Application</span>
-                  <a href={product.application_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
-                    {product.application_url}
-                  </a>
+                  </dd>
                 </div>
               )}
               {product.jira_project_key && (
-                <div className="flex items-start gap-2">
-                  <span className="text-xs font-semibold uppercase text-muted-foreground w-28 shrink-0 mt-0.5">Jira Project</span>
-                  <Badge variant="outline" className="font-mono text-xs">{product.jira_project_key}</Badge>
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Jira project</dt>
+                  <dd className="mt-0.5">
+                    <Badge variant="outline" className="font-mono text-xs">{product.jira_project_key}</Badge>
+                  </dd>
                 </div>
               )}
-            </div>
-          </CardContent>
-        )}
-
-        <CardFooter className="border-t flex items-center justify-end py-2 px-4 mt-auto">
-          <div className="flex items-center gap-6 text-xs text-muted-foreground flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
-              <span className="font-medium">
-                Created {new Date(product.created_at).toLocaleDateString('en-US', {
-                  year: 'numeric', month: 'short', day: 'numeric'
-                })}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
-              <span className="font-medium">
-                Updated {new Date(product.updated_at).toLocaleDateString('en-US', {
-                  year: 'numeric', month: 'short', day: 'numeric'
-                })}
-              </span>
-            </div>
-          </div>
-        </CardFooter>
-      </Card>
-
-      {/* ── KPI stat strip ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fadeInUp" style={{ animationDelay: '80ms' }}>
-        <Card className="rounded-xl border-border/60 shadow-xs hover:shadow-md transition-all group py-0">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Threats</p>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
-                <AlertTriangle className="h-4 w-4" style={{ color: 'var(--risk-high)' }} />
-              </div>
-            </div>
-            <p className="text-2xl font-bold">{threats.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {criticalThreats + highThreats > 0 ? (
-                <span className="font-medium" style={{ color: 'var(--risk-high)' }}>{criticalThreats + highThreats} critical/high</span>
-              ) : (
-                'No high-risk threats'
+            </dl>
+            <div className="flex flex-wrap gap-2">
+              {[
+                ['Repository', product.repository_url],
+                ['Confluence', product.confluence_url],
+                ['Application', product.application_url],
+              ].map(([label, url]) =>
+                url ? (
+                  <Button key={label} variant="outline" size="sm" asChild>
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink />
+                      {label}
+                    </a>
+                  </Button>
+                ) : null
               )}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl border-border/60 shadow-xs hover:shadow-md transition-all group py-0">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Critical</p>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--risk-critical-muted)' }}>
-                <AlertTriangle className="h-4 w-4" style={{ color: 'var(--risk-critical)' }} />
-              </div>
             </div>
-            <p className="text-2xl font-bold">{criticalThreats}</p>
-            <p className="text-xs text-muted-foreground mt-1">Require immediate action</p>
           </CardContent>
         </Card>
+      )}
 
-        <Card className="rounded-xl border-border/60 shadow-xs hover:shadow-md transition-all group py-0">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mitigation Ratio</p>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 group-hover:scale-110 transition-transform">
-                <Layers className="h-4 w-4 text-primary" />
+      {/* ── KPI strip ── */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          {
+            label: 'Total Threats', value: threats.length, icon: AlertTriangle, iconColor: 'var(--risk-high)',
+            sub: criticalThreats + highThreats > 0 ? `${criticalThreats + highThreats} critical/high` : 'No high-risk threats',
+          },
+          {
+            label: 'Critical', value: criticalThreats, icon: AlertTriangle, iconColor: 'var(--risk-critical)',
+            sub: criticalThreats > 0 ? 'Require immediate action' : 'None outstanding',
+          },
+          {
+            label: 'Mitigation Ratio', value: `${coveragePercent}%`, icon: Layers, iconColor: 'var(--primary)',
+            progress: coveragePercent,
+          },
+          {
+            label: 'Active Mitigations', value: implementedMitigations, icon: Shield, iconColor: 'var(--risk-low)',
+            sub: `${mitigations.length} total controls`,
+          },
+        ].map(({ label, value, icon: Icon, iconColor, sub, progress }) => (
+          <Card key={label} className="rounded-xl border-border/60 shadow-sm bg-card py-0">
+            <CardContent className="p-4">
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+                <Icon className="h-3.5 w-3.5" style={{ color: iconColor }} />
               </div>
-            </div>
-            <p className="text-2xl font-bold">{coveragePercent}%</p>
-            <Progress value={coveragePercent} className="h-1.5 mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl border-border/60 shadow-xs hover:shadow-md transition-all group py-0">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Mitigations</p>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
-                <Shield className="h-4 w-4" style={{ color: 'var(--risk-low)' }} />
-              </div>
-            </div>
-            <p className="text-2xl font-bold">{implementedMitigations}</p>
-            <p className="text-xs text-muted-foreground mt-1">{mitigations.length} total controls</p>
-          </CardContent>
-        </Card>
+              <p className="text-2xl font-bold tabular-nums">{value}</p>
+              {progress !== undefined && <Progress value={progress} className="mt-2 h-1.5" />}
+              {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* ── Hub navigation + tab content ── */}
-      <Tabs defaultValue="overview" className="animate-fadeInUp" style={{ animationDelay: '120ms' }}>
+      <Tabs defaultValue="overview" className="">
         <TabsList variant="line" className="mb-4">
           <TabsTrigger value="overview" className="gap-1.5">
             <Grid3x3 className="h-3.5 w-3.5" />
@@ -1539,7 +1467,7 @@ export default function ProductDetails() {
           </div>
 
           {threats.length === 0 ? (
-            <Card className="border-dashed border-2 rounded-xl">
+            <Card className="border-dashed rounded-xl">
               <CardContent className="flex flex-col items-center justify-center p-12">
                 <div
                   className="flex h-16 w-16 items-center justify-center rounded-2xl mb-3 shadow-xs"
@@ -1627,7 +1555,7 @@ export default function ProductDetails() {
               <div className="grid grid-cols-2 gap-3 py-2">
                 <button
                   onClick={() => setNewDiagramMode('blank')}
-                  className="flex flex-col items-center gap-3 rounded-xl border-2 border-border/60 bg-muted/30 p-6 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="flex flex-col items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-6 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                     <Grid3x3 className="h-6 w-6 text-primary" />
@@ -1640,7 +1568,7 @@ export default function ProductDetails() {
 
                 <button
                   onClick={() => { setNewDiagramOpen(false); setImportDialogOpen(true); }}
-                  className="flex flex-col items-center gap-3 rounded-xl border-2 border-border/60 bg-muted/30 p-6 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="flex flex-col items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-6 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                     <Upload className="h-6 w-6 text-primary" />
@@ -1798,7 +1726,7 @@ const ACTION_META: Record<string, { label: string; icon: React.ReactNode; color:
   threat_added:              { label: 'Threat added',            icon: <FilePlus className="h-3.5 w-3.5" />,   color: 'text-destructive' },
   threat_removed:            { label: 'Threat removed',          icon: <FileX className="h-3.5 w-3.5" />,      color: 'text-muted-foreground' },
   threat_status_changed:     { label: 'Threat status changed',   icon: <ShieldCheck className="h-3.5 w-3.5" />,color: 'var(--risk-medium)' },
-  mitigation_added:          { label: 'Mitigation added',        icon: <ShieldCheck className="h-3.5 w-3.5" />,color: 'text-emerald-500' },
+  mitigation_added:          { label: 'Mitigation added',        icon: <ShieldCheck className="h-3.5 w-3.5" />,color: 'text-success' },
   mitigation_removed:        { label: 'Mitigation removed',      icon: <ShieldOff className="h-3.5 w-3.5" />,  color: 'text-muted-foreground' },
   mitigation_status_changed: { label: 'Mitigation updated',      icon: <ShieldCheck className="h-3.5 w-3.5" />,color: 'text-primary' },
   diagram_created:           { label: 'Diagram created',         icon: <FilePlus className="h-3.5 w-3.5" />,   color: 'text-primary' },

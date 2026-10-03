@@ -73,7 +73,7 @@ interface DiagramMitigation {
 
 function DashboardSkeleton() {
   return (
-    <div className="flex-1 space-y-6 mx-auto p-4 animate-fadeIn">
+    <div className="flex-1 w-full space-y-6 p-4 md:p-6 lg:p-8">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i} className="rounded-xl border-border/60">
@@ -398,7 +398,7 @@ export default function Dashboard() {
   const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <div className="flex-1 space-y-5 p-4 md:p-6 lg:p-8 animate-fadeIn">
+    <div className="flex-1 w-full space-y-5 p-4 md:p-6 lg:p-8">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4">
@@ -422,12 +422,12 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {/* 4 metric cards */}
         {[
-          { label: 'Total Threats', value: threats.length, sub: `${identifiedCount} active`, color: 'text-foreground', bg: 'bg-muted/40', icon: AlertTriangle, iconColor: 'var(--risk-high)' },
-          { label: 'Critical', value: riskStats.critical, sub: riskStats.critical > 0 ? 'Immediate action' : 'None outstanding', color: riskStats.critical > 0 ? 'text-red-600' : 'text-muted-foreground', bg: riskStats.critical > 0 ? 'bg-red-500/8' : 'bg-muted/40', icon: Flame, iconColor: 'var(--risk-critical)' },
-          { label: 'High Risk', value: riskStats.high, sub: riskStats.high > 0 ? 'Priority attention' : 'None outstanding', color: riskStats.high > 0 ? 'text-orange-600' : 'text-muted-foreground', bg: riskStats.high > 0 ? 'bg-orange-500/8' : 'bg-muted/40', icon: TrendingUp, iconColor: 'var(--risk-high)' },
-          { label: 'Mitigated', value: mitigatedCount, sub: `${coveragePercent}% coverage`, color: 'text-emerald-600', bg: 'bg-emerald-500/8', icon: CheckCircle2, iconColor: 'var(--risk-low)', progress: coveragePercent },
+          { label: 'Total Threats', value: threats.length, sub: `${identifiedCount} active`, color: 'text-foreground', bg: 'bg-card', icon: AlertTriangle, iconColor: 'var(--risk-high)' },
+          { label: 'Critical', value: riskStats.critical, sub: riskStats.critical > 0 ? 'Immediate action' : 'None outstanding', color: 'text-foreground', bg: 'bg-card', icon: Flame, iconColor: 'var(--risk-critical)' },
+          { label: 'High Risk', value: riskStats.high, sub: riskStats.high > 0 ? 'Priority attention' : 'None outstanding', color: 'text-foreground', bg: 'bg-card', icon: TrendingUp, iconColor: 'var(--risk-high)' },
+          { label: 'Mitigated', value: mitigatedCount, sub: `${coveragePercent}% coverage`, color: 'text-foreground', bg: 'bg-card', icon: CheckCircle2, iconColor: 'var(--risk-low)', progress: coveragePercent },
         ].map(({ label, value, sub, color, bg, icon: Icon, iconColor, progress }) => (
-          <Card key={label} className={cn('rounded-xl border-border/60 shadow-xs', bg)}>
+          <Card key={label} className={cn('rounded-xl shadow-sm', bg)}>
             <CardContent className="pt-3 pb-3">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</p>
@@ -441,7 +441,7 @@ export default function Dashboard() {
         ))}
 
         {/* 5th card: Products at Risk */}
-        <Card className="rounded-xl border-border/60 shadow-xs bg-muted/40 row-span-1">
+        <Card className="rounded-xl shadow-sm bg-card row-span-1">
           <CardContent className="pt-3 pb-2">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">At Risk</p>
@@ -506,7 +506,7 @@ export default function Dashboard() {
         </div>
 
         {filteredThreats.length === 0 ? (
-          <Card className="border-dashed border-2 rounded-xl">
+          <Card className="border-dashed rounded-xl">
             <CardContent className="flex flex-col items-center justify-center p-12">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-3" style={{ background: 'var(--risk-high-muted)' }}>
                 <AlertTriangle className="h-8 w-8" style={{ color: 'var(--risk-high)' }} />

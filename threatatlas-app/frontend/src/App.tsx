@@ -14,6 +14,7 @@ import Login from '@/pages/Login';
 import AuthCallback from '@/pages/AuthCallback';
 import Changelog from '@/pages/Changelog';
 import About from '@/pages/About';
+import UserGuide from '@/pages/UserGuide';
 import Approvals from '@/pages/Approvals';
 import AcceptInvitation from '@/pages/AcceptInvitation';
 import UserManagement from '@/pages/UserManagement';
@@ -55,6 +56,7 @@ function HeaderBreadcrumb() {
       case '/users': return { title: 'User Management' };
       case '/settings': return { title: 'Settings' };
       case '/changelog': return { title: 'Changelog' };
+      case '/user-guide': return { title: 'User Guide' };
       default: return { title: 'ThreatAtlas' };
     }
   };
@@ -138,17 +140,17 @@ function AppContent() {
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
       <AppSidebar />
       <SidebarInset className="overflow-hidden min-h-0">
-        <header className="sticky top-0 z-50 flex h-[81px] shrink-0 items-center gap-4 border-b border-sidebar-border bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 px-6 transition-all duration-300">
-          <div className="flex items-center gap-4 flex-1">
-            <SidebarTrigger className="hover:bg-muted/70 transition-all duration-200 rounded-lg p-2 -ml-2 hover:scale-105" />
-            <Separator orientation="vertical" className="h-7 bg-border/60" />
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex flex-1 items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
             <HeaderBreadcrumb />
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 px-4">
             <NotificationBell />
           </div>
         </header>
-        <main className="flex-1 min-h-0 overflow-y-auto bg-gradient-to-br from-background via-muted/20 to-background">
+        <main className="flex-1 min-h-0 overflow-y-auto">
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<Dashboard />} />
@@ -158,9 +160,10 @@ function AppContent() {
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/knowledge" element={<KnowledgeBase />} />
               <Route path="/component-library" element={<ComponentLibrary />} />
-              <Route path="/users" element={<UserManagement />} />
+              <Route path="/users" element={<div className="flex-1 w-full p-4 md:p-6 lg:p-8"><UserManagement /></div>} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/changelog" element={<Changelog />} />
+              <Route path="/user-guide" element={<UserGuide />} />
               <Route path="/about" element={<About />} />
               <Route path="/approvals" element={<Approvals />} />
             </Routes>

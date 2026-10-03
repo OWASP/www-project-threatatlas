@@ -172,7 +172,7 @@ function DiagramNode({ data, selected }: NodeProps) {
               'w-24 h-24 p-3',
               style.border,
               selected && 'ring-2 ring-primary/60 ring-offset-2 shadow-xl scale-110',
-              aiFocused && !selected && 'ring-2 ring-blue-500 ring-offset-2'
+              aiFocused && !selected && 'ring-2 ring-info ring-offset-2'
             )}
             style={{ ...(style.bg as React.CSSProperties), ...heatGlow }}
           >
@@ -330,7 +330,7 @@ function DiagramNode({ data, selected }: NodeProps) {
             className={cn(
               'px-4 py-3 border-2 shadow-lg transition-all duration-200 min-w-[120px]',
               selected && 'ring-2 ring-[color:var(--element-external)] ring-offset-2 shadow-xl scale-105',
-              aiFocused && !selected && 'ring-2 ring-blue-500 ring-offset-2'
+              aiFocused && !selected && 'ring-2 ring-info ring-offset-2'
             )}
             style={{
               ...style.bg,
@@ -407,8 +407,8 @@ function DiagramNode({ data, selected }: NodeProps) {
           className={cn(
             'w-full h-full border-2 rounded-lg transition-all duration-150 p-4',
             isDropTarget ? 'border-solid ring-2 ring-primary/40 ring-offset-1' : 'border-dashed',
-            selected && !isDropTarget && 'ring-2 ring-stone-400 ring-offset-2',
-            aiFocused && !selected && !isDropTarget && 'ring-2 ring-blue-500 ring-offset-2'
+            selected && !isDropTarget && 'ring-2 ring-border ring-offset-2',
+            aiFocused && !selected && !isDropTarget && 'ring-2 ring-info ring-offset-2'
           )}
           style={{
             minWidth: '200px',

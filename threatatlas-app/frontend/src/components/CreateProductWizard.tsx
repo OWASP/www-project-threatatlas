@@ -493,7 +493,7 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                 <button
                   type="button"
                   onClick={() => setDiagramMode('blank')}
-                  className="flex flex-col items-center gap-3 rounded-xl border-2 border-border/60 bg-muted/30 p-5 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="flex flex-col items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-5 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
                     <Grid3x3 className="h-5 w-5 text-primary" />
@@ -507,7 +507,7 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                 <button
                   type="button"
                   onClick={() => { setDiagramMode('import'); setDiagramName('Imported Diagram'); setStep(3); }}
-                  className="flex flex-col items-center gap-3 rounded-xl border-2 border-border/60 bg-muted/30 p-5 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="flex flex-col items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-5 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
                     <Upload className="h-5 w-5 text-primary" />
@@ -553,7 +553,7 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                 <button
                   type="button"
                   onClick={() => setModelMode('frameworks')}
-                  className="flex flex-col items-center gap-3 rounded-xl border-2 border-border/60 bg-muted/30 p-5 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="flex flex-col items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-5 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
                     <FileText className="h-5 w-5 text-primary" />
@@ -568,7 +568,7 @@ export default function CreateProductWizard({ open, onOpenChange, onSuccess }: P
                   type="button"
                   onClick={() => handleSubmit()}
                   disabled={submitting}
-                  className="flex flex-col items-center gap-3 rounded-xl border-2 border-border/60 bg-muted/30 p-5 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
+                  className="flex flex-col items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-5 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
                 >
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted">
                     {submitting ? (

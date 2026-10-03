@@ -430,7 +430,7 @@ export default function KnowledgeBase() {
   });
 
   return (
-    <div className="flex-1 space-y-6 mx-auto p-4">
+    <div className="flex-1 w-full space-y-6 p-4 md:p-6 lg:p-8">
       <div className="flex justify-end">
         {canWrite && (
           <Button onClick={() => openFrameworkDialog()} className="gap-2">
@@ -561,7 +561,7 @@ export default function KnowledgeBase() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="threats" className="space-y-3 animate-fadeIn">
+            <TabsContent value="threats" className="space-y-3">
               {/* Filter bar */}
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -602,7 +602,7 @@ export default function KnowledgeBase() {
                   <Button
                     onClick={() => openThreatDialog()}
                     size="sm"
-                    className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 rounded-lg font-semibold shrink-0"
+                    className="shadow-sm hover:shadow-md transition-all duration-200 rounded-lg font-semibold shrink-0"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Custom Threat
@@ -639,7 +639,7 @@ export default function KnowledgeBase() {
               )}
 
               {threats.length === 0 ? (
-                <Card className="border-dashed border-2 rounded-xl">
+                <Card className="border-dashed rounded-xl">
                   <CardContent className="flex flex-col items-center justify-center p-16">
                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-4 shadow-sm" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
                       <AlertTriangle className="h-8 w-8" style={{ color: 'var(--risk-high)' }} />
@@ -675,15 +675,10 @@ export default function KnowledgeBase() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredThreats.map((threat, index) => (
+                        {filteredThreats.map((threat) => (
                           <TableRow
                             key={threat.id}
                             className="hover:bg-muted/50 transition-colors border-b border-border/40 last:border-0"
-                            style={{
-                              animation: 'fadeIn 0.3s ease-out forwards',
-                              animationDelay: `${index * 30}ms`,
-                              opacity: 0
-                            }}
                           >
                             <TableCell>
                               <div className="flex h-9 w-9 items-center justify-center rounded-xl shadow-sm" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
@@ -754,7 +749,7 @@ export default function KnowledgeBase() {
               )}
             </TabsContent>
 
-            <TabsContent value="mitigations" className="space-y-3 animate-fadeIn">
+            <TabsContent value="mitigations" className="space-y-3">
               {/* Filter bar */}
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -795,7 +790,7 @@ export default function KnowledgeBase() {
                   <Button
                     onClick={() => openMitigationDialog()}
                     size="sm"
-                    className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 rounded-lg font-semibold shrink-0"
+                    className="shadow-sm hover:shadow-md transition-all duration-200 rounded-lg font-semibold shrink-0"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Custom Mitigation
@@ -832,7 +827,7 @@ export default function KnowledgeBase() {
               )}
 
               {mitigations.length === 0 ? (
-                <Card className="border-dashed border-2 rounded-xl">
+                <Card className="border-dashed rounded-xl">
                   <CardContent className="flex flex-col items-center justify-center p-16">
                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-4 shadow-sm" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
                       <Shield className="h-8 w-8" style={{ color: 'var(--risk-low)' }} />
@@ -868,15 +863,10 @@ export default function KnowledgeBase() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredMitigations.map((mitigation, index) => (
+                        {filteredMitigations.map((mitigation) => (
                           <TableRow
                             key={mitigation.id}
                             className="hover:bg-muted/50 transition-colors border-b border-border/40 last:border-0"
-                            style={{
-                              animation: 'fadeIn 0.3s ease-out forwards',
-                              animationDelay: `${index * 30}ms`,
-                              opacity: 0
-                            }}
                           >
                             <TableCell>
                               <div className="flex h-9 w-9 items-center justify-center rounded-xl shadow-sm" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
@@ -948,7 +938,7 @@ export default function KnowledgeBase() {
             </TabsContent>
 
             {/* Coverage Tab */}
-            <TabsContent value="coverage" className="space-y-4 animate-fadeIn">
+            <TabsContent value="coverage" className="space-y-4">
               {(() => {
                 const allCategories = Array.from(
                   new Set([...threats.map(t => t.category), ...mitigations.map(m => m.category)])
@@ -956,7 +946,7 @@ export default function KnowledgeBase() {
 
                 if (allCategories.length === 0) {
                   return (
-                    <Card className="border-dashed border-2 rounded-xl">
+                    <Card className="border-dashed rounded-xl">
                       <CardContent className="flex flex-col items-center justify-center p-16">
                         <Map className="h-10 w-10 text-muted-foreground mb-3" />
                         <h3 className="text-base font-medium mb-1">No coverage data</h3>

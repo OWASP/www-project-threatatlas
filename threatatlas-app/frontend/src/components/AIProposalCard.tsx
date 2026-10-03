@@ -215,9 +215,9 @@ export default function AIProposalCard({ proposal, messageId, onApprove, onDismi
                 {proposal.confidence && (
                   <span className={cn(
                     'inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded-full border',
-                    proposal.confidence === 'high' && 'bg-emerald-500/10 text-emerald-600 border-emerald-500/25',
-                    proposal.confidence === 'medium' && 'bg-amber-500/10 text-amber-600 border-amber-500/25',
-                    proposal.confidence === 'low' && 'bg-slate-500/10 text-slate-500 border-slate-500/25',
+                    proposal.confidence === 'high' && 'bg-success/10 text-success border-success/25',
+                    proposal.confidence === 'medium' && 'bg-warning/10 text-warning border-warning/25',
+                    proposal.confidence === 'low' && 'bg-muted/10 text-muted-foreground border-border/25',
                   )}>
                     <Gauge className="h-2.5 w-2.5" />
                     {proposal.confidence}

@@ -25,7 +25,7 @@ docker compose up -d
 ```
 
 ### 3. Access
-- **Frontend**: [http://localhost:3000](http://localhost:3000)
+- **Frontend**: [http://localhost:3001](http://localhost:3001)
 - **Backend API**: [http://localhost:8000](http://localhost:8000) (Docs at `/docs`)
 
 ### 4. First Login

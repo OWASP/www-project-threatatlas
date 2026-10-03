@@ -12,10 +12,12 @@ import {
     LogOut,
     PieChart,
     Notebook,
+    BookOpen,
     Settings,
     Package,
     ShieldCheck,
     Info,
+    FileCode,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { approvalsApi } from '@/lib/api';
@@ -36,6 +38,8 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -91,16 +95,6 @@ export default function AppSidebar() {
         };
     }, []);
 
-    const cycleTheme = () => {
-        if (theme === 'light') setTheme('dark');
-        else if (theme === 'dark') setTheme('system');
-        else setTheme('light');
-    };
-
-    const themeIcon = theme === 'light' ? <Sun className="h-4 w-4" /> : theme === 'dark' ? <Moon className="h-4 w-4" /> : <Monitor className="h-4 w-4" />;
-    const themeLabel = theme === 'light' ? 'Light mode' : theme === 'dark' ? 'Dark mode' : 'System mode';
-    const themeTooltip = theme === 'light' ? 'Switch to dark mode' : theme === 'dark' ? 'Switch to system mode' : 'Switch to light mode';
-
     const isCollapsed = state === 'collapsed';
 
     const displayName = user?.full_name || user?.username || '';
@@ -111,39 +105,22 @@ export default function AppSidebar() {
         .slice(0, 2)
         .toUpperCase();
 
-    const navButtonClass =
-        'group relative rounded-lg text-sidebar-foreground/80 transition-colors hover:text-sidebar-accent-foreground data-[active=true]:text-sidebar-accent-foreground';
-
     return (
-        <Sidebar collapsible="icon">
+        <Sidebar collapsible="icon" variant="inset">
 
             {/* ── Logo ────────────────────────────────────────────────── */}
-            <SidebarHeader className="border-b border-sidebar-border group-data-[collapsible=icon]:pl-2 px-3 py-4 min-h-[81px] justify-center">
+            <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                            size="lg"
-                            asChild
-                            className="hover:bg-sidebar-accent rounded-xl transition-all"
-                            tooltip={isCollapsed ? "ThreatAtlas" : undefined}
-                        >
-                            <Link to="/" className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-                                    <div
-                                    className={`flex items-center justify-center shrink-0 rounded-xl bg-linear-to-br from-primary to-primary/80 text-primary-foreground shadow-md transition-all duration-200 ${isCollapsed ? 'h-8 w-8' : 'h-10 w-10'
-                                        }`}
-                                >
-                                    <Network className={`transition-all duration-200 ${isCollapsed ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                        <SidebarMenuButton size="lg" asChild tooltip="ThreatAtlas">
+                            <Link to="/">
+                                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                                    <Network className="size-4" />
                                 </div>
-                                {!isCollapsed && (
-                                    <div className="flex flex-col items-start gap-0 min-w-0 truncate">
-                                        <span className="font-semibold text-sm text-sidebar-foreground tracking-tight leading-tight truncate w-full">
-                                            ThreatAtlas
-                                        </span>
-                                        <span className="text-[11px] text-sidebar-foreground/50 font-medium leading-tight truncate w-full">
-                                            OWASP Project
-                                        </span>
-                                    </div>
-                                )}
+                                <div className="grid flex-1 text-left text-sm leading-tight">
+                                    <span className="truncate font-semibold">ThreatAtlas</span>
+                                    <span className="truncate text-xs">OWASP Project</span>
+                                </div>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -151,15 +128,15 @@ export default function AppSidebar() {
             </SidebarHeader>
 
             {/* ── Main Navigation ──────────────────────────────────────── */}
-            <SidebarContent className="py-4 group-data-[collapsible=icon]:pl-0 px-2">
+            <SidebarContent>
                 <SidebarGroup>
                     {!isCollapsed && (
-                        <SidebarGroupLabel className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-widest mb-1">
-                            NAVIGATION
+                        <SidebarGroupLabel>
+                            Navigation
                         </SidebarGroupLabel>
                     )}
                     <SidebarGroupContent>
-                        <SidebarMenu className="space-y-0.5">
+                        <SidebarMenu>
                             {navigation.map((item) => {
                                 const isActive =
                                     location.pathname === item.href ||
@@ -171,23 +148,22 @@ export default function AppSidebar() {
                                         <SidebarMenuButton
                                             asChild
                                             isActive={isActive}
-                                            className={navButtonClass}
                                             tooltip={item.name}
                                         >
-                                            <Link to={item.href} className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
+                                            <Link to={item.href}>
                                                 <div className="relative shrink-0">
-                                                    <item.icon className="h-4 w-4" />
+                                                    <item.icon />
                                                     {showBadge && isCollapsed && (
-                                                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white leading-none">
+                                                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-warning text-[9px] font-bold text-white leading-none">
                                                             {pendingApprovals > 9 ? '9+' : pendingApprovals}
                                                         </span>
                                                     )}
                                                 </div>
                                                 {!isCollapsed && (
-                                                    <span className="ml-2.5 text-sm flex-1">{item.name}</span>
+                                                    <span className="flex-1">{item.name}</span>
                                                 )}
                                                 {!isCollapsed && showBadge && (
-                                                    <span className="ml-auto inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-amber-500 text-white text-[11px] font-bold leading-none">
+                                                    <span className="ml-auto inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-warning text-white text-[11px] font-bold leading-none">
                                                         {pendingApprovals > 99 ? '99+' : pendingApprovals}
                                                     </span>
                                                 )}
@@ -202,24 +178,23 @@ export default function AppSidebar() {
 
                 {/* Admin section */}
                 {isAdmin && (
-                    <SidebarGroup className="mt-4">
+                    <SidebarGroup>
                         {!isCollapsed && (
-                            <SidebarGroupLabel className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-widest mb-1">
-                                ADMIN
+                            <SidebarGroupLabel>
+                                Admin
                             </SidebarGroupLabel>
                         )}
                         <SidebarGroupContent>
-                            <SidebarMenu className="space-y-0.5">
+                            <SidebarMenu>
                                 <SidebarMenuItem>
                                     <SidebarMenuButton
                                         asChild
                                         isActive={location.pathname === '/settings'}
-                                        className={navButtonClass}
                                         tooltip="Settings"
                                     >
-                                        <Link to="/settings" className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
-                                            <Settings className="shrink-0 h-4 w-4" />
-                                            {!isCollapsed && <span className="ml-2.5 text-sm">Settings</span>}
+                                        <Link to="/settings">
+                                            <Settings />
+                                            {!isCollapsed && <span >Settings</span>}
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
@@ -231,17 +206,36 @@ export default function AppSidebar() {
                 {/* Changelog + About above footer */}
                 <SidebarGroup className="mt-auto">
                     <SidebarGroupContent>
-                        <SidebarMenu className="space-y-0.5">
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={location.pathname === '/user-guide'}
+                                    tooltip="User Guide"
+                                >
+                                    <Link to="/user-guide">
+                                        <BookOpen />
+                                        {!isCollapsed && <span>User Guide</span>}
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip="API Docs">
+                                    <a href="/docs" target="_blank" rel="noopener noreferrer">
+                                        <FileCode />
+                                        {!isCollapsed && <span>API Docs</span>}
+                                    </a>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <SidebarMenuButton
                                     asChild
                                     isActive={location.pathname === '/changelog'}
-                                    className={navButtonClass}
                                     tooltip="Changelog"
                                 >
-                                    <Link to="/changelog" className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
-                                        <Notebook className="shrink-0 h-4 w-4" />
-                                        {!isCollapsed && <span className="ml-2.5 text-sm">Changelog</span>}
+                                    <Link to="/changelog">
+                                        <Notebook />
+                                        {!isCollapsed && <span >Changelog</span>}
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
@@ -249,12 +243,11 @@ export default function AppSidebar() {
                                 <SidebarMenuButton
                                     asChild
                                     isActive={location.pathname === '/about'}
-                                    className={navButtonClass}
                                     tooltip="About"
                                 >
-                                    <Link to="/about" className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
-                                        <Info className="shrink-0 h-4 w-4" />
-                                        {!isCollapsed && <span className="ml-2.5 text-sm">About</span>}
+                                    <Link to="/about">
+                                        <Info />
+                                        {!isCollapsed && <span >About</span>}
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
@@ -264,8 +257,8 @@ export default function AppSidebar() {
             </SidebarContent>
 
             {/* ── Footer ───────────────────────────────────────────────── */}
-            <SidebarFooter className="border-t border-sidebar-border group-data-[collapsible=icon]:pl-2 p-2">
-                <SidebarMenu className="space-y-0.5">
+            <SidebarFooter>
+                <SidebarMenu>
                     {user && (
                         <SidebarMenuItem>
                             <DropdownMenu>
@@ -275,18 +268,18 @@ export default function AppSidebar() {
                                         className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                                         tooltip={isCollapsed ? (displayName || user.email) : undefined}
                                     >
-                                        <Avatar size="default" className="border border-primary/25 shadow-sm rounded-lg">
-                                            <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold rounded-lg">
+                                        <Avatar className="h-8 w-8 rounded-lg">
+                                            <AvatarFallback className="rounded-lg">
                                                 {initials || '?'}
                                             </AvatarFallback>
                                         </Avatar>
                                         {!isCollapsed && (
                                             <>
                                                 <div className="grid flex-1 text-left text-sm leading-tight">
-                                                    <span className="truncate font-medium text-sidebar-foreground">{displayName}</span>
-                                                    <span className="truncate text-xs text-sidebar-foreground/60">{user.email}</span>
+                                                    <span className="truncate font-medium">{displayName}</span>
+                                                    <span className="truncate text-xs">{user.email}</span>
                                                 </div>
-                                                <ChevronsUpDown className="ml-auto h-4 w-4" />
+                                                <ChevronsUpDown className="ml-auto size-4" />
                                             </>
                                         )}
                                     </SidebarMenuButton>
@@ -299,8 +292,8 @@ export default function AppSidebar() {
                                 >
                                     <DropdownMenuLabel className="p-0 font-normal">
                                         <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                                            <Avatar size="default" className="border border-primary/25 shadow-sm rounded-lg">
-                                                <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold rounded-lg">
+                                            <Avatar className="h-8 w-8 rounded-lg">
+                                                <AvatarFallback className="rounded-lg">
                                                     {initials || '?'}
                                                 </AvatarFallback>
                                             </Avatar>
@@ -318,10 +311,13 @@ export default function AppSidebar() {
                                             </DropdownMenuItem>
                                         )}
                                     />
-                                    <DropdownMenuItem onClick={cycleTheme}>
-                                        {themeIcon}
-                                        {themeLabel}
-                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Theme</DropdownMenuLabel>
+                                    <DropdownMenuRadioGroup value={theme ?? 'system'} onValueChange={setTheme}>
+                                        <DropdownMenuRadioItem value="light"><Sun className="h-4 w-4" />Light</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="dark"><Moon className="h-4 w-4" />Dark</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="system"><Monitor className="h-4 w-4" />System</DropdownMenuRadioItem>
+                                    </DropdownMenuRadioGroup>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                         variant="destructive"

@@ -1064,14 +1064,8 @@ export function DiagramsContent() {
 
   if (!selectedProduct) {
     return (
-      <div className="flex-1 p-4 md:p-6 lg:p-8">
-        <div className="max-w-2xl mx-auto space-y-6">
-          <div>
-            <h1 className="text-3xl font-medium tracking-tight">Data Flow Diagrams</h1>
-            <p className="text-muted-foreground mt-1">
-              Create and visualize data flow diagrams for your products
-            </p>
-          </div>
+      <div className="flex-1 w-full p-4 md:p-6 lg:p-8">
+        <div className="space-y-6">
           <Card>
             <CardContent className="flex flex-col items-center justify-center p-12">
               <Grid3x3 className="h-12 w-12 text-muted-foreground mb-4" />
@@ -1130,7 +1124,7 @@ export function DiagramsContent() {
                 type="button"
                 autoFocus
                 onClick={() => { setImportMode('replace'); setShowImportChoice(false); setImportDialogOpen(true); }}
-                className="flex items-center gap-4 rounded-xl border-2 border-primary/40 bg-primary/5 p-4 hover:bg-primary/10 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="flex items-center gap-4 rounded-xl border border-primary/40 bg-primary/5 p-4 hover:bg-primary/10 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
                   <Upload className="h-5 w-5 text-primary" />
@@ -1143,7 +1137,7 @@ export function DiagramsContent() {
               <button
                 type="button"
                 onClick={() => { setImportMode('new'); setShowImportChoice(false); setImportDialogOpen(true); }}
-                className="flex items-center gap-4 rounded-xl border-2 border-border/50 bg-muted/20 p-4 hover:border-border hover:bg-muted/40 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="flex items-center gap-4 rounded-xl border border-border/50 bg-muted/20 p-4 hover:border-border hover:bg-muted/40 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/60 shrink-0">
                   <Plus className="h-5 w-5 text-muted-foreground" />
@@ -1159,7 +1153,7 @@ export function DiagramsContent() {
               <button
                 type="button"
                 onClick={() => { setImportMode('new'); setShowImportChoice(false); setImportDialogOpen(true); }}
-                className="flex flex-col items-center gap-3 rounded-xl border-2 border-border/60 bg-muted/30 p-5 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="flex flex-col items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-5 hover:border-primary/50 hover:bg-primary/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
                   <Plus className="h-5 w-5 text-primary" />
@@ -1172,10 +1166,10 @@ export function DiagramsContent() {
               <button
                 type="button"
                 onClick={() => { setImportMode('replace'); setShowImportChoice(false); setImportDialogOpen(true); }}
-                className="flex flex-col items-center gap-3 rounded-xl border-2 border-border/60 bg-muted/30 p-5 hover:border-orange-500/30 hover:bg-orange-500/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40"
+                className="flex flex-col items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-5 hover:border-caution/30 hover:bg-caution/5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-caution/40"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-500/10">
-                  <Upload className="h-5 w-5 text-orange-500" />
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-caution/10">
+                  <Upload className="h-5 w-5 text-caution" />
                 </div>
                 <div>
                   <p className="font-semibold text-sm text-center">Replace Current</p>
@@ -1203,13 +1197,12 @@ export function DiagramsContent() {
 
   if (!selectedDiagram) {
     return (
-      <div className="flex-1 p-4 md:p-6">
+      <div className="flex-1 w-full p-4 md:p-6 lg:p-8">
         {canEditProduct && creationDialogs}
-        <div className="flex-1 space-y-6 mx-auto">
+        <div className="flex-1 space-y-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-medium tracking-tight">Data Flow Diagrams</h1>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-muted-foreground">
                 <Package className="inline-block mr-2 h-4 w-4 text-muted-foreground" />
                 {selectedProductData?.name}
               </p>
@@ -1302,14 +1295,14 @@ export function DiagramsContent() {
             </Badge>
           )}
           {autoSaveStatus === 'saved' && !saving && (
-            <span className="text-[11px] text-emerald-500 font-medium flex items-center gap-1 shrink-0">
+            <span className="text-[11px] text-success font-medium flex items-center gap-1 shrink-0">
               <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               Auto-saved
             </span>
           )}
           {autoSaveStatus === 'pending' && !saving && (
             <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
+              <span className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse inline-block" />
               Unsaved
             </span>
           )}
@@ -1443,7 +1436,7 @@ export function DiagramsContent() {
                     <Button
                       variant={heatmapEnabled ? 'secondary' : 'ghost'}
                       size="icon"
-                      className={`h-8 w-8 ${heatmapEnabled ? 'text-orange-500' : ''}`}
+                      className={`h-8 w-8 ${heatmapEnabled ? 'text-caution' : ''}`}
                       onClick={() => setHeatmapEnabled(v => !v)}
                     >
                       <Flame className="h-4 w-4" />
@@ -1543,7 +1536,7 @@ export function DiagramsContent() {
 
       {/* Floating Version Note */}
       {showVersionComment && canEditDiagram && (
-        <div className="absolute top-14 right-4 z-50 w-80 shadow-2xl animate-in slide-in-from-top-4 duration-200">
+        <div className="absolute top-14 right-4 z-50 w-80 shadow-2xl duration-200">
           <Card className="border-primary/20 bg-background/95 backdrop-blur">
             <CardContent className="p-3">
               <div className="flex items-center justify-between mb-2">
@@ -1651,7 +1644,7 @@ export function DiagramsContent() {
           {/* Context menu */}
           {contextMenu?.screenPos && (
             <div
-              className="fixed z-[9999] w-52 rounded-lg border border-border/60 bg-popover shadow-xl p-1 text-sm animate-in fade-in-0 zoom-in-95 duration-100"
+              className="fixed z-[9999] w-52 rounded-lg border border-border/60 bg-popover shadow-xl p-1 text-sm duration-100"
               style={{
                 left: Math.min(contextMenu.screenPos.x, window.innerWidth - 220),
                 top: Math.min(contextMenu.screenPos.y, window.innerHeight - 240),
@@ -1945,7 +1938,7 @@ function ToolPanel({
             onMouseEnter={e => (e.currentTarget.style.backgroundColor = hoverBg)}
             onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
           >
-            <Icon className="h-4.5 w-4.5 shrink-0 group-hover:scale-110 transition-transform" style={{ color }} />
+            <Icon className="h-4.5 w-4.5 shrink-0 transition-transform" style={{ color }} />
             {expanded && <span className="text-sm font-medium text-left leading-none">{label}</span>}
           </button>
         ))}

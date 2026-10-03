@@ -4,7 +4,6 @@ import { Bell, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { notificationsApi, type AppNotification } from '@/lib/api';
 
 export default function NotificationBell() {
@@ -114,11 +113,11 @@ export default function NotificationBell() {
         >
           <Bell className="h-4 w-4" />
           {hasUnread && (
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
+            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0" sideOffset={8}>
+      <PopoverContent align="end" className="w-80 p-0 overflow-hidden" sideOffset={8}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <span className="font-semibold text-sm">Notifications</span>
           {hasUnread && (
@@ -139,14 +138,14 @@ export default function NotificationBell() {
             <span>You're all caught up</span>
           </div>
         ) : (
-          <ScrollArea className="max-h-[360px]">
+          <div className="max-h-[360px] overflow-y-auto overscroll-contain">
             <div className="flex flex-col">
               {notifications.map((n) => (
                 <div
                   key={n.id}
                   onClick={() => handleClickNotification(n)}
                   className={`group relative flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors border-b border-border/50 last:border-b-0 ${
-                    !n.is_read ? 'border-l-2 border-l-blue-500 bg-blue-50/40 dark:bg-blue-950/20' : ''
+                    !n.is_read ? 'bg-muted/50 ' : ''
                   }`}
                 >
                   <div className="flex-1 min-w-0">
@@ -166,7 +165,7 @@ export default function NotificationBell() {
                 </div>
               ))}
             </div>
-          </ScrollArea>
+          </div>
         )}
       </PopoverContent>
     </Popover>

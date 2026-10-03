@@ -2,7 +2,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -74,7 +74,30 @@ app = FastAPI(
     version=settings.api_version,
     debug=settings.debug,
     lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
 )
+
+# Interactive API reference rendered by Scalar (script loaded from its CDN).
+_SCALAR_HTML = """<!doctype html>
+<html>
+  <head>
+    <title>{title} — API Reference</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <script id="api-reference" data-url="/openapi.json"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  </body>
+</html>"""
+
+
+@app.get("/docs", include_in_schema=False)
+async def api_reference() -> HTMLResponse:
+    return HTMLResponse(_SCALAR_HTML.format(title=settings.api_title))
+
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

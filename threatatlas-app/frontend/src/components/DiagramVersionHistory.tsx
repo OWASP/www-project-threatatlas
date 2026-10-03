@@ -230,7 +230,7 @@ export default function DiagramVersionHistory({
                         </div>
 
                         {version.comment && (
-                          <div className="mb-3 px-3 py-2 bg-muted/20 border-l-2 border-primary/30 rounded-r-lg">
+                          <div className="mb-3 px-3 py-2 bg-muted/20 border rounded-lg">
                             <p className="text-[13px] leading-relaxed text-muted-foreground italic font-medium">
                               "{version.comment}"
                             </p>

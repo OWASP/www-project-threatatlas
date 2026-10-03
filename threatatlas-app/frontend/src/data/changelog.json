@@ -1,5 +1,56 @@
 [
   {
+    "version": "0.9.1",
+    "date": "2026-09-30",
+    "tag": "patch",
+    "entries": [
+      {
+        "type": "added",
+        "text": "MCP: new create_custom_framework tool creates a private threat-modeling framework, and create_component_template (administrators only) creates a custom component template optionally linked to knowledge-base threats and mitigations."
+      },
+      {
+        "type": "improved",
+        "text": "MCP diagram tools now validate diagram_data: nodes must use data.type of process, datastore, external or boundary, and edges must name sourceHandle and targetHandle, so assistants draw valid diagrams."
+      },
+      {
+        "type": "fixed",
+        "text": "Diagram zoom-out now works on large diagrams, and the zoom controls are visible in dark mode."
+      },
+      {
+        "type": "fixed",
+        "text": "Diagram edit permissions are now enforced by the backend: version creation, restoration, and deletion require effective product edit permission, and every live collaboration change is re-checked so viewers, globally read-only users, and users demoted while connected cannot alter other clients' canvas."
+      },
+      {
+        "type": "fixed",
+        "text": "Read-only diagrams: the editor now follows the effective edit permission returned by the API. Viewers can still inspect, export, view history, and see collaboration presence, while canvas changes, model management, threat and mitigation edits, version restores, imports, AI edits, and saves are blocked."
+      },
+      {
+        "type": "fixed",
+        "text": "Packaged deployments now use the frontend's own origin for API, OIDC, and WebSocket requests by default through the built-in /api and /ws proxy, so no browser-facing backend port is needed. VITE_API_URL remains available as an opt-in override for a separate API origin."
+      },
+      {
+        "type": "fixed",
+        "text": "Backend startup failure (KeyError during alembic upgrade head) caused by an incorrect parent revision in the LDAP authentication migration."
+      },
+      {
+        "type": "fixed",
+        "text": "Browser tab title now shows OWASP ThreatAtlas."
+      },
+      {
+        "type": "fixed",
+        "text": "Mitigation search now covers the complete catalogue: results are no longer limited to the first page of mitigations returned by the API."
+      },
+      {
+        "type": "fixed",
+        "text": "Importing a component from the catalogue now keeps the links between threats and their mitigations, so imported mitigations appear under the correct threat instead of as unlinked controls."
+      },
+      {
+        "type": "fixed",
+        "text": "Risk acceptance flow: the approver list is populated correctly when accepting a risk, and risk acceptance can be started from the diagram editor as well as from threat management."
+      }
+    ]
+  },
+  {
     "version": "0.9.0",
     "date": "2026-09-24",
     "tag": "feature",

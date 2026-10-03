@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 
 function AnalyticsSkeleton() {
   return (
-    <div className="flex-1 space-y-4 p-4 mx-auto animate-fadeIn">
+    <div className="flex-1 w-full space-y-4 p-4 md:p-6 lg:p-8">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i} className="rounded-xl border-border/60">
@@ -156,11 +156,11 @@ export default function Analytics() {
   if (loading) return <AnalyticsSkeleton />;
 
   return (
-    <div className="flex-1 space-y-4 p-4 mx-auto">
+    <div className="flex-1 w-full space-y-4 p-4 md:p-6 lg:p-8">
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="animate-fadeInUp shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50" style={{ animationDelay: '0ms' }}>
+        <Card className="shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Threats</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-destructive/10">
@@ -173,7 +173,7 @@ export default function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="animate-fadeInUp shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50" style={{ animationDelay: '60ms' }}>
+        <Card className="shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mitigation Coverage</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
@@ -187,7 +187,7 @@ export default function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="animate-fadeInUp shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50" style={{ animationDelay: '120ms' }}>
+        <Card className="shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Unmitigated High / Critical</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--risk-high-muted)' }}>
@@ -200,7 +200,7 @@ export default function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="animate-fadeInUp shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50" style={{ animationDelay: '180ms' }}>
+        <Card className="shadow-xs border-border/70 bg-gradient-to-br from-card to-card/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Average Score Reduction</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--risk-low-muted)' }}>
@@ -214,7 +214,7 @@ export default function Analytics() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 animate-fadeInUp" style={{ animationDelay: '240ms' }}>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
 
         {/* Severity */}
         <Card className="shadow-sm border-border/60 lg:col-span-4 flex flex-col">
@@ -341,7 +341,7 @@ export default function Analytics() {
       </div>
 
       {/* Org-wide watchlists */}
-      <div className="grid gap-4 lg:grid-cols-2 animate-fadeInUp" style={{ animationDelay: '300ms' }}>
+      <div className="grid gap-4 lg:grid-cols-2">
         <TopRiskProducts products={data?.top_risk_products ?? []} />
         <StaleDiagrams diagrams={data?.stale_diagrams ?? []} />
       </div>
@@ -480,7 +480,7 @@ function RiskMatrix({
   };
 
   return (
-    <Card className="animate-fadeInUp shadow-sm border-border/60 rounded-xl" style={{ animationDelay: '320ms' }}>
+    <Card className="shadow-sm border-border/60 rounded-xl">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <Grid3x3 className="h-4 w-4 text-primary" />
@@ -633,7 +633,7 @@ function RiskTrend({ diagrams }: { diagrams: any[] }) {
   } satisfies ChartConfig;
 
   return (
-    <Card className="animate-fadeInUp shadow-sm border-border/60 rounded-xl" style={{ animationDelay: '360ms' }}>
+    <Card className="shadow-sm border-border/60 rounded-xl">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -737,7 +737,7 @@ function CrossProductBreakdown({ products }: { products: PortfolioAnalytics['by_
   if (products.length === 0) return null;
 
   return (
-    <Card className="animate-fadeInUp shadow-sm border-border/60 rounded-xl" style={{ animationDelay: '400ms' }}>
+    <Card className="shadow-sm border-border/60 rounded-xl">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <Package className="h-4 w-4 text-primary" />

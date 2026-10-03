@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Bot, Webhook, Copy, Check, Plus, Trash2, Eye, EyeOff, KeyRound, Clock, Activity, FilePlus, FileX, ShieldCheck, ShieldOff, GitCommit, Loader2, ExternalLink, Terminal } from 'lucide-react';
+import { Users, Bot, Webhook, Copy, Check, Plus, Trash2, Eye, EyeOff, KeyRound, FilePlus, ShieldCheck, GitCommit, Loader2, ExternalLink, Terminal } from 'lucide-react';
 import UserManagement from '@/pages/UserManagement';
 import AIConfigTab from '@/components/AIConfigTab';
 import AuditTerminal from '@/components/AuditTerminal';
@@ -14,11 +13,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { API_BASE_URL, apiTokensApi, jiraApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { format, formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 import { useTheme } from 'next-themes';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark, atomOneLight } from 'react-syntax-highlighter/dist/esm/styles/hljs';
@@ -37,74 +36,66 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'audit',        label: 'Audit Log',     icon: Terminal, adminOnly: true, description: 'System activity log' },
 ];
 
+/** Consistent card header: icon tile, title, description and an optional right-side slot. */
+function SectionHeader({ icon, title, description, badge, action }: {
+  icon: React.ReactNode; title: string; description?: React.ReactNode; badge?: React.ReactNode; action?: React.ReactNode;
+}) {
+  return (
+    <CardHeader className="border-b pb-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background text-foreground shadow-xs">
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <CardTitle className="flex items-center gap-2 text-base">
+            {title}
+            {badge}
+          </CardTitle>
+          {description && <CardDescription className="mt-1">{description}</CardDescription>}
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
+    </CardHeader>
+  );
+}
+
 export default function Settings() {
   const { isAdmin } = useAuth();
   const [active, setActive] = useState<SettingsSection>('team');
 
   const visibleNav = NAV_ITEMS.filter(item => !item.adminOnly || isAdmin);
+  const current = visibleNav.find(i => i.id === active) ?? visibleNav[0];
 
   return (
-    <div className="flex-1 flex min-h-0 p-4 md:p-6 lg:p-8 gap-6 animate-fadeIn">
+    <div className="flex-1 w-full min-h-0 p-4 md:p-6 lg:p-8 space-y-6">
+      <Tabs value={current?.id ?? 'team'} onValueChange={v => setActive(v as SettingsSection)} className="gap-6">
+        <TabsList className="max-w-full justify-start overflow-x-auto">
+          {visibleNav.map(item => {
+            const Icon = item.icon;
+            return (
+              <TabsTrigger key={item.id} value={item.id}>
+                <Icon />
+                {item.label}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
 
-      {/* Left sidebar */}
-      <aside className="w-52 shrink-0">
-        <div className="sticky top-6">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 px-2">Settings</p>
-          <nav className="space-y-0.5">
-            {visibleNav.map(item => {
-              const Icon = item.icon;
-              const isActive = active === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActive(item.id)}
-                  className={cn(
-                    'w-full flex items-start gap-2.5 px-3 py-2 rounded-lg transition-colors text-left',
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium leading-snug">{item.label}</p>
-                    {item.description && (
-                      <p className="text-[10px] opacity-60 leading-tight">{item.description}</p>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </nav>
+        {/* Content: cards share consistent padding, header tint and elevation */}
+        <div className="min-w-0 space-y-6 [&_[data-slot=card]]:shadow-sm [&_[data-slot=card]]:rounded-xl [&_[data-slot=card-header].border-b]:bg-muted/30 [&_[data-slot=card-header]]:px-5 [&_[data-slot=card-header]]:pt-1 [&_[data-slot=card-content]]:px-5">
+          <TabsContent value="team" className="space-y-6"><UserManagement /></TabsContent>
+          {isAdmin && (
+            <TabsContent value="sso" className="space-y-6">
+              <SsoProvidersSection />
+              <LdapProvidersSection />
+              <ScimTokensSection />
+            </TabsContent>
+          )}
+          {isAdmin && <TabsContent value="ai"><AIConfigTab /></TabsContent>}
+          <TabsContent value="integrations"><IntegrationsTab /></TabsContent>
+          {isAdmin && <TabsContent value="audit"><AuditTerminal height={600} /></TabsContent>}
         </div>
-      </aside>
-
-      {/* Right content */}
-      <div className="flex-1 min-w-0">
-        {active === 'team' && <UserManagement />}
-        {active === 'sso' && isAdmin && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold">SSO & SCIM</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">Configure Single Sign-On providers and SCIM user provisioning.</p>
-            </div>
-            <SsoProvidersSection />
-            <LdapProvidersSection />
-            <ScimTokensSection />
-          </div>
-        )}
-        {active === 'ai' && isAdmin && <AIConfigTab />}
-        {active === 'integrations' && <IntegrationsTab />}
-        {active === 'audit' && isAdmin && (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold">System Audit Log</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">All security-relevant actions across every product.</p>
-            </div>
-            <AuditTerminal height={600} />
-          </div>
-        )}
-      </div>
+      </Tabs>
     </div>
   );
 }
@@ -124,7 +115,7 @@ function CopyButton({ text }: { text: string }) {
       className="ml-2 p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
       title="Copy"
     >
-      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
   );
 }
@@ -226,30 +217,22 @@ function ApiTokensSection() {
   };
 
   return (
-    <Card className="border-border/60 shadow-sm">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <KeyRound className="h-4 w-4 text-primary" />
-              API Tokens
-            </CardTitle>
-            <CardDescription className="mt-1">
-              Long-lived tokens for CI/CD pipelines and machine-to-machine access. Each token is shown only once — copy it immediately.
-            </CardDescription>
-          </div>
-          {!showCreate && (
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 shrink-0" onClick={() => setShowCreate(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              New Token
-            </Button>
-          )}
-        </div>
-      </CardHeader>
+    <Card>
+      <SectionHeader
+        icon={<KeyRound className="h-4 w-4" />}
+        title="API Tokens"
+        description="Long-lived tokens for CI/CD pipelines and machine-to-machine access. Each token is shown only once, so copy it immediately."
+        action={!showCreate && (
+          <Button size="sm" className="gap-1.5" onClick={() => setShowCreate(true)}>
+            <Plus className="h-3.5 w-3.5" />
+            New token
+          </Button>
+        )}
+      />
       <CardContent className="space-y-4">
         {/* New token form */}
         {showCreate && (
-          <div className="flex gap-2 items-center p-3 rounded-lg border border-primary/20 bg-primary/3">
+          <div className="flex gap-2 items-center p-3 rounded-lg border bg-muted/30">
             <Input
               placeholder="Token name (e.g. github-actions-prod)"
               value={newName}
@@ -269,8 +252,8 @@ function ApiTokensSection() {
 
         {/* Newly created token — show once */}
         {revealedToken && (
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
-            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Token created — copy it now. It won't be shown again.</p>
+          <div className="rounded-lg border border-success/30 bg-success/5 p-3 space-y-2">
+            <p className="text-xs font-semibold text-success">Token created — copy it now. It won't be shown again.</p>
             <div className="flex items-center gap-2">
               <code className="flex-1 font-mono text-xs bg-background rounded px-2 py-1.5 border border-border/60 break-all">
                 {revealedVisible ? revealedToken : '••••••••••••••••••••••••••••••••••••••••'}
@@ -279,7 +262,7 @@ function ApiTokensSection() {
                 {revealedVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               </button>
               <button onClick={() => copyText(revealedToken, 'new')} className="p-1.5 rounded hover:bg-muted text-muted-foreground">
-                {copiedId === 'new' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                {copiedId === 'new' ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
               </button>
             </div>
             <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setRevealedToken(null); setRevealedVisible(false); }}>
@@ -290,17 +273,23 @@ function ApiTokensSection() {
 
         {/* Token list */}
         {loading ? (
-          <p className="text-xs text-muted-foreground py-2">Loading…</p>
+          <div className="space-y-2" role="status" aria-label="Loading tokens">
+            {[1, 2].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+          </div>
         ) : tokens.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2">No API tokens yet. Create one to get started.</p>
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-10 text-center">
+            <KeyRound className="h-6 w-6 text-muted-foreground" />
+            <p className="text-sm font-medium">No API tokens yet</p>
+            <p className="text-sm text-muted-foreground">Create a token to call the API from your pipeline.</p>
+          </div>
         ) : (
           <div className="space-y-1.5">
             {tokens.map(token => (
-              <div key={token.id} className="flex items-center gap-3 rounded-lg border border-border/50 px-3 py-2.5 text-sm">
+              <div key={token.id} className="flex items-center gap-3 rounded-lg border px-4 py-3 text-sm transition-colors hover:bg-muted/40">
                 <KeyRound className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 <div className="flex-1 min-w-0">
                   <span className="font-medium truncate">{token.name}</span>
-                  <span className="ml-2 font-mono text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                  <span className="ml-2 font-mono text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                     {token.prefix}…
                   </span>
                 </div>
@@ -415,8 +404,8 @@ function JiraConfigSection() {
 
   if (loading) {
     return (
-      <Card className="border-border/60 shadow-sm">
-        <CardContent className="space-y-2 py-4">
+      <Card>
+        <CardContent className="space-y-2">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-9 w-full rounded-lg" />)}
         </CardContent>
       </Card>
@@ -424,45 +413,38 @@ function JiraConfigSection() {
   }
 
   return (
-    <Card className="border-border/60 shadow-sm">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              {/* JIRA-style icon */}
-              <svg className="h-4 w-4 text-[#0052CC]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11.571 11.429 6.857 6.714A.571.571 0 0 1 7.27 5.77l4.3 4.3 4.3-4.3a.571.571 0 0 1 .414 1.072l-4.714 4.586zm0 5.714L6.857 12.43a.571.571 0 0 1 .413-.944l4.3 4.3 4.3-4.3a.571.571 0 1 1 .808.808l-4.714 4.848z" />
-              </svg>
-              JIRA Integration
-            </CardTitle>
-            <CardDescription className="mt-1">
-              Connect your JIRA instance to create security issues directly from threat cards.
-            </CardDescription>
-          </div>
-          {config.configured && (
-            <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-              <Check className="h-3.5 w-3.5" />
-              Connected
-            </span>
-          )}
-        </div>
-      </CardHeader>
+    <Card>
+      <SectionHeader
+        icon={
+          <svg className="h-4 w-4 text-[#0052CC]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M11.571 11.429 6.857 6.714A.571.571 0 0 1 7.27 5.77l4.3 4.3 4.3-4.3a.571.571 0 0 1 .414 1.072l-4.714 4.586zm0 5.714L6.857 12.43a.571.571 0 0 1 .413-.944l4.3 4.3 4.3-4.3a.571.571 0 1 1 .808.808l-4.714 4.848z" />
+          </svg>
+        }
+        title="JIRA Integration"
+        description="Connect your JIRA instance to create security issues directly from threat cards."
+        badge={config.configured && (
+          <Badge variant="outline" className="gap-1 text-success border-success/30 bg-success/10 font-medium">
+            <Check className="h-3 w-3" />
+            Connected
+          </Badge>
+        )}
+      />
       <CardContent className="space-y-4">
         <div className="grid gap-3">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <label className="text-sm font-medium">
               JIRA URL
             </label>
             <Input
               placeholder="https://yourcompany.atlassian.net"
               value={config.jira_url}
               onChange={e => setConfig(prev => ({ ...prev, jira_url: e.target.value }))}
-              className="h-9 text-sm"
+              className="h-9"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <label className="text-sm font-medium">
               Email
             </label>
             <Input
@@ -470,15 +452,15 @@ function JiraConfigSection() {
               placeholder="you@company.com"
               value={config.jira_email}
               onChange={e => setConfig(prev => ({ ...prev, jira_email: e.target.value }))}
-              className="h-9 text-sm"
+              className="h-9"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <label className="text-sm font-medium">
               API Token
               {config.configured && (
-                <span className="ml-2 text-[10px] text-muted-foreground font-normal normal-case tracking-normal">
+                <span className="ml-2 text-xs text-muted-foreground font-normal">
                   (leave blank to keep existing token)
                 </span>
               )}
@@ -518,8 +500,8 @@ function JiraConfigSection() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Default Project Key <span className="normal-case tracking-normal font-normal">(global fallback)</span>
+            <label className="text-sm font-medium">
+              Default Project Key <span className="font-normal text-muted-foreground">(global fallback)</span>
             </label>
             <Input
               placeholder="SEC"
@@ -528,7 +510,7 @@ function JiraConfigSection() {
               className="h-9 text-sm w-40 font-mono"
               maxLength={20}
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Used when no product-level default is set. Products can override this in their settings (e.g. SEC, INFRA, OPS).
             </p>
           </div>
@@ -621,20 +603,16 @@ function CiCdDocsSection() {
   return (
     <div className="space-y-6">
       {/* Security Gate */}
-      <Card className="border-border/60 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-base">Security Gate Endpoint</CardTitle>
-            <Badge variant="secondary" className="text-[10px] h-5">GET</Badge>
-          </div>
-          <CardDescription>
-            Call this from your pipeline to check security posture. Returns JSON with a{' '}
-            <code className="text-xs bg-muted px-1 rounded">pass</code> field you can use as a build gate.
-          </CardDescription>
-        </CardHeader>
+      <Card>
+        <SectionHeader
+          icon={<ShieldCheck className="h-4 w-4" />}
+          title="Security Gate Endpoint"
+          badge={<Badge variant="secondary">GET</Badge>}
+          description={<>Call this from your pipeline to check security posture. Returns JSON with a <code className="text-xs bg-muted px-1 rounded">pass</code> field you can use as a build gate.</>}
+        />
         <CardContent className="space-y-4">
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Endpoint</p>
+            <p className="text-sm font-medium mb-2">Endpoint</p>
             <div className="flex items-center gap-1 font-mono text-sm bg-muted/50 px-3 py-2 rounded-lg border border-border/60 break-all">
               <span className="text-primary font-semibold mr-1">GET</span>
               <span className="flex-1">/api/products/{exampleProductId}/security-status</span>
@@ -642,7 +620,7 @@ function CiCdDocsSection() {
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Query Parameters</p>
+            <p className="text-sm font-medium mb-2">Query Parameters</p>
             <div className="rounded-lg border border-border/60 overflow-hidden text-xs">
               {[
                 { param: 'fail_on_critical', type: 'boolean', default: 'false', desc: 'Fail if any critical-severity threats exist' },
@@ -651,7 +629,7 @@ function CiCdDocsSection() {
               ].map((row, i) => (
                 <div key={row.param} className={`flex items-start gap-3 px-3 py-2 ${i % 2 === 0 ? 'bg-muted/20' : ''}`}>
                   <code className="font-mono text-primary w-44 shrink-0">{row.param}</code>
-                  <Badge variant="outline" className="text-[9px] h-4 px-1 shrink-0">{row.type}</Badge>
+                  <Badge variant="outline" className="text-xs shrink-0">{row.type}</Badge>
                   <span className="text-muted-foreground flex-1">{row.desc}</span>
                   <span className="text-muted-foreground/60 shrink-0">default: <code>{row.default}</code></span>
                 </div>
@@ -659,11 +637,11 @@ function CiCdDocsSection() {
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">curl</p>
+            <p className="text-sm font-medium mb-2">curl</p>
             <CodeBlock code={curlExample} language="bash" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">CI/CD Integration</p>
+            <p className="text-sm font-medium mb-2">CI/CD Integration</p>
             {/* VCS platform tabs */}
             <div className="flex gap-1 mb-3 flex-wrap">
               {([
@@ -747,10 +725,10 @@ function CiCdDocsSection() {
             fi`} />}
           </div>
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Example Response</p>
+            <p className="text-sm font-medium mb-2">Example Response</p>
             <CodeBlock code={exampleResponse} language="json" />
           </div>
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-muted-foreground space-y-1">
+          <div className="rounded-lg border border-warning/30 bg-warning/5 px-4 py-3 text-xs text-muted-foreground space-y-1">
             <p className="font-semibold text-foreground">Authentication</p>
             <p>Generate a long-lived API token in the <strong>Access Tokens</strong> tab, store it as <code>THREATATLAS_TOKEN</code> in your CI secrets. The endpoint always returns HTTP 200 — check the <code className="bg-muted px-1 rounded">pass</code> field.</p>
           </div>
@@ -758,16 +736,13 @@ function CiCdDocsSection() {
       </Card>
 
       {/* Markdown Report */}
-      <Card className="border-border/60 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-base">Markdown Report Export</CardTitle>
-            <Badge variant="secondary" className="text-[10px] h-5">GET</Badge>
-          </div>
-          <CardDescription>
-            Download the threat model report as Markdown for GitHub PRs, Confluence, or CI job summaries.
-          </CardDescription>
-        </CardHeader>
+      <Card>
+        <SectionHeader
+          icon={<FilePlus className="h-4 w-4" />}
+          title="Markdown Report Export"
+          badge={<Badge variant="secondary">GET</Badge>}
+          description="Download the threat model report as Markdown for GitHub PRs, Confluence, or CI job summaries."
+        />
         <CardContent className="space-y-4">
           <div className="flex items-center gap-1 font-mono text-sm bg-muted/50 px-3 py-2 rounded-lg border border-border/60 break-all">
             <span className="text-primary font-semibold mr-1">GET</span>
@@ -788,16 +763,16 @@ function CiCdDocsSection() {
 function IntegrationsTab() {
   return (
     <Tabs defaultValue="tokens" className="w-full">
-      <TabsList className="mb-6 h-10 p-1 bg-muted/40">
-        <TabsTrigger value="tokens" className="gap-2 px-4">
+      <TabsList variant="line" className="mb-6 w-full justify-start border-b rounded-none p-0 h-auto gap-2">
+        <TabsTrigger value="tokens" className="flex-none gap-2 px-3 pb-3 rounded-none">
           <KeyRound className="h-3.5 w-3.5" />
           Access Tokens
         </TabsTrigger>
-        <TabsTrigger value="connections" className="gap-2 px-4">
+        <TabsTrigger value="connections" className="flex-none gap-2 px-3 pb-3 rounded-none">
           <Webhook className="h-3.5 w-3.5" />
           Connections
         </TabsTrigger>
-        <TabsTrigger value="cicd" className="gap-2 px-4">
+        <TabsTrigger value="cicd" className="flex-none gap-2 px-3 pb-3 rounded-none">
           <GitCommit className="h-3.5 w-3.5" />
           CI/CD
         </TabsTrigger>

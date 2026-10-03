@@ -43,13 +43,13 @@ import { AlertTriangle, Shield, ExternalLink, Plus, Trash2, Search, X, MessageSq
 import { RiskSelector } from '@/components/RiskSelector';
 import { ResidualRiskAssessment } from '@/components/ResidualRiskAssessment';
 import { diagramMitigationsApi, mitigationsApi, frameworksApi } from '@/lib/api';
+import { RiskSummary } from '@/components/RiskSummary';
 import { AcceptRiskDialog } from '@/components/AcceptRiskDialog';
-import { getSeverity, getSeverityClasses, getSeverityVariant, getStatusClasses } from '@/lib/risk';
+import { getSeverity, getSeverityClasses, getStatusClasses } from '@/lib/risk';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { CommentSection } from '@/components/CommentSection';
 import { toast } from 'sonner';
-import { getMitigationStatusColor } from '@/lib/designSystem';
 
 interface DiagramMitigation {
   id: number;
@@ -308,6 +308,10 @@ export default function ThreatDetailsSheet({
       ? localLikelihood * localImpact
       : selectedItem?.risk_score ?? null;
   const currentSeverity = currentRiskScore != null ? getSeverity(currentRiskScore) : selectedItem?.severity ?? null;
+  const residualScore =
+    itemType === 'threat' && selectedItem?.residual_likelihood != null && selectedItem?.residual_impact != null
+      ? selectedItem.residual_likelihood * selectedItem.residual_impact
+      : null;
   const severityColor = currentSeverity
     ? ({ critical: 'var(--risk-critical)', high: 'var(--risk-high)', medium: 'var(--risk-medium)', low: 'var(--risk-low)' }[currentSeverity as string] ?? 'var(--border)')
     : 'var(--border)';
@@ -315,7 +319,7 @@ export default function ThreatDetailsSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="!w-full sm:!max-w-[680px] p-0 overflow-hidden flex flex-col">
+        <SheetContent className="!w-full sm:!max-w-[907px] p-0 overflow-hidden flex flex-col">
 
           {/* ── Header ── */}
           <SheetHeader className="px-5 pt-5 pb-4 border-b shrink-0">
@@ -399,8 +403,8 @@ export default function ThreatDetailsSheet({
                   </p>
                 </div>
 
-                {/* Status + Severity/Risk */}
-                <div className="grid grid-cols-2 gap-3">
+                {/* Status */}
+                <div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">STATUS</p>
                     {canWrite ? (
@@ -440,36 +444,29 @@ export default function ThreatDetailsSheet({
                     )}
                   </div>
 
-                  {itemType === 'threat' && (currentRiskScore !== null || currentSeverity) && (
-                    <div>
-                      <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">INHERENT SEVERITY / RISK</p>
-                      <div className="flex items-center gap-2 h-9">
-                        {currentSeverity && (
-                          <Badge variant={getSeverityVariant(currentSeverity)} className="capitalize text-[10px]">
-                            {currentSeverity}
-                          </Badge>
-                        )}
-                        {currentRiskScore !== null && (
-                          <span className="text-sm font-bold tabular-nums" style={{ color: severityColor }}>
-                            {currentRiskScore}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
 
-                {/* Risk Assessment — threats only */}
+                {/* Risk summary: inherent vs residual — threats only */}
                 {itemType === 'threat' && (
-                  <div>
-                    <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">INHERENT RISK (BEFORE MITIGATIONS)</p>
+                  <RiskSummary inherentScore={currentRiskScore} residualScore={residualScore} />
+                )}
+
+                {/* Inherent assessment — threats only */}
+                {itemType === 'threat' && (
+                  <section className="rounded-xl border px-4 py-4 space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold">Inherent risk</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Likelihood and impact before any mitigations are applied.
+                      </p>
+                    </div>
                     <RiskSelector
                       likelihood={localLikelihood}
                       impact={localImpact}
                       onLikelihoodChange={handleLikelihoodChange}
                       onImpactChange={handleImpactChange}
                     />
-                  </div>
+                  </section>
                 )}
 
                 {itemType === 'threat' && (

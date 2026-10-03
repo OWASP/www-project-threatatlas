@@ -61,11 +61,11 @@ import { ImportDrawioButton } from '@/components/ImportDrawioButton';
 import NewDiagramWizard from '@/components/NewDiagramWizard';
 
 const STATUS_CLASSES: Record<string, string> = {
-  design: 'border-sky-500/50 text-sky-700 dark:text-sky-300 bg-sky-500/10',
-  development: 'border-indigo-500/50 text-indigo-700 dark:text-indigo-300 bg-indigo-500/10',
-  testing: 'border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-500/10',
-  deployment: 'border-purple-500/50 text-purple-700 dark:text-purple-300 bg-purple-500/10',
-  production: 'border-emerald-500/50 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10',
+  design: 'border-info/50 text-info  bg-info/10',
+  development: 'border-violet/50 text-violet  bg-violet/10',
+  testing: 'border-warning/50 text-warning  bg-warning/10',
+  deployment: 'border-violet/50 text-violet  bg-violet/10',
+  production: 'border-success/50 text-success  bg-success/10',
 };
 const getStatusBadgeClass = (status: ProductStatus | null): string =>
   status ? STATUS_CLASSES[status] ?? '' : '';
@@ -307,7 +307,7 @@ export default function Products() {
   };
 
   return (
-    <div className="flex-1 space-y-4 mx-auto p-4">
+    <div className="flex-1 w-full space-y-4 p-4 md:p-6 lg:p-8">
       {/* Page Header */}
       <div className="flex justify-end">
         {canWrite && (
@@ -322,11 +322,11 @@ export default function Products() {
       </div>
 
       {/* Content */}
-      <div className="mx-auto">
+      <div>
         {loading ? (
           <ProductsSkeleton />
         ) : products.length === 0 ? (
-          <Card className="border-dashed border-2 rounded-xl">
+          <Card className="border-dashed rounded-xl">
             <CardContent className="flex flex-col items-center justify-center py-16 px-6">
               <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/60 to-muted/40 mb-4 shadow-sm">
                 <Box className="h-10 w-10 text-muted-foreground" />
@@ -347,7 +347,7 @@ export default function Products() {
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {products.map((product, index) => {
+            {products.map((product) => {
               const productDiagrams = diagrams[product.id] || [];
               const diagramCount = productDiagrams.length;
               const isExpanded = !!expandedDiagrams[product.id];
@@ -356,8 +356,7 @@ export default function Products() {
               return (
                 <Card
                   key={product.id}
-                  className="animate-fadeInUp group flex flex-col hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl border-border/60 overflow-hidden cursor-pointer"
-                  style={{ animationDelay: `${index * 50}ms` }}
+                  className="group flex flex-col hover:shadow-lg hover:border-primary/20 transition-all duration-300 rounded-xl border-border/60 overflow-hidden cursor-pointer"
                   onClick={(e) => {
                     const target = e.target as HTMLElement;
                     if (target.closest('[data-card-action], button, a, [role="menuitem"]')) return;
@@ -368,7 +367,7 @@ export default function Products() {
                     {/* Title row: icon + name + inline actions */}
                     <div className="flex items-start gap-3">
                       <div
-                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0 group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300 cursor-pointer mt-0.5"
+                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0 group-hover:bg-primary/15 transition-all duration-300 cursor-pointer mt-0.5"
                         onClick={() => navigate(`/products/${product.id}`)}
                       >
                         <Box className="h-4 w-4 text-primary" />

@@ -346,7 +346,7 @@ export default function SsoProvidersSection() {
                 <TableRow key={p.id}>
                   <TableCell>
                     {p.is_enabled ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      <CheckCircle2 className="h-4 w-4 text-success" />
                     ) : (
                       <XCircle className="h-4 w-4 text-muted-foreground" />
                     )}
