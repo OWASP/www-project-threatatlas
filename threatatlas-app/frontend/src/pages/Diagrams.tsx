@@ -247,12 +247,20 @@ export function DiagramsContent() {
     const rfEl = document.querySelector('.react-flow') as HTMLElement | null;
     if (!rfEl) { toast.error('Cannot export — diagram not found.'); return; }
 
+    const isDark = resolvedTheme
+      ? resolvedTheme === 'dark'
+      : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const backgroundColor = isDark ? '#0f0f14' : '#ffffff';
+    const originalRootStyle = rfEl.getAttribute('style');
+    const originalStyles: { el: HTMLElement | SVGElement; style: string }[] = [];
+
     try {
       toast.info('Exporting diagram...');
+      rfEl.style.backgroundColor = backgroundColor;
+      rfEl.style.colorScheme = isDark ? 'dark' : 'light';
 
       // Temporarily inline SVG styles on edge paths (html-to-image doesn't read CSS for SVG)
       const edgePaths = rfEl.querySelectorAll('.react-flow__edge path, .react-flow__edge line');
-      const originalStyles: { el: HTMLElement | SVGElement; style: string }[] = [];
       edgePaths.forEach((path) => {
         const el = path as SVGElement;
         originalStyles.push({ el, style: el.getAttribute('style') ?? '' });
@@ -277,9 +285,9 @@ export function DiagramsContent() {
       });
 
       const dataUrl = await toJpeg(rfEl, {
-        quality: 0.95,
-        pixelRatio: 2,
-        backgroundColor: '#0f0f14',
+        quality: 1,
+        pixelRatio: 4,
+        backgroundColor,
         filter: (node) => {
           const el = node as HTMLElement;
           if (el.classList) {
@@ -293,12 +301,6 @@ export function DiagramsContent() {
         },
       });
 
-      // Restore original styles
-      originalStyles.forEach(({ el, style }) => {
-        if (style) el.setAttribute('style', style);
-        else el.removeAttribute('style');
-      });
-
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = `${diagramName.replace(/\s+/g, '_') || 'diagram'}.jpg`;
@@ -308,8 +310,15 @@ export function DiagramsContent() {
     } catch (err) {
       console.error('JPG export error:', err);
       toast.error('JPG export failed.');
+    } finally {
+      originalStyles.forEach(({ el, style }) => {
+        if (style) el.setAttribute('style', style);
+        else el.removeAttribute('style');
+      });
+      if (originalRootStyle) rfEl.setAttribute('style', originalRootStyle);
+      else rfEl.removeAttribute('style');
     }
-  }, [diagramName]);
+  }, [diagramName, resolvedTheme]);
 
   // ── Create-diagram wizard state ────────────────────────────────────────────
   // The wizard UI/creation logic lives in the shared <NewDiagramWizard/>.
