@@ -109,7 +109,8 @@ def list_diagram_threats(
         query = query.filter(DiagramThreatModel.model_id == model_id)
     if element_id is not None:
         query = query.filter(DiagramThreatModel.element_id == element_id)
-    diagram_threats = query.offset(skip).limit(limit).all()
+    # Keep attachment order stable when updates change PostgreSQL row placement.
+    diagram_threats = query.order_by(DiagramThreatModel.id).offset(skip).limit(limit).all()
     result = []
     for dt in diagram_threats:
         item = DiagramThreatWithDetails.model_validate(dt)

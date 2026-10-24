@@ -55,7 +55,9 @@ def list_diagram_mitigations(
         query = query.filter(DiagramMitigationModel.model_id == model_id)
     if element_id is not None:
         query = query.filter(DiagramMitigationModel.element_id == element_id)
-    diagram_mitigations = query.offset(skip).limit(limit).all()
+    diagram_mitigations = (
+        query.order_by(DiagramMitigationModel.id).offset(skip).limit(limit).all()
+    )
     return diagram_mitigations
 
 
