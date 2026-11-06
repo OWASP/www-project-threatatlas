@@ -1096,6 +1096,7 @@ function InspectorPanel({
         <TabsContent value="threats" className="flex-1 overflow-y-auto mt-0 px-3 py-3">
           {diagramId ? (
             <ThreatManagement
+              key={JSON.stringify([productId, diagramId, activeModelId, activeModelFrameworkId, selectedElement.type, selectedElement.id])}
               diagramId={diagramId}
               productId={productId}
               activeModelId={activeModelId}

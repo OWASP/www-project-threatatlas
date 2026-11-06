@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { diagramThreatsApi, threatsApi, frameworksApi, diagramMitigationsApi, mitigationsApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -174,6 +174,7 @@ export default function ThreatManagement({ diagramId, productId, activeModelId, 
   const [mitigationForm, setMitigationForm] = useState({ name: '', description: '', category: '', framework_id: 0 });
 
   const [expandedThreats, setExpandedThreats] = useState<Record<number, boolean>>({});
+  const loadRequestRef = useRef(0);
 
   useEffect(() => {
     if (!canWrite) {
@@ -191,10 +192,17 @@ export default function ThreatManagement({ diagramId, productId, activeModelId, 
     setExpandedThreats(prev => ({ ...prev, [threatId]: !prev[threatId] }));
   };
 
-  useEffect(() => { loadData(); }, [diagramId, elementId, activeModelId]);
-
-  const loadData = async () => {
-    if (!diagramId || !elementId) return;
+  const loadData = useCallback(async () => {
+    const requestId = ++loadRequestRef.current;
+    if (!diagramId || !elementId) {
+      setAttachedThreats([]);
+      setAvailableThreats([]);
+      setFrameworks([]);
+      setElementMitigations([]);
+      setAvailableMitigations([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const threatParams: any = { diagram_id: diagramId };
@@ -210,18 +218,27 @@ export default function ThreatManagement({ diagramId, productId, activeModelId, 
         modelFrameworkId ? mitigationsApi.list({ framework_id: modelFrameworkId }) : Promise.resolve({ data: [] }),
       ]);
 
+      if (requestId !== loadRequestRef.current) return;
       setAttachedThreats(threatsRes.data.filter((dt: DiagramThreat) => dt.element_id === elementId));
       setAvailableThreats(availableRes.data);
       setFrameworks(frameworksRes.data);
       setElementMitigations(mitigationsRes.data.filter((dm: any) => dm.element_id === elementId));
       setAvailableMitigations(availableMitigationsRes.data);
     } catch (error) {
+      if (requestId !== loadRequestRef.current) return;
       console.error('Error loading threats:', error);
       toast.error('Failed to load threats');
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestRef.current) setLoading(false);
     }
-  };
+  }, [diagramId, elementId, activeModelId, modelFrameworkId]);
+
+  useEffect(() => {
+    void loadData();
+    // Invalidate in-flight work on selection changes and unmount, including
+    // failures and loading-state updates from the previous selection.
+    return () => { loadRequestRef.current += 1; };
+  }, [loadData]);
 
   const handleAttachThreat = async (threat: Threat) => {
     if (!canWrite || !activeModelId || !diagramId) return;
