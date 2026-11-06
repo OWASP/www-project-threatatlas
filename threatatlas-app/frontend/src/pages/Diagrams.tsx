@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/context-menu';
 import '@xyflow/react/dist/style.css';
 import { productsApi, diagramsApi, diagramThreatsApi, diagramMitigationsApi } from '@/lib/api';
+import { findContainingBoundary, normalizeBoundaryChildren, reparentBoundaryChild } from '@/lib/canvasBoundaries';
 import { toJpeg } from 'html-to-image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBreadcrumb } from '@/contexts/BreadcrumbContext';
@@ -156,7 +157,7 @@ export function DiagramsContent() {
       enabled: !!selectedDiagramForCollab,
       onRemoteSync: (remoteNodes, remoteEdges) => {
         isApplyingRemoteRef.current = true;
-        setNodes(remoteNodes);
+        setNodes(normalizeBoundaryChildren(remoteNodes));
         setEdges(remoteEdges);
         requestAnimationFrame(() => { isApplyingRemoteRef.current = false; });
       },
@@ -534,10 +535,10 @@ export function DiagramsContent() {
       setCurrentVersion(diagram.current_version || 0);
 
       if (diagram.diagram_data) {
-        const loadedNodes = (diagram.diagram_data.nodes || []).map((node: Node) => ({
+        const loadedNodes = normalizeBoundaryChildren((diagram.diagram_data.nodes || []).map((node: Node) => ({
           ...node,
           zIndex: node.data.type === 'boundary' ? -1 : (node.zIndex || 0)
-        })).sort((a: Node, b: Node) => (a.zIndex || 0) - (b.zIndex || 0));
+        }))).sort((a: Node, b: Node) => (a.zIndex || 0) - (b.zIndex || 0));
         isApplyingRemoteRef.current = true;
         setNodes(loadedNodes);
         setEdges(diagram.diagram_data.edges || []);
@@ -691,28 +692,8 @@ export function DiagramsContent() {
   );
 
   // ── Boundary grouping ──────────────────────────────────────────────────────
-  // Fixed rendered sizes for non-boundary nodes (used to compute center point)
-  const ATTACH_SIZE: Record<string, { w: number; h: number }> = {
-    process:   { w: 96,  h: 96  },
-    datastore: { w: 140, h: 40  },
-    external:  { w: 120, h: 44  },
-  };
-
   const getBoundaryUnder = useCallback((node: Node): Node | undefined => {
-    const allNodes = getNodes();
-    // Absolute position: child positions are relative to parentId node
-    const parent = node.parentId ? allNodes.find(n => n.id === node.parentId) : undefined;
-    const absX = (parent ? parent.position.x : 0) + node.position.x;
-    const absY = (parent ? parent.position.y : 0) + node.position.y;
-    const size = ATTACH_SIZE[node.data.type as string] ?? { w: node.width ?? 80, h: node.height ?? 40 };
-    const cx = absX + size.w / 2;
-    const cy = absY + size.h / 2;
-    return allNodes.find(n => {
-      if (n.data.type !== 'boundary' || n.id === node.id) return false;
-      const bx = n.position.x; const by = n.position.y;
-      const bw = n.width ?? 300; const bh = n.height ?? 200;
-      return cx >= bx && cx <= bx + bw && cy >= by && cy <= by + bh;
-    });
+    return findContainingBoundary(node, getNodes());
   }, [getNodes]);
 
   const onNodeDrag = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -728,25 +709,18 @@ export function DiagramsContent() {
     setDragOverBoundaryId(null);
 
     const allNodes = getNodes();
-    const parent = node.parentId ? allNodes.find(n => n.id === node.parentId) : undefined;
-    const absX = (parent ? parent.position.x : 0) + node.position.x;
-    const absY = (parent ? parent.position.y : 0) + node.position.y;
     const containingBoundary = getBoundaryUnder(node);
 
     if (containingBoundary) {
       if (node.parentId === containingBoundary.id) return; // unchanged
-      const relPos = { x: absX - containingBoundary.position.x, y: absY - containingBoundary.position.y };
       setNodes(nds => nds.map(n =>
-        n.id !== node.id ? n : { ...n, parentId: containingBoundary.id, position: relPos }
+        n.id !== node.id ? n : reparentBoundaryChild(node, allNodes, containingBoundary)
       ));
     } else if (node.parentId) {
       // Dragged outside its boundary — detach
-      setNodes(nds => nds.map(n => {
-        if (n.id !== node.id) return n;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { parentId: _p, extent: _e, ...rest } = n as any;
-        return { ...rest, position: { x: absX, y: absY } };
-      }));
+      setNodes(nds => nds.map(n =>
+        n.id !== node.id ? n : reparentBoundaryChild(node, allNodes)
+      ));
     }
   }, [getNodes, getBoundaryUnder, setNodes, canEditDiagram]);
   // ── End boundary grouping ──────────────────────────────────────────────────
