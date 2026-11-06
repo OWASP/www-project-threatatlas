@@ -1,7 +1,10 @@
 """Tests for the transactional 'apply component template' endpoint
 (POST /component-templates/{id}/apply)."""
 
+import pytest
+
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -116,6 +119,95 @@ def test_apply_is_idempotent(client: TestClient, standard_user: User, user_heade
     data = resp.json()
     assert data["threats_added"] == 0 and data["mitigations_added"] == 0
     assert data["threats_skipped"] == 2 and data["mitigations_skipped"] == 2
+
+
+@pytest.mark.parametrize(
+    ("resource", "update"),
+    [
+        ("diagram-threats", {"likelihood": 4}),
+        ("diagram-mitigations", {"comments": "Reviewed control"}),
+    ],
+)
+def test_attachment_order_and_pagination_survive_updates(
+    client: TestClient,
+    standard_user: User,
+    user_headers: dict,
+    db: Session,
+    resource: str,
+    update: dict,
+):
+    ids = _setup(db, standard_user)
+    applied = client.post(
+        f"/api/component-templates/{ids['template_id']}/apply",
+        json=_body(ids),
+        headers=user_headers,
+    )
+    assert applied.status_code == 200
+
+    url = f"/api/{resource}"
+    filters = {
+        "diagram_id": ids["diagram_id"],
+        "model_id": ids["model_id"],
+        "element_id": "node-1",
+    }
+    before = client.get(url, params=filters, headers=user_headers)
+    assert before.status_code == 200
+    attachment_ids = [item["id"] for item in before.json()]
+    assert len(attachment_ids) == 2
+    assert attachment_ids == sorted(attachment_ids)
+
+    changed = client.put(
+        f"{url}/{attachment_ids[0]}", json=update, headers=user_headers
+    )
+    assert changed.status_code == 200
+
+    after = client.get(url, params=filters, headers=user_headers)
+    assert after.status_code == 200
+    assert [item["id"] for item in after.json()] == attachment_ids
+
+    for skip, expected_id in enumerate(attachment_ids):
+        page = client.get(
+            url, params={**filters, "skip": skip, "limit": 1}, headers=user_headers
+        )
+        assert page.status_code == 200
+        assert [item["id"] for item in page.json()] == [expected_id]
+
+
+@pytest.mark.parametrize("resource", ["diagram-threats", "diagram-mitigations"])
+def test_attachment_pagination_has_explicit_database_order(
+    client: TestClient,
+    standard_user: User,
+    user_headers: dict,
+    db: Session,
+    resource: str,
+):
+    ids = _setup(db, standard_user)
+    statements = []
+
+    def capture_sql(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    connection = db.connection()
+    event.listen(connection, "before_cursor_execute", capture_sql)
+    try:
+        response = client.get(
+            f"/api/{resource}",
+            params={"diagram_id": ids["diagram_id"], "skip": 1, "limit": 1},
+            headers=user_headers,
+        )
+    finally:
+        event.remove(connection, "before_cursor_execute", capture_sql)
+    assert response.status_code == 200
+
+    # Small datasets can appear ordered even without ORDER BY. Verify the query
+    # contract as well so this regression does not depend on PostgreSQL's plan.
+    table = resource.replace("-", "_")
+    queries = [sql for sql in statements if f"FROM {table} " in sql]
+    assert len(queries) == 1
+    sql = queries[0]
+    order = f"ORDER BY {table}.id"
+    assert order in sql
+    assert sql.index(order) < sql.index("LIMIT")
 
 
 def test_apply_subset_via_ids(client: TestClient, standard_user: User, user_headers: dict, db: Session):
