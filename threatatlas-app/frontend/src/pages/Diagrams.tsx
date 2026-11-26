@@ -85,7 +85,9 @@ import {
   ZoomIn,
   PanelRight,
   ImageIcon,
+  FileJson,
 } from 'lucide-react';
+import { buildTmBom } from '@/lib/tmbom';
 import {
   Tooltip,
   TooltipContent,
@@ -242,6 +244,36 @@ export function DiagramsContent() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportTmBom = async () => {
+    if (!selectedDiagram) return;
+    try {
+      const params: Record<string, number> = { diagram_id: selectedDiagram };
+      if (activeModelId) params.model_id = activeModelId;
+      const [threatsRes, mitsRes] = await Promise.all([
+        diagramThreatsApi.list(params),
+        diagramMitigationsApi.list(params),
+      ]);
+      const bom = buildTmBom({
+        name: diagramName || 'Diagram',
+        nodes,
+        edges,
+        threats: threatsRes.data,
+        mitigations: mitsRes.data,
+      });
+      const blob = new Blob([JSON.stringify(bom, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${diagramName.replace(/\s+/g, '_') || 'diagram'}_tm-bom.cdx.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Could not export the TM-BOM: loading the threats and mitigations failed.');
+    }
   };
 
   const handleExportJpg = useCallback(async () => {
@@ -1367,6 +1399,15 @@ export function DiagramsContent() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Download (JSON)</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExportTmBom} disabled={!selectedDiagram}>
+                      <FileJson className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Download (CycloneDX TM-BOM, experimental)</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>

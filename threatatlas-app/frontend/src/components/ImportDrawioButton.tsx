@@ -24,6 +24,7 @@ import { Switch } from '@/components/ui/switch';
 import { diagramsApi, aiConversationsApi, threatsApi, mitigationsApi, diagramThreatsApi, diagramMitigationsApi, modelsApi, frameworksApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { isTmBom, parseTmBom } from '@/lib/tmbom';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -697,6 +698,9 @@ interface ThreatDragonThreat {
   severity?: string;
   description?: string;
   mitigation?: string;
+  /** Set by the TM-BOM import, which carries likelihood and impact rather than a severity. */
+  likelihood?: number;
+  impact?: number;
 }
 
 interface ThreatDragonCell {
@@ -1039,6 +1043,23 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
           return;
         }
 
+        // Detect format: CycloneDX TM-BOM (CycloneDX 2.0 draft, experimental)
+        if (isTmBom(json)) {
+          const tm = parseTmBom(json);
+          setNodes(tm.nodes.map(node => ({ ...node, layoutType: node.type, originalStyle: 'tmbom' })));
+          setEdges(tm.edges.map(edge => ({
+            ...edge,
+            sourceHandle: 'source-right',
+            targetHandle: 'target-left',
+            edgeStyle: '',
+          })));
+          setImportedThreats(tm.threats);
+          if (!name.trim() || name === file.name.replace(/\.json$/i, '')) setName(tm.diagramName);
+          for (const warning of tm.warnings) toast.warning(warning);
+          setStep('remap');
+          return;
+        }
+
         // Detect format: Threat Dragon (v1 or v2)
         const { nodes: n, edges: e, threats, diagramName } = parseThreatDragonJson(json);
         setNodes(n);
@@ -1263,6 +1284,7 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
                   const tdStatus = (t.status ?? 'open').toLowerCase();
                   const statusMap: Record<string, string> = {
                     open: 'identified',
+                    identified: 'identified',
                     mitigated: 'mitigated',
                     'not applicable': 'accepted',
                     accepted: 'accepted',
@@ -1277,8 +1299,8 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
                     element_id: elementId,
                     element_type: elementType,
                     status: mappedStatus,
-                    likelihood: sev?.likelihood ?? null,
-                    impact: sev?.impact ?? null,
+                    likelihood: t.likelihood ?? sev?.likelihood ?? null,
+                    impact: t.impact ?? sev?.impact ?? null,
                   });
                   const diagramThreatId = dtRes.data.id;
                   threatCount++;
@@ -1350,7 +1372,7 @@ export function ImportDrawioButton({ productId, onImportSuccess, open: controlle
                 <DialogDescription>
                   {isReplaceMode
                     ? 'Upload a Draw.io or JSON file to replace the content of this diagram. The existing elements will be overwritten.'
-                    : <>Supports <code className="font-mono text-xs">.drawio</code>, <code className="font-mono text-xs">.xml</code> or <code className="font-mono text-xs">.json</code> files — including Threat Dragon exports, ThreatAtlas exports, multi-page, compressed, and cloud-exported formats.</>
+                    : <>Supports <code className="font-mono text-xs">.drawio</code>, <code className="font-mono text-xs">.xml</code> or <code className="font-mono text-xs">.json</code> files — including Threat Dragon exports, ThreatAtlas exports, CycloneDX TM-BOM (experimental), multi-page, compressed, and cloud-exported formats.</>
                   }
                 </DialogDescription>
               </DialogHeader>
